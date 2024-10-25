@@ -36,12 +36,7 @@ repos:
       - id: clang-format
         types_or: [c++, c]
         args: [ --dry-run, -Werror]
-    # Camke Format
-  - repo: https://github.com/cheshirekow/cmake-format-precommit
-    rev: v0.6.10
-    hooks:
-    - id: cmake-format
-    #- id: cmake-lint
+
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.9.0.6
     hooks:
