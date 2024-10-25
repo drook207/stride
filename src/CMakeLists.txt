@@ -10,5 +10,6 @@ add_library(QRedmineClient SHARED ${HEADERS} ${SOURCES})
 
 target_link_libraries(QRedmineClient PRIVATE Qt${QT_VERSION_MAJOR}::Core
                                              Qt${QT_VERSION_MAJOR}::Network)
+target_include_directories(QRedmineClient INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_compile_definitions(QRedmineClient PRIVATE QREDMINECLIENT_LIBRARY)

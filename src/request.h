@@ -26,7 +26,7 @@ public:
 	[[nodiscard]] QByteArray PostData() const;
 
 public slots:
-	virtual void requestFinished();
+	virtual void requestFinished() = 0;
 	void errorOccured(QNetworkReply::NetworkError networkError);
 
 protected:

@@ -97,7 +97,14 @@ QString Client::UserAgent() const { return mUserAgent; }
 
 void Client::setUserAgent(const QString& newUserAgent) { mUserAgent = newUserAgent; }
 
-bool Client::timeEntry(TimeEntryRequest& request, const qint32 id) { QString parameter = QStringLiteral() return true; }
+bool Client::timeEntry(TimeEntryRequest& request, const qint32 id)
+{
+	QString parameter = QStringLiteral("");
+	request.setParameters(parameter);
+
+	sendRequest(id, &request);
+	return true;
+}
 
 void Client::handleSslError(QNetworkReply* const reply, const QList<QSslError>& errors)
 {
@@ -133,11 +140,6 @@ bool Client::sendRequest(int id, Request* const request)
 
 	if (request->Resource().isEmpty()) {
 		qDebug(lcClient) << "No resource provided";
-		return false;
-	}
-
-	if (request->Parameters().isEmpty()) {
-		qDebug(lcClient) << "No parameters provided";
 		return false;
 	}
 
