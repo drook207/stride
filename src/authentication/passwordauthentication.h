@@ -1,11 +1,11 @@
 #pragma once
 
-#include "authentication.h"
+#include "iauthentication.h"
 #include <QObject>
 
 namespace QRedmine {
 
-class PasswordAuthentication : public Authentication {
+class PasswordAuthentication : public IAuthentication {
 	Q_OBJECT
 public:
 	explicit PasswordAuthentication(

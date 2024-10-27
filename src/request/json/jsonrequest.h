@@ -1,6 +1,6 @@
 #pragma once
 
-#include "request.h"
+#include "request/request.h"
 #include <QJsonDocument>
 
 namespace QRedmine {

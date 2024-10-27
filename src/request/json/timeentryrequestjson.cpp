@@ -1,4 +1,4 @@
-#include "timeentryjson.h"
+#include "timeentryrequestjson.h"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QLoggingCategory>
@@ -6,13 +6,14 @@
 namespace QRedmine {
 Q_LOGGING_CATEGORY(lcTimeEntryJson, "qredmine.timeentryjson")
 
-TimeEntryRequest::TimeEntryRequest(TimeEntry entry, QObject* parent)
+TimeEntryRequestJson::TimeEntryRequestJson(TimeEntry entry, QObject* parent)
 	: JsonRequest(parent)
+	, mEntry(entry)
 
 {
 	mResource = QStringLiteral("time_entries");
 
-	if (TimeEntryRequest::toJson()) {
+	if (TimeEntryRequestJson::toJson()) {
 		mRequest.setRawHeader("Content-Length", QByteArray::number(mData.toJson().size()));
 		resourceRequestMode();
 		mPostData = mData.toJson();
@@ -21,17 +22,22 @@ TimeEntryRequest::TimeEntryRequest(TimeEntry entry, QObject* parent)
 	mMode = QNetworkAccessManager::GetOperation;
 }
 
-void TimeEntryRequest::requestFinished()
+bool TimeEntryRequestJson::isValidToSend()
+{
+	return mIsValidToSend; // NOTE Maybe do more checks
+}
+
+void TimeEntryRequestJson::requestFinished()
 {
 	QByteArray rawData = mReply->readAll();
 	mData = QJsonDocument::fromJson(rawData);
-	if (fromJson()) {
+	if (fromJson() && mReply->error() == QNetworkReply::NoError) {
 		return emit finished();
 	}
 	return emit error();
 }
 
-bool TimeEntryRequest::toJson()
+bool TimeEntryRequestJson::toJson()
 {
 	if (mEntry.hours < 0.01f) {
 		qDebug(lcTimeEntryJson) << "Time entry has to be at least 36 seconds";
@@ -84,16 +90,17 @@ bool TimeEntryRequest::toJson()
 	data["time_entry"] = attributes;
 
 	mData.setObject(data);
-
+	mIsValidToSend = true;
 	return true;
 }
 
-bool TimeEntryRequest::fromJson()
+bool TimeEntryRequestJson::fromJson()
 {
 	if (mData.isEmpty() || mData.isNull()) {
-		qDebug(lcTimeEntryJson) << "Time entry has to be at least 36 seconds";
+		qDebug(lcTimeEntryJson) << "Received JSON Object is empty or null.";
 		return false;
 	}
+
 	mEntry.hours = mData["hours"].toDouble();
 
 	mEntry.activity.id = mData["activity_id"].toInt();

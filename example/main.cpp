@@ -1,5 +1,5 @@
 
-#include "client.h"
+#include "client/client.h"
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QCoreApplication>
@@ -25,11 +25,18 @@ int main(int argc, char* argv[])
 
 	client->reconnect();
 
-	QRedmine::TimeEntryRequest request;
+	QRedmine::TimeEntry timeEntryRecord {};
+	timeEntryRecord.project.name = QStringLiteral("redmine-rest-client-test");
+	timeEntryRecord.project.id = 1;
+	timeEntryRecord.hours = 1.5;
+	timeEntryRecord.spentOn = QDate(2024, 10, 27);
 
-	client->timeEntry(request, QRedmine::DEFAULT_ID);
+	QRedmine::TimeEntryRequestJson request(timeEntryRecord);
 
-	QObject::connect(&request, &QRedmine::TimeEntryRequest::finished, &app, []() { qDebug() << "Request finished!"; });
+	client->setTimeEntry(request, QRedmine::DEFAULT_ID);
+
+	QObject::connect(
+		&request, &QRedmine::TimeEntryRequestJson::finished, &app, []() { qDebug() << "Request finished!"; });
 
 	return app.exec();
 }

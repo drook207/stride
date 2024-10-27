@@ -1,17 +1,20 @@
 #pragma once
 
-#include "jsonrequest.h"
-#include "timeentry.h"
+#include "request/json/jsonrequest.h"
+#include "types/timeentry.h"
 
 namespace QRedmine {
 
-class TimeEntryRequest : public JsonRequest {
+class TimeEntryRequestJson : public JsonRequest {
 public:
-	TimeEntryRequest(TimeEntry entry = TimeEntry(), QObject* parent = nullptr);
+	TimeEntryRequestJson(TimeEntry entry = TimeEntry(), QObject* parent = nullptr);
 
 private:
 	TimeEntry mEntry {};
 	// Request interface
+
+public:
+	bool isValidToSend() override;
 private slots:
 	void requestFinished() override;
 

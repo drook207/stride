@@ -1,6 +1,6 @@
 #include "client.h"
-#include "passwordauthentication.h"
-#include "tokenauthentication.h"
+#include "authentication/passwordauthentication.h"
+#include "authentication/tokenauthentication.h"
 #include <QLoggingCategory>
 #include <QNetworkReply>
 
@@ -97,11 +97,24 @@ QString Client::UserAgent() const { return mUserAgent; }
 
 void Client::setUserAgent(const QString& newUserAgent) { mUserAgent = newUserAgent; }
 
-bool Client::timeEntry(TimeEntryRequest& request, const qint32 id)
+bool Client::timeEntry(TimeEntryRequestJson& request, const qint32 id)
 {
 	QString parameter = QStringLiteral("");
 	request.setParameters(parameter);
 
+	sendRequest(id, &request);
+	return true;
+}
+
+bool Client::setTimeEntry(TimeEntryRequestJson& request, const qint32 id)
+{
+	if (!request.isValidToSend()) {
+		qDebug(lcClient) << __FUNCTION__ << "Invalid request.";
+		return false;
+	}
+
+	QString parameter = QStringLiteral("");
+	request.setParameters(parameter);
 	sendRequest(id, &request);
 	return true;
 }
@@ -143,15 +156,15 @@ bool Client::sendRequest(int id, Request* const request)
 		return false;
 	}
 
-	const QUrl restRequest = mUrl.toString() + "/" + request->Resource() + ".json" + request->Parameters();
+	const QUrl requestUrl = mUrl.toString() + "/" + request->Resource() + ".json" + request->Parameters();
 
-	if (!restRequest.isValid()) {
+	if (!requestUrl.isValid()) {
 		qDebug(lcClient) << "Invalid Url.";
 		return false;
 	}
 
 	auto networkRequest = request->NetworkRequest();
-	networkRequest.setUrl(restRequest);
+	networkRequest.setUrl(requestUrl);
 	networkRequest.setRawHeader("User-Agent", mUserAgent.toLatin1());
 	networkRequest.setRawHeader("X-Custom-User-Agent", mUserAgent.toLatin1());
 	mAuthenticator->addAuthenticationToRequest(networkRequest);

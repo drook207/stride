@@ -12,7 +12,15 @@ Request::Request(QObject* parent)
 
 QString Request::Resource() const { return mResource; }
 
-void Request::setReply(QNetworkReply* newReply) { mReply = newReply; }
+void Request::setReply(QNetworkReply* newReply)
+{
+	if (nullptr != newReply) {
+		mReply = newReply;
+		return;
+	}
+
+	qWarning(lcRequest) << "This request is already ongoing.";
+}
 
 void Request::setParameters(const QString& newParameters) { mParameters = newParameters; }
 

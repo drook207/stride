@@ -7,7 +7,7 @@ namespace QRedmine {
 Q_LOGGING_CATEGORY(lcTokenAuthenticator, "qredmineclient.tokenauthenticator")
 
 TokenAuthentication::TokenAuthentication(const QStringView& apiKey, QObject* parent)
-	: Authentication(parent)
+	: IAuthentication(parent)
 	, mApiKey(apiKey.toLatin1())
 {
 }

@@ -5,10 +5,10 @@
 
 namespace QRedmine {
 
-class Authentication : public QObject {
+class IAuthentication : public QObject {
 	Q_OBJECT
 public:
-	explicit Authentication(QObject* parent = nullptr);
+	explicit IAuthentication(QObject* parent = nullptr);
 
 	virtual void addAuthenticationToRequest(QNetworkRequest& request) = 0;
 };

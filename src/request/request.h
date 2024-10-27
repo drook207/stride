@@ -25,6 +25,8 @@ public:
 	[[nodiscard]] QNetworkAccessManager::Operation Mode() const;
 	[[nodiscard]] QByteArray PostData() const;
 
+	virtual bool isValidToSend() = 0;
+
 public slots:
 	virtual void requestFinished() = 0;
 	void errorOccured(QNetworkReply::NetworkError networkError);
@@ -37,6 +39,7 @@ protected:
 	QString mParameters {};
 	QNetworkAccessManager::Operation mMode {};
 	QByteArray mPostData {};
+	bool mIsValidToSend = false;
 	void resourceRequestMode();
 
 signals:

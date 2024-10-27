@@ -7,7 +7,7 @@ Q_LOGGING_CATEGORY(lcPasswordAuthenticator, "qredmineclient.passwordauthenticato
 
 PasswordAuthentication::PasswordAuthentication(
 	const QStringView& username, const QStringView& password, QObject* parent)
-	: Authentication(parent)
+	: IAuthentication(parent)
 	, mUsername(username.toLatin1())
 	, mPassword(password.toLatin1().toBase64())
 {

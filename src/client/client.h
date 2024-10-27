@@ -1,9 +1,9 @@
 #pragma once
 
-#include "authentication.h"
+#include "authentication/iauthentication.h"
 #include "qredmineclient_global.h"
-#include "request.h"
-#include "timeentryjson.h"
+#include "request/json/timeentryrequestjson.h"
+#include "request/request.h"
 #include <QNetworkAccessManager>
 #include <QObject>
 
@@ -34,9 +34,11 @@ public:
 	[[nodiscard]] QString UserAgent() const;
 	void setUserAgent(const QString& newUserAgent);
 
-	bool timeEntry(TimeEntryRequest& request, const qint32 id);
-
 public slots:
+
+	bool timeEntry(TimeEntryRequestJson& request, const qint32 id);
+
+	bool setTimeEntry(TimeEntryRequestJson& request, const qint32 id);
 
 	void handleSslError(QNetworkReply* const reply, const QList<QSslError>& errors);
 
@@ -51,7 +53,7 @@ private:
 
 	QUrl mUrl {};
 	bool mSslVerify = true;
-	Authentication* mAuthenticator {};
+	IAuthentication* mAuthenticator {};
 	QString mUserAgent {};
 };
 } // namespace QRedmine
