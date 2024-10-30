@@ -1,12 +1,20 @@
 #pragma once
 
 #include "qredmineclient_global.h"
-#include <QNetworkRequest>
-#include <QObject>
-#include <qnetworkreply.h>
+#include <QNetworkReply>
 
-namespace QRedmine {
+namespace QRedmine::Requests {
 
+/**
+ * @class Request
+ *
+ * @brief Represents a base class for HTTP requests in the application.
+ *
+ * The Request class provides a common interface and functionality for
+ * various types of HTTP requests. It manages request parameters,
+ * reply handling, and network operations. Derived classes are expected
+ * to implement specific behaviors for different types of requests.
+ */
 class Request : public QObject {
 	Q_OBJECT
 public:
@@ -29,12 +37,12 @@ public:
 
 public slots:
 	virtual void requestFinished() = 0;
-	void errorOccured(QNetworkReply::NetworkError networkError);
+	void handleNetworkError(QNetworkReply::NetworkError networkError);
 
 protected:
 	QNetworkRequest mRequest {};
 	QNetworkReply* mReply {};
-	qint32 mId = DEFAULT_ID;
+	qint32 mId = Global::DEFAULT_ID;
 	QString mResource {};
 	QString mParameters {};
 	QNetworkAccessManager::Operation mMode {};

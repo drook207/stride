@@ -3,9 +3,9 @@
 #include "iauthentication.h"
 #include <QObject>
 
-namespace QRedmine {
+namespace QRedmine::Authentication {
 
-class PasswordAuthentication : public IAuthentication {
+class PasswordAuthentication final : public IAuthentication {
 	Q_OBJECT
 public:
 	explicit PasswordAuthentication(

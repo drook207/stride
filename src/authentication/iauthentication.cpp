@@ -1,6 +1,6 @@
 #include "iauthentication.h"
 
-namespace QRedmine {
+namespace QRedmine::Authentication {
 
 IAuthentication::IAuthentication(QObject* parent)
 	: QObject { parent }

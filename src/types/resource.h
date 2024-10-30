@@ -3,7 +3,7 @@
 #include "item.h"
 #include <QDateTime>
 
-namespace QRedmine {
+namespace QRedmine::Types {
 struct Resource {
 	QDateTime createdOn;
 	QDateTime updatedOn;

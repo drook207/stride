@@ -4,10 +4,10 @@
 #include "qredmineclient_global.h"
 #include <QString>
 
-namespace QRedmine {
+namespace QRedmine::Types {
 
 struct CustomField {
-	int id = DEFAULT_ID;
+	int id = Global::DEFAULT_ID;
 	QString name;
 
 	QList<QString> values;

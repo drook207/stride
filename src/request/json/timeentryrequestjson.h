@@ -3,14 +3,29 @@
 #include "request/json/jsonrequest.h"
 #include "types/timeentry.h"
 
-namespace QRedmine {
+namespace QRedmine::Requests::Json {
 
-class TimeEntryRequestJson : public JsonRequest {
+/**
+ * @class TimeEntryRequestJson
+ * @brief Manages the JSON request and response for time entry operations.
+ *
+ * This class is responsible for creating, validating, and handling time entry data
+ * in JSON format for sending and receiving through the network. It extends from the
+ * JsonRequest class and implements the necessary JSON-specific functionalities.
+ *
+ * @sa JsonRequest
+ */
+class TimeEntryRequestJson final : public JsonRequest {
 public:
-	TimeEntryRequestJson(TimeEntry entry = TimeEntry(), QObject* parent = nullptr);
+	explicit TimeEntryRequestJson(const Types::TimeEntry& entry, QObject* parent = nullptr);
 
-private:
-	TimeEntry mEntry {};
+	// Copy constructor
+	TimeEntryRequestJson(const TimeEntryRequestJson& other);
+
+	// Move constructor
+	TimeEntryRequestJson(TimeEntryRequestJson&& other) noexcept;
+
+	Types::TimeEntry mEntry {};
 	// Request interface
 
 public:

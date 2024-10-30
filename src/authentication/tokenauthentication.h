@@ -3,9 +3,9 @@
 #include "iauthentication.h"
 #include <QObject>
 
-namespace QRedmine {
+namespace QRedmine::Authentication {
 
-class TokenAuthentication : public IAuthentication {
+class TokenAuthentication final : public IAuthentication {
 	Q_OBJECT
 public:
 	explicit TokenAuthentication(const QStringView& apiKey, QObject* parent = nullptr);

@@ -3,10 +3,10 @@
 #include "qredmineclient_global.h"
 #include <QString>
 
-namespace QRedmine {
+namespace QRedmine::Types {
 
 struct Item {
-	int id = DEFAULT_ID;
+	int id = Global::DEFAULT_ID;
 	QString name;
 };
 

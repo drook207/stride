@@ -2,7 +2,7 @@
 
 #include "resource.h"
 
-namespace QRedmine {
+namespace QRedmine::Types {
 
 struct Tracker : Resource {
 	int id = DEFAULT_ID;

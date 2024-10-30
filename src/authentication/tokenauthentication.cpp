@@ -2,9 +2,9 @@
 #include "qredmineclient_global.h"
 #include <QLoggingCategory>
 
-namespace QRedmine {
+namespace QRedmine::Authentication {
 
-Q_LOGGING_CATEGORY(lcTokenAuthenticator, "qredmineclient.tokenauthenticator")
+Q_LOGGING_CATEGORY(lcTokenAuthenticator, "qredmineclient.token authenticator")
 
 TokenAuthentication::TokenAuthentication(const QStringView& apiKey, QObject* parent)
 	: IAuthentication(parent)
@@ -14,7 +14,7 @@ TokenAuthentication::TokenAuthentication(const QStringView& apiKey, QObject* par
 
 void TokenAuthentication::addAuthenticationToRequest(QNetworkRequest& request)
 {
-	request.setRawHeader(X_REDMNE_APP_KEY.latin1(), mApiKey);
+	request.setRawHeader(Global::X_REDMINE_APP_KEY.latin1(), mApiKey);
 }
 
 } // namespace QRedmine

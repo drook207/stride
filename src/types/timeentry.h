@@ -2,10 +2,9 @@
 
 #include "customfield.h"
 #include "item.h"
-#include "qredmineclient_global.h"
 #include "resource.h"
 
-namespace QRedmine {
+namespace QRedmine::Types {
 
 struct TimeEntry : Resource {
 	Item activity;

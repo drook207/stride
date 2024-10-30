@@ -3,7 +3,7 @@
 #include "qredmineclient_global.h"
 #include <QString>
 
-namespace QRedmine {
+namespace QRedmine::Types {
 
 struct CustomFieldFilter {
 	int projectId = DEFAULT_ID;

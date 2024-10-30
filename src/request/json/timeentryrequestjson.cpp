@@ -2,11 +2,12 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QLoggingCategory>
+#include <utility>
 
-namespace QRedmine {
+namespace QRedmine::Requests::Json {
 Q_LOGGING_CATEGORY(lcTimeEntryJson, "qredmine.timeentryjson")
 
-TimeEntryRequestJson::TimeEntryRequestJson(TimeEntry entry, QObject* parent)
+TimeEntryRequestJson::TimeEntryRequestJson(const Types::TimeEntry& entry, QObject* parent)
 	: JsonRequest(parent)
 	, mEntry(entry)
 
@@ -22,6 +23,28 @@ TimeEntryRequestJson::TimeEntryRequestJson(TimeEntry entry, QObject* parent)
 	mMode = QNetworkAccessManager::GetOperation;
 }
 
+// Implementation of the copy and move constructors
+TimeEntryRequestJson::TimeEntryRequestJson(const TimeEntryRequestJson& other)
+	: JsonRequest(other.parent())
+	, mEntry(other.mEntry)
+{
+	mResource = other.mResource;
+	mMode = other.mMode;
+	mIsValidToSend = other.mIsValidToSend;
+	mData = other.mData;
+}
+
+TimeEntryRequestJson::TimeEntryRequestJson(TimeEntryRequestJson&& other) noexcept
+	: JsonRequest(other.parent())
+	, mEntry(std::move(other.mEntry))
+{
+	mResource = std::move(other.mResource);
+	mMode = other.mMode;
+	mIsValidToSend = other.mIsValidToSend;
+	mData = std::move(other.mData);
+	other.mIsValidToSend = false;
+}
+
 bool TimeEntryRequestJson::isValidToSend()
 {
 	return mIsValidToSend; // NOTE Maybe do more checks
@@ -29,7 +52,7 @@ bool TimeEntryRequestJson::isValidToSend()
 
 void TimeEntryRequestJson::requestFinished()
 {
-	QByteArray rawData = mReply->readAll();
+	const QByteArray rawData = mReply->readAll();
 	mData = QJsonDocument::fromJson(rawData);
 	if (fromJson() && mReply->error() == QNetworkReply::NoError) {
 		return emit finished();
@@ -44,7 +67,7 @@ bool TimeEntryRequestJson::toJson()
 		return false;
 	}
 
-	if (mEntry.issue.id == DEFAULT_ID && mEntry.project.id == DEFAULT_ID) {
+	if (mEntry.issue.id == Global::DEFAULT_ID && mEntry.project.id == Global::DEFAULT_ID) {
 		qDebug(lcTimeEntryJson) << "Either issue id or project id must be specified.";
 		return false;
 	}
@@ -53,7 +76,7 @@ bool TimeEntryRequestJson::toJson()
 
 	attributes["hours"] = mEntry.hours;
 
-	if (mEntry.activity.id != DEFAULT_ID) {
+	if (mEntry.activity.id != Global::DEFAULT_ID) {
 		attributes["activity_id"] = mEntry.activity.id;
 	}
 
@@ -61,11 +84,11 @@ bool TimeEntryRequestJson::toJson()
 		attributes["comments"] = mEntry.comment;
 	}
 
-	if (mEntry.issue.id != DEFAULT_ID) {
+	if (mEntry.issue.id != Global::DEFAULT_ID) {
 		attributes["issue_id"] = mEntry.issue.id;
 	}
 
-	if (mEntry.project.id != DEFAULT_ID) {
+	if (mEntry.project.id != Global::DEFAULT_ID) {
 		attributes["project_id"] = mEntry.project.id;
 	}
 
@@ -76,10 +99,12 @@ bool TimeEntryRequestJson::toJson()
 	if (!mEntry.customFields.isEmpty()) {
 		QJsonArray customFields;
 
-		for (const auto& field : std::as_const(mEntry.customFields)) {
+		for (const auto& [id, name, values, possibleValues, defaultValue, type, format, regex, minLength, maxLength,
+				 allProjects, isRequired, isFilter, searchable, multiple, visible, projects, trackers] :
+			std::as_const(mEntry.customFields)) {
 			QJsonObject customField;
-			customField["id"] = field.id;
-			customField["value"] = field.values.at(0);
+			customField["id"] = id;
+			customField["value"] = values.at(0);
 			customFields.append(customField);
 		}
 

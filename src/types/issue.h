@@ -3,7 +3,7 @@
 #include "customfield.h"
 #include "resource.h"
 
-namespace QRedmine {
+namespace QRedmine::Types {
 
 struct Issue : Resource {
 	int id = DEFAULT_ID;

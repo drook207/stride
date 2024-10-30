@@ -1,6 +1,6 @@
 #include "jsonrequest.h"
 
-namespace QRedmine {
+namespace QRedmine::Requests::Json {
 
 JsonRequest::JsonRequest(QObject* parent)
 	: Request(parent)

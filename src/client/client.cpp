@@ -3,6 +3,7 @@
 #include "authentication/tokenauthentication.h"
 #include <QLoggingCategory>
 #include <QNetworkReply>
+#include <utility>
 
 namespace QRedmine {
 
@@ -13,16 +14,16 @@ Client::Client(QObject* parent)
 {
 }
 
-Client::Client(const QUrl url, QObject* parent)
+Client::Client(QUrl url, QObject* parent)
 	: QObject(parent)
-	, mUrl(url)
+	, mUrl(std::move(url))
 {
 }
 
-Client::Client(const QUrl& url, const QStringView& apiKey, bool sslVerify, QObject* parent)
+Client::Client(QUrl url, const QStringView& apiKey, const bool sslVerify, QObject* parent)
 	: QObject(parent)
+	, mUrl(std::move(url))
 	, mSslVerify(sslVerify)
-	, mUrl(url)
 {
 	if (!setAuthenticationMethod(apiKey)) {
 		qDebug(lcClient) << "Failed to set authentication method. For further "
@@ -30,11 +31,10 @@ Client::Client(const QUrl& url, const QStringView& apiKey, bool sslVerify, QObje
 	}
 }
 
-Client::Client(
-	const QUrl& url, const QStringView& username, const QStringView& password, bool sslVerify, QObject* parent)
+Client::Client(QUrl url, const QStringView& username, const QStringView& password, bool sslVerify, QObject* parent)
 	: QObject(parent)
+	, mUrl(std::move(url))
 	, mSslVerify(sslVerify)
-	, mUrl(url)
 {
 	if (!setAuthenticationMethod(username, password)) {
 		qDebug(lcClient) << "Failed to set authentication method. For further "
@@ -53,7 +53,7 @@ bool Client::setAuthenticationMethod(const QStringView& apiKey)
 							  "setAuthenticationMethod().";
 		return false;
 	}
-	mAuthenticator = new TokenAuthentication(apiKey, this);
+	mAuthenticator = new Authentication::TokenAuthentication(apiKey, this);
 	return true;
 }
 
@@ -69,7 +69,7 @@ bool Client::setAuthenticationMethod(const QStringView& username, const QStringV
 							  "setAuthenticationMethod().";
 		return false;
 	}
-	mAuthenticator = new PasswordAuthentication(username, password, this);
+	mAuthenticator = new Authentication::PasswordAuthentication(username, password, this);
 	return true;
 }
 
@@ -97,29 +97,29 @@ QString Client::UserAgent() const { return mUserAgent; }
 
 void Client::setUserAgent(const QString& newUserAgent) { mUserAgent = newUserAgent; }
 
-bool Client::timeEntry(TimeEntryRequestJson& request, const qint32 id)
+bool Client::timeEntry(Requests::Json::TimeEntryRequestJson& request, const qint32 id)
 {
-	QString parameter = QStringLiteral("");
+	const QString parameter = QLatin1String("");
 	request.setParameters(parameter);
 
 	sendRequest(id, &request);
 	return true;
 }
 
-bool Client::setTimeEntry(TimeEntryRequestJson& request, const qint32 id)
+bool Client::setTimeEntry(Requests::Json::TimeEntryRequestJson& request, const qint32 id)
 {
 	if (!request.isValidToSend()) {
 		qDebug(lcClient) << __FUNCTION__ << "Invalid request.";
 		return false;
 	}
 
-	QString parameter = QStringLiteral("");
+	const QString parameter = QLatin1String("");
 	request.setParameters(parameter);
 	sendRequest(id, &request);
 	return true;
 }
 
-void Client::handleSslError(QNetworkReply* const reply, const QList<QSslError>& errors)
+void Client::handleSslError(QNetworkReply* const reply, const QList<QSslError>& errors) const
 {
 	if (!mSslVerify) {
 		reply->ignoreSslErrors();
@@ -139,7 +139,7 @@ void Client::init()
 	emit initialized();
 }
 
-bool Client::sendRequest(int id, Request* const request)
+bool Client::sendRequest(int id, Requests::Request* const request)
 {
 	if (nullptr == mManager) {
 		qDebug(lcClient) << "Client is not initialized";
@@ -186,7 +186,7 @@ bool Client::sendRequest(int id, Request* const request)
 			reply = mManager->deleteResource(networkRequest);
 			break;
 		case QNetworkAccessManager::CustomOperation:
-			break;
+
 		case QNetworkAccessManager::UnknownOperation:
 			break;
 	}
@@ -195,9 +195,9 @@ bool Client::sendRequest(int id, Request* const request)
 		return false;
 	}
 	request->setReply(reply);
-	connect(reply, &QNetworkReply::finished, request, &Request::requestFinished);
-	connect(reply, &QNetworkReply::errorOccurred, request, &Request::errorOccured);
-	connect(request, &Request::finished, reply, &QNetworkReply::deleteLater);
+	connect(reply, &QNetworkReply::finished, request, &Requests::Request::requestFinished);
+	connect(reply, &QNetworkReply::errorOccurred, request, &Requests::Request::handleNetworkError);
+	connect(request, &Requests::Request::finished, reply, &QNetworkReply::deleteLater);
 
 	return true;
 }

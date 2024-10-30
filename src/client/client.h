@@ -8,16 +8,16 @@
 #include <QObject>
 
 namespace QRedmine {
-class QREDMINECLIENT_EXPORT Client : public QObject {
+class QREDMINECLIENT_EXPORT Client final : public QObject {
 	Q_OBJECT
 public:
-	Client(QObject* parent = nullptr);
+	explicit Client(QObject* parent = nullptr);
 
-	Client(const QUrl url, QObject* parent = nullptr);
+	explicit Client(QUrl url, QObject* parent = nullptr);
 
-	Client(const QUrl& url, const QStringView& apiKey, bool sslVerify = true, QObject* parent = nullptr);
+	Client(QUrl url, const QStringView& apiKey, bool sslVerify = true, QObject* parent = nullptr);
 
-	Client(const QUrl& url, const QStringView& username, const QStringView& password, bool sslVerify = true,
+	Client(QUrl url, const QStringView& username, const QStringView& password, bool sslVerify = true,
 		QObject* parent = nullptr);
 
 	[[nodiscard]] bool setAuthenticationMethod(const QStringView& apiKey);
@@ -36,24 +36,24 @@ public:
 
 public slots:
 
-	bool timeEntry(TimeEntryRequestJson& request, const qint32 id);
+	bool timeEntry(Requests::Json::TimeEntryRequestJson& request, qint32 id);
 
-	bool setTimeEntry(TimeEntryRequestJson& request, const qint32 id);
+	bool setTimeEntry(Requests::Json::TimeEntryRequestJson& request, qint32 id);
 
-	void handleSslError(QNetworkReply* const reply, const QList<QSslError>& errors);
+	void handleSslError(QNetworkReply* reply, const QList<QSslError>& errors) const;
 
-	void replyFinished(QNetworkReply* const reply);
+	static void replyFinished(QNetworkReply* reply);
 signals:
 	void initialized();
 
 private:
 	void init();
-	bool sendRequest(int id, Request* const request);
+	bool sendRequest(int id, Requests::Request* request);
 	QNetworkAccessManager* mManager {};
 
 	QUrl mUrl {};
 	bool mSslVerify = true;
-	IAuthentication* mAuthenticator {};
+	Authentication::IAuthentication* mAuthenticator {};
 	QString mUserAgent {};
 };
 } // namespace QRedmine

@@ -1,7 +1,7 @@
 #include "request.h"
 #include "QLoggingCategory"
 
-namespace QRedmine {
+namespace QRedmine::Requests {
 
 Q_LOGGING_CATEGORY(lcRequest, "qredmineclient.request")
 
@@ -32,15 +32,15 @@ QNetworkAccessManager::Operation Request::Mode() const { return mMode; }
 
 QByteArray Request::PostData() const { return mPostData; }
 
-void Request::errorOccured(QNetworkReply::NetworkError networkError)
+void Request::handleNetworkError(QNetworkReply::NetworkError networkError)
 {
-	qWarning(lcRequest) << "Networkerror occurred: " << networkError;
+	qWarning(lcRequest) << "Network error occurred: " << networkError;
 	emit error();
 }
 
 void Request::resourceRequestMode()
 {
-	if (mId == DEFAULT_ID) {
+	if (mId == Global::DEFAULT_ID) {
 		mMode = QNetworkAccessManager::PostOperation;
 		return;
 	}

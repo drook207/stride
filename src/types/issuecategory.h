@@ -3,7 +3,7 @@
 #include "item.h"
 #include "qredmineclient_global.h"
 
-namespace QRedmine {
+namespace QRedmine::Types {
 
 struct IssueCategory {
 	int id = DEFAULT_ID;

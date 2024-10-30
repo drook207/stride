@@ -2,7 +2,7 @@
 
 #include "resource.h"
 
-namespace QRedmine {
+namespace QRedmine::Types {
 
 struct Group : Resource {
 	int id = DEFAULT_ID;

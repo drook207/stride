@@ -1,12 +1,13 @@
 #pragma once
 
 #include <QString>
+#include <utility>
 
-namespace QRedmine {
+namespace QRedmine::Types {
 
 struct RedmineOptions {
-	RedmineOptions(QString parameters = QLatin1String(), bool getAllItems = false)
-		: parameters(parameters)
+	explicit RedmineOptions(QString parameters = QLatin1String(), const bool getAllItems = false)
+		: parameters(std::move(parameters))
 		, getAllItems(getAllItems)
 	{
 	}

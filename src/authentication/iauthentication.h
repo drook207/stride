@@ -3,7 +3,7 @@
 #include <QNetworkRequest>
 #include <QObject>
 
-namespace QRedmine {
+namespace QRedmine::Authentication {
 
 class IAuthentication : public QObject {
 	Q_OBJECT
