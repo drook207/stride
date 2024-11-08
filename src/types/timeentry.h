@@ -1,5 +1,5 @@
 #pragma once
-
+// Thanks to https://github.com/fathomssen/qtredmine for the structs
 #include "customfield.h"
 #include "item.h"
 #include "resource.h"

@@ -1,4 +1,5 @@
 #pragma once
+// Thanks to https://github.com/fathomssen/qtredmine for the enums
 
 namespace QRedmine::Types::Enums {
 /// Redmine error codes

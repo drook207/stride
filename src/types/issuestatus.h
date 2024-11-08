@@ -1,5 +1,7 @@
 #pragma once
 
+// Thanks to https://github.com/fathomssen/qtredmine for the structs
+
 #include "resource.h"
 
 namespace QRedmine::Types {

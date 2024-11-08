@@ -45,6 +45,21 @@ TimeEntryRequestJson::TimeEntryRequestJson(TimeEntryRequestJson&& other) noexcep
 	other.mIsValidToSend = false;
 }
 
+QSharedPointer<TimeEntryRequestJson> TimeEntryRequestJson::createFromIssueId(qint32 issueId, const QStringView &comment, const double hours, const QDate &spentOn)
+{
+
+}
+
+QSharedDataPointer<Types::TimeEntry> TimeEntryRequestJson::Entry() const
+{
+	return mEntry;
+}
+
+void TimeEntryRequestJson::setEntry(QSharedDataPointer<Types::TimeEntry> newEntry)
+{
+	mEntry = newEntry;
+}
+
 bool TimeEntryRequestJson::isValidToSend()
 {
 	return mIsValidToSend; // NOTE Maybe do more checks

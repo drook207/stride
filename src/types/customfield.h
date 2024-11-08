@@ -1,7 +1,10 @@
 #pragma once
 
+// Thanks to https://github.com/fathomssen/qtredmine for the structs
+
 #include "item.h"
 #include "qredmineclient_global.h"
+#include <QList>
 #include <QString>
 
 namespace QRedmine::Types {
