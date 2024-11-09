@@ -2,6 +2,7 @@
 
 #include "qredmineclient_global.h"
 #include <QNetworkReply>
+#include <QNetworkRequestFactory>
 
 namespace QRedmine::Requests {
 
