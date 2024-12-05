@@ -32,7 +32,7 @@ RestClient::RestClient(QUrl url, const QStringView& apiKey, bool sslVerify, QObj
 		result &= additionalHeaders.append(QHttpHeaders::WellKnownHeader::UserAgent, "redmine");
 		result &= additionalHeaders.append("X-Custom-User-Agent", "redmine");
 		result &= additionalHeaders.append(QHttpHeaders::WellKnownHeader::ContentType, "application/json");
-		result &= additionalHeaders.append("X-Redmine-API-Keys", apiKey);
+		result &= additionalHeaders.append("X-Redmine-API-Keys", apiKey.toUtf8());
 
 		if (result) {
 			mFactory.setCommonHeaders(additionalHeaders);
@@ -134,11 +134,11 @@ bool RestClient::getTimeEntriesWithFilter(
 		return false;
 	}
 
-	auto requestStringView = QString("time_entries.json?project_id=%0&from=%1&to=%2&limit=%3")
-								 .arg(id)
-								 .arg(from.toString())
-								 .arg(to.toString())
-								 .arg(limit);
+	const auto requestStringView = QString("time_entries.json?project_id=%0&from=%1&to=%2&limit=%3")
+									   .arg(id)
+									   .arg(from.toString())
+									   .arg(to.toString())
+									   .arg(limit);
 
 	auto reply = mRestAccesManager->get(mFactory.createRequest(requestStringView), this, callback);
 	connect(reply, &QNetworkReply::finished, this, &RestClient::replyFinished);

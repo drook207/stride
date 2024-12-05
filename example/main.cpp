@@ -5,6 +5,7 @@
 #include <QCoreApplication>
 #include <QRestReply>
 #include <QString>
+#include <qlogging.h>
 #include <qnetworkreply.h>
 #include <qrestaccessmanager.h>
 
@@ -27,14 +28,16 @@ int main(int argc, char* argv[])
 
 	QRedmine::RestClient client(QUrl("http://localhost:8080"), QStringView(apiKey), false);
 
-	client.getTimeEntries([](QRestReply& reply) {
-		if (reply.isSuccess()) {
-			qDebug() << reply.readText();
-		}
-		if (reply.hasError()) {
-			qDebug() << "Reply has errors: " << reply.errorString();
-		}
-	});
+	if (!client.getTimeEntries([](QRestReply& reply) {
+			if (reply.isSuccess()) {
+				qDebug() << reply.readText();
+			}
+			if (reply.hasError()) {
+				qDebug() << "Reply has errors: " << reply.errorString();
+			}
+		})) {
+		qWarning() << "Failed to create request for time entry";
+	}
 
 	return QCoreApplication::exec();
 }
