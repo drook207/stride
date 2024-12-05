@@ -3,6 +3,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network)
 
 include(${CMAKE_SOURCE_DIR}/cmake/parse_header_and_sources.cmake)
 
+
 parse_headers(HEADERS ${CMAKE_CURRENT_LIST_DIR})
 parse_sources(SOURCES ${CMAKE_CURRENT_LIST_DIR})
 

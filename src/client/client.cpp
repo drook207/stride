@@ -32,6 +32,8 @@ RestClient::RestClient(QUrl url, const QStringView& apiKey, bool sslVerify, QObj
 		result &= additionalHeaders.append(QHttpHeaders::WellKnownHeader::UserAgent, "redmine");
 		result &= additionalHeaders.append("X-Custom-User-Agent", "redmine");
 		result &= additionalHeaders.append(QHttpHeaders::WellKnownHeader::ContentType, "application/json");
+		result &= additionalHeaders.append("X-Redmine-API-Keys", apiKey);
+
 		if (result) {
 			mFactory.setCommonHeaders(additionalHeaders);
 			qDebug(lcClient()) << "Successfully set additional headers.";
