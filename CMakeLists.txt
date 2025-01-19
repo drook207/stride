@@ -9,7 +9,14 @@ project(
 	LANGUAGES CXX
 	VERSION 0.0.1)
 
-find_package(Qt6 REQUIRED Core Qml Quick Network Gui)
+find_package(
+	Qt6
+	REQUIRED
+	Core
+	Qml
+	Quick
+	Network
+	Gui)
 
 qt_standard_project_setup()
 
@@ -17,7 +24,4 @@ if(${CMAKE_SOURCE_DIR} EQUAL ${CMAKE_BINARY_DIR})
 	message(FATAL_ERROR "Insource builds are not allowed")
 endif()
 
-
-
 add_subdirectory(src)
-

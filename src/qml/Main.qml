@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
-import drook207.timeTracker
+import drook207.timeTracker 1.0
 
 ApplicationWindow {
 	id: window
