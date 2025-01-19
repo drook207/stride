@@ -7,16 +7,17 @@
 
 qt_add_executable(RedmineTimeTracker
 	main.cpp
-	redmineclient redmineclient.h redmineclient.cpp
-		timetracker.h timetracker.cpp
 )
 
 qt_add_qml_module(RedmineTimeTracker
-	URI Main
+	URI drook207.timeTracker
 	VERSION 1.0
 	QML_FILES
 		qml/Main.qml
 		qml/TimeTrackerView.qml
+		SOURCES
+		redmineclient.h redmineclient.cpp
+				timetracker.h timetracker.cpp
 )
 
 target_link_libraries(RedmineTimeTracker PRIVATE

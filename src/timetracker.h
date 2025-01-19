@@ -3,12 +3,14 @@
 #include <QDateTime>
 #include <QObject>
 #include <QTimer>
+#include <QtQml/qqmlregistration.h>
 
 /*!
  * \brief The TimeTracker class
  */
 class TimeTracker : public QObject {
 	Q_OBJECT
+	QML_ELEMENT
 	Q_PROPERTY(bool isTracking READ isTracking NOTIFY trackingChanged)
 	Q_PROPERTY(bool isPaused READ isPaused NOTIFY pausedChanged)
 	Q_PROPERTY(int currentIssueId READ currentIssueId NOTIFY currentIssueChanged)

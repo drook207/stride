@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QObject>
 #include <QString>
+#include <QtQml/qqmlregistration.h>
 #include <qtclasshelpermacros.h>
 
 /*!
@@ -15,6 +16,7 @@
  */
 class RedmineClient : public QObject {
 	Q_OBJECT
+	QML_ELEMENT
 	Q_DISABLE_COPY_MOVE(RedmineClient)
 	Q_PROPERTY(QString baseUrl READ baseUrl WRITE setBaseUrl NOTIFY baseUrlChanged)
 	Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)

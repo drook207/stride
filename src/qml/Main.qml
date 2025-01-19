@@ -3,7 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
-import RedmineClient
+import drook207.timeTracker
 
 ApplicationWindow {
 	id: window

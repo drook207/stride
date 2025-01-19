@@ -1,6 +1,4 @@
 // main.cpp
-#include "redmineclient.h"
-#include "timetracker.h"
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -14,10 +12,6 @@ int main(int argc, char* argv[])
 	app.setOrganizationDomain("yourorg.com");
 	app.setApplicationName("RedmineTimeTracker");
 
-	// Register types with QML
-	qmlRegisterType<RedmineClient>("RedmineClient", 1, 0, "RedmineClient");
-	qmlRegisterType<TimeTracker>("RedmineClient", 1, 0, "TimeTracker");
-
 	// Create QML engine and load main QML file
 	QQmlApplicationEngine engine;
 
@@ -27,7 +21,7 @@ int main(int argc, char* argv[])
 		&engine, &QQmlApplicationEngine::objectCreationFailed, &app, []() { QCoreApplication::exit(-1); },
 		Qt::QueuedConnection);
 
-	engine.loadFromModule("Main", "Main");
+	engine.loadFromModule("drook207.timeTracker", "Main");
 
 	return app.exec();
 }
