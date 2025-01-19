@@ -1,19 +1,27 @@
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Network)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Network)
+# qt_add_library(redmineclient redmineclient.h redmineclient.cpp
+# 	timetracker.h timetracker.cpp)
 
-include(${CMAKE_SOURCE_DIR}/cmake/parse_header_and_sources.cmake)
+# target_link_libraries(redmineclient PRIVATE Qt6::Core Qt6::Network Qt6::Gui Qt6::Quick)
 
 
-parse_headers(HEADERS ${CMAKE_CURRENT_LIST_DIR})
-parse_sources(SOURCES ${CMAKE_CURRENT_LIST_DIR})
 
-add_library(QRedmineClient SHARED ${HEADERS} ${SOURCES})
+qt_add_executable(RedmineTimeTracker
+	main.cpp
+	redmineclient redmineclient.h redmineclient.cpp
+		timetracker.h timetracker.cpp
+)
 
-target_link_libraries(QRedmineClient PRIVATE Qt${QT_VERSION_MAJOR}::Core
-											 Qt${QT_VERSION_MAJOR}::Network)
-target_include_directories(
-	QRedmineClient
-	INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
-	PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+qt_add_qml_module(RedmineTimeTracker
+	URI Main
+	VERSION 1.0
+	QML_FILES
+		qml/Main.qml
+		qml/TimeTrackerView.qml
+)
 
-target_compile_definitions(QRedmineClient PRIVATE QREDMINECLIENT_LIBRARY)
+target_link_libraries(RedmineTimeTracker PRIVATE
+Qt6::Core Qt6::Network Qt6::Gui Qt6::Quick Qt6::Qml
+
+
+)
+
