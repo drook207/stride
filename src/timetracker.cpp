@@ -1,10 +1,13 @@
 // timetracker.cpp
 #include "timetracker.h"
+#include "timetrackerdatabase.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSettings>
+#include <qlogging.h>
 
+namespace QRedmineClient {
 TimeTracker::TimeTracker(QObject* parent)
 	: QObject(parent)
 	, mCurrentIssueId(0)
@@ -13,6 +16,7 @@ TimeTracker::TimeTracker(QObject* parent)
 {
 	connect(&mTimer, &QTimer::timeout, this, &TimeTracker::updateElapsedTime);
 	mTimer.setInterval(1000); // Update every second
+	TimeEntryDatabase::initialize();
 	loadRecentEntries();
 }
 
@@ -106,6 +110,13 @@ void TimeTracker::addRecentEntry(const QVariantMap& entry)
 		mRecentEntries.removeLast();
 	}
 
+	const auto hours = entry["hours"].toDouble();
+	const auto comment = entry["comments"].toString();
+	const auto issueId = entry["issueId"].toInt();
+	const bool result = TimeEntryDatabase::addTimeEntry(issueId, hours, comment);
+	if (!result) {
+		qWarning() << "Could not save parameter to database!";
+	}
 	saveRecentEntries();
 	emit recentEntriesChanged();
 }
@@ -141,3 +152,4 @@ void TimeTracker::saveRecentEntries()
 }
 
 void TimeTracker::updateElapsedTime() { emit elapsedTimeChanged(); }
+}

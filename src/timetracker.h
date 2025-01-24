@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
+namespace QRedmineClient {
 /*!
  * \brief The TimeTracker class
  */
@@ -138,3 +139,4 @@ private:
 	qint64 mTotalElapsedTime;
 	QVariantList mRecentEntries;
 };
+}

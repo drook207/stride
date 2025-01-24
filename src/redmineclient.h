@@ -11,6 +11,7 @@
 #include <QtQml/qqmlregistration.h>
 #include <qtclasshelpermacros.h>
 
+namespace QRedmineClient {
 /*!
  * \brief The RedmineClient class
  */
@@ -73,7 +74,7 @@ public slots:
 	 */
 	void createTimeEntry(int issueId, double hours, const QString& comments,
 		const QDateTime& spentOn = QDateTime::currentDateTime(),
-		int activityId = 9); // 9 is often "Development"
+		int activityId = 0); // 9 is often "Development"
 
 	// Update an existing time entry
 	/*!
@@ -156,3 +157,4 @@ private:
 	bool mLoading;
 	QNetworkAccessManager* mNetworkManager;
 };
+}

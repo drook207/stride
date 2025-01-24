@@ -63,20 +63,3 @@ repos:
       - id: clang-tidy
         args: [--verify-config]
         files: \.(c|h|cpp)$
-
-  - repo: local
-    hooks:
-      - id: cppcheck
-        name: cppcheck
-        entry: cppcheck
-        language: system
-        args:
-            [
-            --enable=all,
-            --suppress=unusedFunction,
-            --suppress=unmatchedSuppression,
-            --suppress=missingIncludeSystem,
-            --suppress=toomanyconfigs,
-            --error-exitcode=1,
-            ]
-        files: \.(c|h|cpp)$

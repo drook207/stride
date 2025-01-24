@@ -16,7 +16,8 @@ find_package(
 	Qml
 	Quick
 	Network
-	Gui)
+	Gui
+	Sql)
 
 qt_standard_project_setup()
 

@@ -13,7 +13,11 @@ qt_add_qml_module(
 	redmineclient.h
 	redmineclient.cpp
 	timetracker.h
-	timetracker.cpp)
+	timetracker.cpp
+	SOURCES
+	timetrackerdatabase.h
+	timetrackerdatabase.cpp)
 
-target_link_libraries(RedmineTimeTracker PRIVATE Qt6::Core Qt6::Network
-												 Qt6::Gui Qt6::Quick Qt6::Qml)
+target_link_libraries(
+	RedmineTimeTracker PRIVATE Qt6::Core Qt6::Network Qt6::Gui Qt6::Quick
+							   Qt6::Qml Qt6::Sql)
