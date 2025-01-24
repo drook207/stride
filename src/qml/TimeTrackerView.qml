@@ -78,7 +78,7 @@ Item {
 						TextArea {
 							id: commentsField
 							Layout.fillWidth: true
-							Layout.preferredHeight: 40
+							Layout.preferredHeight: 80
 							placeholderText: "Enter comments for this time entry"
 							wrapMode: TextEdit.Wrap
 						}

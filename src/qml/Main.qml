@@ -1,4 +1,4 @@
-// main.qml
+import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -8,9 +8,12 @@ import drook207.timeTracker 1.0
 ApplicationWindow {
 	id: window
 	visible: true
-	width: 800
-	height: 600
+	width: 600
+	height: 1024
 	title: "Redmine Time Tracker"
+
+	Material.theme: Material.Dark
+	Material.accent: Material.LightGreen
 
 	RedmineClient {
 		id: redmineClient
