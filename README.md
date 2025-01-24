@@ -36,8 +36,8 @@ A desktop application built with Qt 6.8 for tracking time spent on Redmine issue
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/drook207/qredmineclient.git
-cd qredmineclient
+git clone https://github.com/drook207/QRedmineClient.git
+cd QRedmineClient
 ```
 
 2. Create build directory:
