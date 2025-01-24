@@ -17,7 +17,7 @@ class TimeTracker : public QObject {
 	Q_PROPERTY(int currentIssueId READ currentIssueId NOTIFY currentIssueChanged)
 	Q_PROPERTY(QString elapsedTime READ elapsedTime NOTIFY elapsedTimeChanged)
 	Q_PROPERTY(QVariantList recentEntries READ recentEntries NOTIFY recentEntriesChanged)
-
+	Q_PROPERTY(QVariantList entriesFromId READ entriesFromId WRITE setEntriesFromId NOTIFY entriesFromIdChanged FINAL)
 public:
 	/*!
 	 * \brief TimeTracker
@@ -53,13 +53,16 @@ public:
 	 * \brief recentEntries
 	 * \return
 	 */
-	QVariantList recentEntries() const { return mRecentEntries; }
+	QVariantList recentEntries() const;
 
 	/*!
 	 * \brief getElapsedHours
 	 * \return
 	 */
 	Q_INVOKABLE double getElapsedHours() const;
+
+	QVariantList entriesFromId() const;
+	void setEntriesFromId(const QVariantList& newEntriesFromId);
 
 public slots:
 	/*!
@@ -89,6 +92,8 @@ public slots:
 	 */
 	void addRecentEntry(const QVariantMap& entry);
 
+	void addEntriesFromId(const QJsonArray& entries);
+
 signals:
 	/*!
 	 * \brief trackingChanged
@@ -115,6 +120,8 @@ signals:
 	 */
 	void recentEntriesChanged();
 
+	void entriesFromIdChanged();
+
 private slots:
 	/*!
 	 * \brief updateElapsedTime
@@ -133,5 +140,6 @@ private:
 	QDateTime mStartTime;
 	qint64 mTotalElapsedTime;
 	QVariantList mRecentEntries;
+	QVariantList mEntriesFromId;
 };
 }

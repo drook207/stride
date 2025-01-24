@@ -41,6 +41,8 @@ QString TimeTracker::elapsedTime() const
 		.arg(seconds, 2, 10, QLatin1Char('0'));
 }
 
+QVariantList TimeTracker::recentEntries() const { return mRecentEntries; }
+
 double TimeTracker::getElapsedHours() const
 {
 	qint64 elapsed = mTotalElapsedTime;
@@ -121,13 +123,25 @@ void TimeTracker::addRecentEntry(const QVariantMap& entry)
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return;
 	}
-	emit recentEntriesChanged();
+	emit entriesFromIdChanged();
+}
+
+void TimeTracker::addEntriesFromId(const QJsonArray& entries)
+{
+	if (!entries.isEmpty()) {
+		mEntriesFromId.clear();
+		for (const QJsonValue& value : std::as_const(entries)) {
+			mEntriesFromId.append(value.toObject().toVariantMap());
+		}
+
+		emit entriesFromIdChanged();
+	}
 }
 
 void TimeTracker::loadRecentEntries()
 {
 	auto entries = TimeEntryDatabase::getRecentEntries();
-	if (!entries.empty()) {
+	if (!entries.isEmpty()) {
 		mRecentEntries.clear();
 		for (const QJsonValue& value : std::as_const(entries)) {
 			mRecentEntries.append(value.toObject().toVariantMap());
@@ -135,6 +149,17 @@ void TimeTracker::loadRecentEntries()
 
 		emit recentEntriesChanged();
 	}
+}
+
+QVariantList TimeTracker::entriesFromId() const { return mEntriesFromId; }
+
+void TimeTracker::setEntriesFromId(const QVariantList& newEntriesFromId)
+{
+	if (mEntriesFromId == newEntriesFromId) {
+		return;
+	}
+	mEntriesFromId = newEntriesFromId;
+	emit entriesFromIdChanged();
 }
 
 void TimeTracker::updateElapsedTime() { emit elapsedTimeChanged(); }

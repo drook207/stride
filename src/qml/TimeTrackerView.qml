@@ -1,4 +1,3 @@
-// TimeTrackerView.qml
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -9,143 +8,258 @@ Item {
 	id: docroot
 	property TimeTracker timeTracker: TimeTracker {}
 	property RedmineClient client: undefined
+
+	Connections {
+		target: docroot.client
+		function onTimeEntriesReceived(entries) {
+			docroot.timeTracker.addEntriesFromId(entries)
+		}
+	}
 	ColumnLayout {
 		anchors.fill: parent
-		spacing: 15
-
-		GroupBox {
-			title: "Time Tracking"
-			Layout.fillWidth: true
-
-			ColumnLayout {
-				anchors.fill: parent
-				spacing: 10
-
-				GridLayout {
-					columns: 2
-					Layout.fillWidth: true
-					rowSpacing: 10
-					columnSpacing: 10
-
-					Label {
-						text: "Issue ID:"
-					}
-					TextField {
-						id: issueIdField
-						Layout.fillWidth: true
-						placeholderText: "Enter issue ID"
-						validator: IntValidator {
-							bottom: 1
-						}
-						enabled: !docroot.timeTracker.isTracking
-					}
-
-					Label {
-						text: "Elapsed Time:"
-					}
-					Label {
-						text: docroot.timeTracker.elapsedTime
-						font.pixelSize: 24
-						font.bold: true
-						color: docroot.timeTracker.isPaused ? "#FFA500" : "#008000"
-					}
-				}
-
-				TextArea {
-					id: commentsField
-					Layout.fillWidth: true
-					Layout.preferredHeight: 80
-					placeholderText: "Enter comments for this time entry"
-					wrapMode: TextEdit.Wrap
-				}
-
-				RowLayout {
-					Layout.fillWidth: true
-					spacing: 10
-
-					Button {
-						text: !docroot.timeTracker.isTracking ? "Start Tracking" : docroot.timeTracker.isPaused ? "Resume" : "Pause"
-						enabled: issueIdField.text !== ""
-								 || docroot.timeTracker.isTracking
-						highlighted: docroot.timeTracker.isTracking
-									 && !docroot.timeTracker.isPaused
-						onClicked: {
-							if (!docroot.timeTracker.isTracking) {
-								docroot.timeTracker.startTracking(
-											parseInt(issueIdField.text))
-							} else if (docroot.timeTracker.isPaused) {
-								docroot.timeTracker.resumeTracking()
-							} else {
-								docroot.timeTracker.pauseTracking()
-							}
-						}
-					}
-
-					Button {
-						text: "Stop"
-						enabled: docroot.timeTracker.isTracking
-						onClicked: submitTimeDialog.open()
-					}
-				}
+		spacing: 5
+		TabBar {
+			id: bar
+			anchors.fill: parent
+			TabButton {
+				text: qsTr("Track Time")
+			}
+			TabButton {
+				text: qsTr("Get Time Entries")
 			}
 		}
-
-		GroupBox {
-			title: "Recent Time Entries"
-			Layout.fillWidth: true
+		StackLayout {
 			Layout.fillHeight: true
-
-			ListView {
+			Layout.fillWidth: true
+			currentIndex: bar.currentIndex
+			ColumnLayout {
 				anchors.fill: parent
-				model: docroot.timeTracker.recentEntries
-				clip: true
+				spacing: 5
 
-				delegate: ItemDelegate {
-					width: parent.width
-					contentItem: ColumnLayout {
-						spacing: 5
+				GroupBox {
+					id: trackTime
+					title: "Time Tracking"
+					Layout.fillWidth: true
+
+					ColumnLayout {
+						anchors.fill: parent
+						spacing: 10
+
+						GridLayout {
+							columns: 2
+							Layout.fillWidth: true
+							rowSpacing: 10
+							columnSpacing: 10
+
+							Label {
+								text: "Issue ID:"
+							}
+							TextField {
+								id: issueIdField
+								Layout.fillWidth: true
+								placeholderText: "Enter issue ID"
+								validator: IntValidator {
+									bottom: 1
+								}
+								enabled: !docroot.timeTracker.isTracking
+							}
+
+							Label {
+								text: "Elapsed Time:"
+							}
+							Label {
+								text: docroot.timeTracker.elapsedTime
+								font.pixelSize: 24
+								font.bold: true
+								color: docroot.timeTracker.isPaused ? "#FFA500" : "#008000"
+							}
+						}
+
+						TextArea {
+							id: commentsField
+							Layout.fillWidth: true
+							Layout.preferredHeight: 40
+							placeholderText: "Enter comments for this time entry"
+							wrapMode: TextEdit.Wrap
+						}
 
 						RowLayout {
 							Layout.fillWidth: true
-							Label {
-								text: "Id: " + modelData.id
-								font.bold: true
-							}
-							Label {
-								text: "Issue #" + modelData.issue_id
-								font.bold: true
-							}
-							Label {
-								text: modelData.hours.toFixed(2) + " hours"
-								Layout.leftMargin: 10
-							}
-							Label {
-								text: Qt.formatDateTime(modelData.spent_on,
-														"yyyy-MM-dd hh:mm")
-								Layout.fillWidth: true
-								horizontalAlignment: Text.AlignRight
-							}
-							Label {
-								text: modelData.sync_status === 0 ? false : true
-								Layout.fillWidth: true
-								horizontalAlignment: Text.AlignRight
-							}
-						}
+							spacing: 10
 
-						Label {
-							text: modelData.comments
-							visible: modelData.comments !== ""
-							wrapMode: Text.WordWrap
-							Layout.fillWidth: true
+							Button {
+								text: !docroot.timeTracker.isTracking ? "Start Tracking" : docroot.timeTracker.isPaused ? "Resume" : "Pause"
+								enabled: issueIdField.text !== ""
+										 || docroot.timeTracker.isTracking
+								highlighted: docroot.timeTracker.isTracking
+											 && !docroot.timeTracker.isPaused
+								onClicked: {
+									if (!docroot.timeTracker.isTracking) {
+										docroot.timeTracker.startTracking(
+													parseInt(issueIdField.text))
+									} else if (docroot.timeTracker.isPaused) {
+										docroot.timeTracker.resumeTracking()
+									} else {
+										docroot.timeTracker.pauseTracking()
+									}
+								}
+							}
+
+							Button {
+								text: "Stop"
+								enabled: docroot.timeTracker.isTracking
+								onClicked: submitTimeDialog.open()
+							}
 						}
 					}
 				}
+				GroupBox {
+					title: "Recent Time Entries"
+					Layout.fillWidth: true
+					Layout.fillHeight: true
+					ListView {
+						id: recentEntries
+						anchors.fill: parent
+						model: docroot.timeTracker.recentEntries
+						clip: true
 
-				ScrollBar.vertical: ScrollBar {}
+						delegate: ItemDelegate {
+							width: parent.width
+							contentItem: ColumnLayout {
+								spacing: 5
+
+								RowLayout {
+									Layout.fillWidth: true
+									Label {
+										text: "Id: " + modelData.id
+										font.bold: true
+									}
+									Label {
+										text: "Issue #" + modelData.issue_id
+										font.bold: true
+									}
+									Label {
+										text: modelData.hours.toFixed(
+												  2) + " hours"
+										Layout.leftMargin: 10
+									}
+									Label {
+										text: Qt.formatDateTime(
+												  modelData.spent_on,
+												  "yyyy-MM-dd hh:mm")
+										Layout.fillWidth: true
+										horizontalAlignment: Text.AlignRight
+									}
+									Label {
+										text: modelData.sync_status === 0 ? false : true
+										Layout.fillWidth: true
+										horizontalAlignment: Text.AlignRight
+									}
+								}
+
+								Label {
+									text: modelData.comments
+									visible: modelData.comments !== ""
+									wrapMode: Text.WordWrap
+									Layout.fillWidth: true
+								}
+							}
+						}
+
+						ScrollBar.vertical: ScrollBar {}
+					}
+				}
+			}
+
+			GroupBox {
+				id: getTimeEntries
+				title: "Entries from Id"
+				// Layout.fillWidth: true
+				// Layout.fillHeight: false
+				anchors.fill: parent
+				ColumnLayout {
+					anchors.fill: parent
+					spacing: 10
+					GridLayout {
+						columns: 3
+						Layout.fillWidth: true
+						rowSpacing: 10
+						columnSpacing: 10
+
+						Label {
+							text: "Issue ID:"
+						}
+						TextField {
+							id: issueId
+							Layout.fillWidth: true
+							placeholderText: "Enter issue ID"
+							validator: IntValidator {
+								bottom: 1
+							}
+							enabled: !docroot.timeTracker.isTracking
+						}
+
+						Button {
+							text: "Get"
+							onClicked: docroot.client.getTimeEntries(
+										   issueId.text)
+						}
+					}
+					GroupBox {
+						title: "Time Entries"
+						Layout.fillWidth: true
+						Layout.fillHeight: true
+						ListView {
+							id: entriesList
+							anchors.fill: parent
+							model: docroot.timeTracker.entriesFromId
+							clip: true
+
+							delegate: ItemDelegate {
+								width: parent.width
+								contentItem: ColumnLayout {
+									spacing: 5
+
+									RowLayout {
+										Layout.fillWidth: true
+										Label {
+											text: "Id: " + modelData.id
+											font.bold: true
+										}
+										Label {
+											text: "Issue #" + issueId.text
+											font.bold: true
+										}
+										Label {
+											text: modelData.hours.toFixed(
+													  2) + " hours"
+											Layout.leftMargin: 10
+										}
+										Label {
+											text: Qt.formatDateTime(
+													  modelData.spent_on,
+													  "yyyy-MM-dd hh:mm")
+											Layout.fillWidth: true
+											horizontalAlignment: Text.AlignRight
+										}
+									}
+
+									Label {
+										text: modelData.comments
+										visible: modelData.comments !== ""
+										wrapMode: Text.WordWrap
+										Layout.fillWidth: true
+									}
+								}
+							}
+
+							ScrollBar.vertical: ScrollBar {}
+						}
+					}
+				}
 			}
 		}
 	}
-
 	Dialog {
 		id: submitTimeDialog
 		title: "Submit Time Entry"
