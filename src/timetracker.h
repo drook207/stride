@@ -127,11 +127,6 @@ private:
 	 */
 	void loadRecentEntries();
 
-	/*!
-	 * \brief saveRecentEntries
-	 */
-	void saveRecentEntries();
-
 	QTimer mTimer;
 	int mCurrentIssueId;
 	bool mIsPaused;

@@ -4,8 +4,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLoggingCategory>
 #include <QSettings>
 #include <qlogging.h>
+
+Q_LOGGING_CATEGORY(lcTimeTracker, "qredmine.timetracker")
 
 namespace QRedmineClient {
 TimeTracker::TimeTracker(QObject* parent)
@@ -115,40 +118,23 @@ void TimeTracker::addRecentEntry(const QVariantMap& entry)
 	const auto issueId = entry["issueId"].toInt();
 	const bool result = TimeEntryDatabase::addTimeEntry(issueId, hours, comment);
 	if (!result) {
-		qWarning() << "Could not save parameter to database!";
+		qWarning(lcTimeTracker) << "Could not save to database!";
+		return;
 	}
-	saveRecentEntries();
 	emit recentEntriesChanged();
 }
 
 void TimeTracker::loadRecentEntries()
 {
-	QSettings settings;
-	QByteArray data = settings.value("timeTracker/recentEntries").toByteArray();
-
-	if (!data.isEmpty()) {
-		QJsonDocument doc = QJsonDocument::fromJson(data);
-		QJsonArray array = doc.array();
-
+	auto entries = TimeEntryDatabase::getRecentEntries();
+	if (!entries.empty()) {
 		mRecentEntries.clear();
-		for (const QJsonValue& value : std::as_const(array)) {
+		for (const QJsonValue& value : std::as_const(entries)) {
 			mRecentEntries.append(value.toObject().toVariantMap());
 		}
 
 		emit recentEntriesChanged();
 	}
-}
-
-void TimeTracker::saveRecentEntries()
-{
-	QJsonArray array;
-	for (const QVariant& entry : std::as_const(mRecentEntries)) {
-		array.append(QJsonObject::fromVariantMap(entry.toMap()));
-	}
-
-	QJsonDocument doc(array);
-	QSettings settings;
-	settings.setValue("timeTracker/recentEntries", doc.toJson());
 }
 
 void TimeTracker::updateElapsedTime() { emit elapsedTimeChanged(); }

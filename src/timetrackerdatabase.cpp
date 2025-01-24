@@ -1,6 +1,7 @@
 #include "timetrackerdatabase.h"
 #include <QDateTime>
 #include <QDir>
+#include <QJsonObject>
 #include <QLoggingCategory>
 #include <QSqlDatabase>
 #include <QSqlError>
@@ -14,16 +15,17 @@ namespace QRedmineClient {
 bool TimeEntryDatabase::initialize()
 {
 	QDir applicationDir = QCoreApplication::instance()->applicationDirPath();
-	QDir databaseDir(applicationDir);
+
 	const QString databaseDirName = QStringLiteral("database");
 
-	if (!databaseDir.exists(databaseDirName)) {
-		databaseDir.mkdir(databaseDirName);
+	if (!applicationDir.exists(databaseDirName)) {
+		applicationDir.mkdir(databaseDirName);
 	}
+	QDir databaseDir(applicationDir.absoluteFilePath(databaseDirName));
 
 	QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-	qDebug(lcTimeEntryDataBase()) << "Connection name: " << db.connectionName();
-	db.setDatabaseName("timeentries.db");
+	const auto databaseName = databaseDir.absoluteFilePath("timeentries.db");
+	db.setDatabaseName(databaseName);
 
 	if (!db.open()) {
 		qWarning(lcTimeEntryDataBase) << "Failed to open database:" << db.lastError().text();
@@ -94,29 +96,27 @@ QVector<QVariantMap> TimeEntryDatabase::getUnsyncedEntries()
 	return entries;
 }
 
-QVector<QVariantMap> TimeEntryDatabase::getRecentEntries(int limit)
+QJsonArray TimeEntryDatabase::getRecentEntries(int limit)
 {
-	QVector<QVariantMap> entries;
+	QJsonArray entries;
 	QSqlQuery query;
 	query.prepare("SELECT * FROM time_entries "
 				  "ORDER BY created_at DESC "
 				  "LIMIT ?");
 	query.addBindValue(limit);
-
 	if (query.exec()) {
 		while (query.next()) {
-			QVariantMap entry;
-			entry["id"] = query.value("id");
-			entry["issue_id"] = query.value("issue_id");
-			entry["hours"] = query.value("hours");
-			entry["comments"] = query.value("comments");
-			entry["spent_on"] = query.value("spent_on");
-			entry["sync_status"] = query.value("sync_status");
-			entry["redmine_id"] = query.value("redmine_id");
+			QJsonObject entry;
+			entry["id"] = query.value("id").toInt();
+			entry["issue_id"] = query.value("issue_id").toInt();
+			entry["hours"] = query.value("hours").toDouble();
+			entry["comments"] = query.value("comments").toString();
+			entry["spent_on"] = query.value("spent_on").toString();
+			entry["sync_status"] = query.value("sync_status").toInt();
+			entry["redmine_id"] = query.value("redmine_id").toInt();
 			entries.append(entry);
 		}
 	}
-
 	return entries;
 }
 }

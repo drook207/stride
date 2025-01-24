@@ -1,3 +1,4 @@
+#include <QJsonArray>
 #include <QString>
 #include <QStringLiteral>
 
@@ -8,10 +9,11 @@ public:
 
 	static bool addTimeEntry(int issueId, double hours, const QString& comments);
 
-	static bool updateSyncStatus(int id, int redmineId);
-
 	static QVector<QVariantMap> getUnsyncedEntries();
 
-	static QVector<QVariantMap> getRecentEntries(int limit = 50);
+	static QJsonArray getRecentEntries(int limit = 50);
+
+public slots:
+	static bool updateSyncStatus(int id, int redmineId);
 };
 }

@@ -108,7 +108,11 @@ Item {
 						RowLayout {
 							Layout.fillWidth: true
 							Label {
-								text: "Issue #" + modelData.issueId
+								text: "Id: " + modelData.id
+								font.bold: true
+							}
+							Label {
+								text: "Issue #" + modelData.issue_id
 								font.bold: true
 							}
 							Label {
@@ -116,8 +120,13 @@ Item {
 								Layout.leftMargin: 10
 							}
 							Label {
-								text: Qt.formatDateTime(modelData.date,
+								text: Qt.formatDateTime(modelData.spent_on,
 														"yyyy-MM-dd hh:mm")
+								Layout.fillWidth: true
+								horizontalAlignment: Text.AlignRight
+							}
+							Label {
+								text: modelData.sync_status === 0 ? false : true
 								Layout.fillWidth: true
 								horizontalAlignment: Text.AlignRight
 							}
