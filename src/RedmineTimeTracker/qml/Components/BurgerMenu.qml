@@ -2,8 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQml
 
-
-
 Rectangle {
 	width: 300
 	height: 400
@@ -21,7 +19,7 @@ Rectangle {
 
 		Image {
 			anchors.centerIn: parent
-			source: "burger-icon.png"  // Replace with your burger icon
+			source: "qrc:/qml/Assets/Icons/solid/bars.svg" // Replace with your burger icon
 			width: 24
 			height: 24
 		}
@@ -71,30 +69,29 @@ Rectangle {
 		}
 	}
 }
+// // MenuItem component
+// Component {
+// 	id: menuItemComponent
 
-// MenuItem component
-Component {
-	id: menuItemComponent
+// 	Rectangle {
+// 		property alias text: itemText.text
+// 		signal clicked()
 
-	Rectangle {
-		property alias text: itemText.text
-		signal clicked()
+// 		width: parent.width
+// 		height: 50
+// 		color: mouseArea.pressed ? "#e0e0e0" : "transparent"
 
-		width: parent.width
-		height: 50
-		color: mouseArea.pressed ? "#e0e0e0" : "transparent"
+// 		Text {
+// 			id: itemText
+// 			anchors.verticalCenter: parent.verticalCenter
+// 			x: 20
+// 			font.pixelSize: 16
+// 		}
 
-		Text {
-			id: itemText
-			anchors.verticalCenter: parent.verticalCenter
-			x: 20
-			font.pixelSize: 16
-		}
-
-		MouseArea {
-			id: mouseArea
-			anchors.fill: parent
-			onClicked: parent.clicked()
-		}
-	}
-}
+// 		MouseArea {
+// 			id: mouseArea
+// 			anchors.fill: parent
+// 			onClicked: parent.clicked()
+// 		}
+// 	}
+// }

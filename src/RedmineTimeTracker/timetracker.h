@@ -1,8 +1,11 @@
 #pragma once
 
 #include <QDateTime>
+#include <QJsonArray>
 #include <QObject>
+#include <QString>
 #include <QTimer>
+#include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
 namespace QRedmineClient {
@@ -29,19 +32,19 @@ public:
 	 * \brief isTracking
 	 * \return
 	 */
-	bool isTracking() const { return mTimer.isActive() || mIsPaused; }
+	bool isTracking() const;
 
 	/*!
 	 * \brief isPaused
 	 * \return
 	 */
-	bool isPaused() const { return mIsPaused; }
+	bool isPaused() const;
 
 	/*!
 	 * \brief currentIssueId
 	 * \return
 	 */
-	int currentIssueId() const { return mCurrentIssueId; }
+	int currentIssueId() const;
 
 	/*!
 	 * \brief elapsedTime

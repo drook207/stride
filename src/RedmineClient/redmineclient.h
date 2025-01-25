@@ -9,15 +9,22 @@
 #include <QObject>
 #include <QString>
 #include <QtQml/qqmlregistration.h>
-#include <qtclasshelpermacros.h>
+#include <QtQmlIntegration/qqmlintegration.h>
+
+#ifdef QT_REDMINECLIENT_BUILD
+#define QT_REDMINECLIENT_EXPORT Q_DECL_EXPORT
+#else
+#define QT_REDMINECLIENT_EXPORT Q_DECL_IMPORT
+#endif
 
 namespace QRedmineClient {
 /*!
  * \brief The RedmineClient class
  */
-class RedmineClient : public QObject {
+class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_OBJECT
 	QML_ELEMENT
+	Q_PLUGIN_METADATA(IID "drook207.redmineClient")
 	Q_DISABLE_COPY_MOVE(RedmineClient)
 	Q_PROPERTY(QString baseUrl READ baseUrl WRITE setBaseUrl NOTIFY baseUrlChanged)
 	Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
@@ -158,3 +165,4 @@ private:
 	QNetworkAccessManager* mNetworkManager;
 };
 }
+Q_DECLARE_METATYPE(QRedmineClient::RedmineClient)

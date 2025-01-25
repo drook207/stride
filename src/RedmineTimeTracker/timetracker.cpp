@@ -6,7 +6,6 @@
 #include <QJsonObject>
 #include <QLoggingCategory>
 #include <QSettings>
-#include <qlogging.h>
 
 Q_LOGGING_CATEGORY(lcTimeTracker, "qredmine.timetracker")
 
@@ -22,6 +21,12 @@ TimeTracker::TimeTracker(QObject* parent)
 	TimeEntryDatabase::initialize();
 	loadRecentEntries();
 }
+
+bool TimeTracker::isTracking() const { return mTimer.isActive() || mIsPaused; }
+
+bool TimeTracker::isPaused() const { return mIsPaused; }
+
+int TimeTracker::currentIssueId() const { return mCurrentIssueId; }
 
 QString TimeTracker::elapsedTime() const
 {

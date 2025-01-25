@@ -7,7 +7,14 @@ project(
 
 qt_standard_project_setup()
 
-find_package(Qt6 REQUIRED Qml Quick Gui Sql)
+find_package(
+	Qt6
+	REQUIRED
+	Core
+	Qml
+	Quick
+	Gui
+	Sql)
 
 if(QT_KNOWN_POLICY_QTP0001)
 	qt_policy(SET QTP0001 NEW)
@@ -41,7 +48,9 @@ qt_add_qml_module(
 	RESOURCES
 	qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
 	qml/Assets/Icons/solid/gear.svg
-	qml/Assets/Icons/solid/bars.svg)
+	qml/Assets/Icons/solid/bars.svg
+	OUTPUT_DIRECTORY
+	${CMAKE_BINARY_DIR}/qt/qml/drook207/timeTracker)
 
 if(ANDROID)
 	if(QT_KNOWN_POLICY_QTP0002)
@@ -85,7 +94,8 @@ if(IOS)
 		RedmineTimeTracker
 		PROPERTIES XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon)
 endif()
-
+target_include_directories(RedmineTimeTracker
+						   INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(
 	RedmineTimeTracker
 	PRIVATE Qt6::Core
