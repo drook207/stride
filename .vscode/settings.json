@@ -1,7 +1,0 @@
-{
-    "cmake.options.statusBarVisibility": "visible",
-    "editor.formatOnSave": true,
-    "files.associations": {
-        "qnetworkrequestfactory": "cpp"
-    }
-}

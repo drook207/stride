@@ -5,19 +5,11 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(
-	QRedmineClient
+	QRedmine
 	LANGUAGES CXX
 	VERSION 0.0.1)
 
-find_package(
-	Qt6
-	REQUIRED
-	Core
-	Qml
-	Quick
-	Network
-	Gui
-	Sql)
+find_package(Qt6 REQUIRED Core)
 
 qt_standard_project_setup()
 
