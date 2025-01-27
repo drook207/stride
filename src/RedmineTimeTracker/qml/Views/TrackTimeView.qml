@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import drook207.timeTracker
 import drook207.redmineClient
 
@@ -13,8 +14,7 @@ GroupBox {
 	property SubmitDialog submitDialog: undefined
 
 	ColumnLayout {
-		Layout.fillWidth: true
-		Layout.fillHeight: true
+		anchors.fill: parent
 		spacing: 10
 
 		GridLayout {
@@ -61,11 +61,14 @@ GroupBox {
 
 			Button {
 				text: !docroot.timeTracker.isTracking ? "Start Tracking" : docroot.timeTracker.isPaused ? "Resume" : "Pause"
-				enabled: issueIdField.text !== "" || docroot.timeTracker.isTracking
-				highlighted: docroot.timeTracker.isTracking && !docroot.timeTracker.isPaused
+				enabled: issueIdField.text !== ""
+						 || docroot.timeTracker.isTracking
+				highlighted: docroot.timeTracker.isTracking
+							 && !docroot.timeTracker.isPaused
 				onClicked: {
 					if (!docroot.timeTracker.isTracking) {
-						docroot.timeTracker.startTracking(parseInt(issueIdField.text))
+						docroot.timeTracker.startTracking(
+									parseInt(issueIdField.text))
 					} else if (docroot.timeTracker.isPaused) {
 						docroot.timeTracker.resumeTracking()
 					} else {
