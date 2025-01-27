@@ -22,7 +22,8 @@ Item {
 		client: docroot.client
 	}
 	ColumnLayout {
-		anchors.fill: parent
+		Layout.fillWidth: true
+		Layout.fillHeight: true
 		spacing: 5
 		TabBar {
 			id: bar

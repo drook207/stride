@@ -35,12 +35,12 @@ Dialog {
 
 		// Submit to Redmine
 		docroot.client.createTimeEntry(issueId, hours, comments)
-		commentsField.text = ""
+		docroot.comment.text = ""
 	}
 
 	onRejected: {
 		docroot.timeTracker.stopTracking()
-		commentsField.text = ""
+		docroot.comment.text = ""
 	}
 
 	contentItem: ColumnLayout {

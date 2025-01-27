@@ -9,9 +9,11 @@ GroupBox {
 	title: "Entries from Id"
 	property TimeTracker timeTracker: TimeTracker {}
 	property RedmineClient client: undefined
-	anchors.fill: parent
+	Layout.fillWidth: true
+	Layout.fillHeight: true
 	ColumnLayout {
-		anchors.fill: parent
+		Layout.fillWidth: true
+		Layout.fillHeight: true
 		spacing: 10
 		GridLayout {
 			columns: 3
@@ -43,12 +45,13 @@ GroupBox {
 			Layout.fillHeight: true
 			ListView {
 				id: entriesList
-				anchors.fill: parent
+				Layout.fillWidth: true
+				Layout.fillHeight: true
 				model: docroot.timeTracker.entriesFromId
 				clip: true
 
 				delegate: ItemDelegate {
-					width: parent.width
+					Layout.fillWidth: true
 					contentItem: ColumnLayout {
 						spacing: 5
 
@@ -67,8 +70,7 @@ GroupBox {
 								Layout.leftMargin: 10
 							}
 							Label {
-								text: Qt.formatDateTime(modelData.spent_on,
-														"yyyy-MM-dd hh:mm")
+								text: Qt.formatDateTime(modelData.spent_on, "yyyy-MM-dd hh:mm")
 								Layout.fillWidth: true
 								horizontalAlignment: Text.AlignRight
 							}
