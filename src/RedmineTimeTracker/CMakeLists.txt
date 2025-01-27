@@ -59,7 +59,7 @@ if(ANDROID)
 	set_target_properties(
 		RedmineTimeTracker
 		PROPERTIES QT_ANDROID_PACKAGE_SOURCE_DIR
-				   "${CMAKE_CURRENT_SOURCE_DIR}/android"
+		           "${CMAKE_CURRENT_SOURCE_DIR}/android"
 				   QT_ANDROID_PACKAGE_NAME "drook207.redminetimetracker"
 				   QT_ANDROID_TARGET_SDK_VERSION 35
 				   QT_ANDROID_VERSION_CODE 20
@@ -83,28 +83,28 @@ if(ANDROID)
 endif()
 
 set_target_properties(RedmineTimeTracker PROPERTIES WIN32_EXECUTABLE TRUE
-													MACOSX_BUNDLE TRUE)
+	                                                MACOSX_BUNDLE TRUE)
 
 if(IOS)
 	set(asset_catalog_path "ios/Assets.xcassets")
 	target_sources(RedmineTimeTracker PRIVATE "${asset_catalog_path}")
 	set_source_files_properties(${asset_catalog_path}
-								PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+		                        PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	set_target_properties(
 		RedmineTimeTracker
 		PROPERTIES XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon)
 endif()
 target_include_directories(RedmineTimeTracker
-						   INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+	                       INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(
 	RedmineTimeTracker
 	PRIVATE Qt6::Core
-			Qt6::Network
+	        Qt6::Network
 			Qt6::Gui
 			Qt6::Quick
 			Qt6::Qml
 			Qt6::Sql
-			redmineclient)
+			redmineclientplugin)
 install(
 	TARGETS RedmineTimeTracker
 	BUNDLE DESTINATION .

@@ -26,7 +26,8 @@ Item {
 		spacing: 5
 		TabBar {
 			id: bar
-			anchors.fill: parent
+			Layout.fillWidth: true
+			Layout.fillHeight: true
 			TabButton {
 				text: qsTr("Track Time")
 			}
@@ -39,7 +40,8 @@ Item {
 			Layout.fillWidth: true
 			currentIndex: bar.currentIndex
 			ColumnLayout {
-				anchors.fill: parent
+				Layout.fillHeight: true
+				Layout.fillWidth: true
 				spacing: 5
 
 				TrackTimeView {
