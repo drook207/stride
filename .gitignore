@@ -514,3 +514,4 @@ fabric.properties
 
 .idea/*
 src/.cache/
+.qmlls.ini
