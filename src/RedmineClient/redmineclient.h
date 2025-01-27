@@ -70,6 +70,7 @@ public:
 	bool loading() const;
 
 public slots:
+
 	// Create a new time entry
 	/*!
 	 * \brief createTimeEntry
@@ -80,8 +81,8 @@ public slots:
 	 * \param activityId
 	 */
 	void createTimeEntry(int issueId, double hours, const QString& comments,
-		const QDateTime& spentOn = QDateTime::currentDateTime(),
-		int activityId = 0); // 9 is often "Development"
+		const QString& spentOn = QDateTime::currentDateTime().toString("yyyy-MM-dd"),
+		int activityId = 4); // 4 is often "Development"
 
 	// Update an existing time entry
 	/*!

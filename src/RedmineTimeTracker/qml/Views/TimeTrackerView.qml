@@ -32,6 +32,10 @@ Item {
 				text: qsTr("Track Time")
 			}
 			TabButton {
+				text: qsTr("Add Time Entry")
+			}
+
+			TabButton {
 				text: qsTr("Get Time Entries")
 			}
 		}
@@ -55,6 +59,12 @@ Item {
 					timeTracker: docroot.timeTracker
 				}
 			}
+			AddTimeEntryView {
+				id: addTimeEntryView
+				timeTracker: docroot.timeTracker
+				client: docroot.client
+			}
+
 			GetTimeEntriesView {
 				id: getRecentEntriesView
 				timeTracker: docroot.timeTracker

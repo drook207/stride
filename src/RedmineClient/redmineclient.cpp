@@ -69,14 +69,14 @@ QNetworkRequest RedmineClient::createRequest(const QString& endpoint)
 }
 
 void RedmineClient::createTimeEntry(
-	int issueId, double hours, const QString& comments, const QDateTime& spentOn, int activityId)
+	int issueId, double hours, const QString& comments, const QString& spentOn, int activityId)
 {
 	setLoading(true);
 
 	QJsonObject timeEntryData;
 	QJsonObject timeEntry;
 	timeEntry["issue_id"] = issueId;
-	timeEntry["spent_on"] = spentOn.toString("yyyy-MM-dd");
+	timeEntry["spent_on"] = spentOn;
 	timeEntry["hours"] = hours;
 	timeEntry["comments"] = comments;
 	// FIXME Currently not supported

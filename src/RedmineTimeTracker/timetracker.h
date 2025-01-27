@@ -95,6 +95,10 @@ public slots:
 	 */
 	void addRecentEntry(const QVariantMap& entry);
 
+	/*!
+	 * \brief addEntriesFromId
+	 * \param entries
+	 */
 	void addEntriesFromId(const QJsonArray& entries);
 
 signals:
