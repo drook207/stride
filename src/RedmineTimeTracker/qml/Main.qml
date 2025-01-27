@@ -13,13 +13,13 @@ ApplicationWindow {
 	height: 1024
 	title: "Redmine Time Tracker"
 
+
 	Material.theme: Material.Dark
 	Material.accent: Material.LightGreen
 
 	RedmineClient {
 		id: redmineClient
-		baseUrl: redmineClient.baseUrl
-				 === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
+		baseUrl: redmineClient.baseUrl === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
 		apiKey: redmineClient.apiKey === "" ? "your-api-key" : redmineClient.apiKey
 
 		onErrorOccurred: function (error) {

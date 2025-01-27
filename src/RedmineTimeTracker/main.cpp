@@ -1,5 +1,6 @@
 // main.cpp
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 

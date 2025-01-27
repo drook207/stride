@@ -24,7 +24,13 @@ if(QT_KNOWN_POLICY_QTP0004)
 	qt_policy(SET QTP0004 NEW)
 endif()
 
-qt_add_executable(RedmineTimeTracker main.cpp)
+if(WIN32)
+	enable_language(RC)
+	set(APP_ICON_RESOURCE_WINDOWS
+		${CMAKE_CURRENT_SOURCE_DIR}/qml/Assets/Icons/app.rc)
+endif()
+
+qt_add_executable(RedmineTimeTracker main.cpp ${APP_ICON_RESOURCE_WINDOWS})
 
 qt_add_qml_module(
 	RedmineTimeTracker
@@ -49,6 +55,8 @@ qt_add_qml_module(
 	qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
 	qml/Assets/Icons/solid/gear.svg
 	qml/Assets/Icons/solid/bars.svg
+	qml/Assets/Icons/app-icon.svg
+	qml/Assets/Icons/app-icon.ico
 	OUTPUT_DIRECTORY
 	${CMAKE_BINARY_DIR}/qt/qml/drook207/timeTracker)
 
