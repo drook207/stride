@@ -14,14 +14,22 @@ Q_LOGGING_CATEGORY(lcTimeEntryDataBase, "qredmine.timeentry.database")
 namespace QRedmineClient {
 bool TimeEntryDatabase::initialize()
 {
-	QDir applicationDir = QCoreApplication::instance()->applicationDirPath();
+	QDir tmpDir;
+	const auto homePath = QDir::homePath();
+#ifdef Q_OS_WIN
 
-	const QString databaseDirName = QStringLiteral("database");
+	tmpDir = QDir(homePath + "/AppData/Local"); // QCoreApplication::instance()->applicationDirPath();
+#endif
+#ifdef Q_OS_LINUX
+	applicationDir = QDir("/tmp/");
+#endif
 
-	if (!applicationDir.exists(databaseDirName)) {
-		applicationDir.mkdir(databaseDirName);
+	const QString databaseDirName = QCoreApplication::instance()->applicationName(); // QStringLiteral("database");
+
+	if (!tmpDir.exists(databaseDirName)) {
+		tmpDir.mkdir(databaseDirName);
 	}
-	QDir databaseDir(applicationDir.absoluteFilePath(databaseDirName));
+	QDir databaseDir(tmpDir.absoluteFilePath(databaseDirName));
 
 	QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
 	const auto databaseName = databaseDir.absoluteFilePath("timeentries.db");
