@@ -67,8 +67,7 @@ if(IOS)
 		PROPERTIES XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon)
 endif()
 target_include_directories(redmineclient INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(redmineclient PRIVATE Qt6::Core Qt6::Network)
-
+target_link_libraries(redmineclient PRIVATE Qt6::Core Qt6::Network utils)
 target_compile_definitions(redmineclient PRIVATE QT_REDMINECLIENT_BUILD)
 install(
 	TARGETS redmineclient
