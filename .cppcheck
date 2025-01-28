@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<def>
+<!-- Qt-specific configurations -->
+
+<!-- Force C++ -->
+<directive name="FORCE_CPP" value="1"/>
+
+<!-- Qt Keywords -->
+<define name="slots" value=""/>
+<define name="signals" value=""/>
+<define name="Q_SLOTS" value=""/>
+<define name="Q_SIGNALS" value=""/>
+
+<!-- Qt Logging -->
+<define name="Q_LOGGING_CATEGORY(x,y)" value=""/>
+
+<!-- Common Qt Macros -->
+<define name="Q_OBJECT" value=""/>
+<define name="Q_GADGET" value=""/>
+<define name="Q_ENUM" value=""/>
+<define name="Q_PROPERTY(x)" value=""/>
+<define name="Q_DECLARE_METATYPE(x)" value=""/>
+<define name="Q_INTERFACES(x)" value=""/>
+<define name="Q_INVOKABLE" value=""/>
+
+<!-- Qt Visibility Macros -->
+<define name="Q_DECL_EXPORT" value=""/>
+<define name="Q_DECL_IMPORT" value=""/>
+</def>

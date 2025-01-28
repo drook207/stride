@@ -13,7 +13,6 @@ ImplementationFileExtensions:
   - cpp
   - cxx
 HeaderFilterRegex: ''
-AnalyzeTemporaryDtors: false
 FormatStyle:     none
 CheckOptions:
   cert-dcl16-c.NewSuffixes: 'L;LL;LU;LLU'
