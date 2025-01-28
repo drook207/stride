@@ -1,7 +1,8 @@
 #include "redmineclient.h"
 #include <QLoggingCategory>
-#include <QSettings>
 #include <QUrlQuery>
+
+#include "../Utils/qsettingshelper.h"
 
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
 
@@ -12,9 +13,8 @@ RedmineClient::RedmineClient(QObject* parent)
 	, mNetworkManager(new QNetworkAccessManager(this))
 {
 	connect(mNetworkManager, &QNetworkAccessManager::finished, this, &RedmineClient::handleNetworkReply);
-	QSettings settings;
-	auto baseUrl = settings.value("client/baseUrl").toString();
-	auto apiKey = settings.value("client/apiKey").toString();
+	auto baseUrl = Utils::GetSetting("client/baseUrl").toString();
+	auto apiKey = Utils::GetSetting("client/apiKey").toString();
 	if (!baseUrl.isEmpty()) {
 		setBaseUrl(baseUrl);
 	}
@@ -31,8 +31,7 @@ void RedmineClient::setBaseUrl(const QString& url)
 {
 	if (mBaseUrl != url) {
 		mBaseUrl = url;
-		QSettings settings;
-		settings.setValue("client/baseUrl", mBaseUrl);
+		Utils::SaveSetting("client/baseUrl", mBaseUrl);
 		emit baseUrlChanged();
 	}
 }
@@ -43,8 +42,7 @@ void RedmineClient::setApiKey(const QString& key)
 {
 	if (mApiKey != key) {
 		mApiKey = key;
-		QSettings settings;
-		settings.setValue("client/apiKey", mApiKey);
+		Utils::SaveSetting("client/apiKey", mApiKey);
 		emit apiKeyChanged();
 	}
 }
