@@ -100,6 +100,16 @@ public slots:
 	 */
 	void getTimeEntries(int issueId);
 
+	/*!
+	 * \brief getEnumerations
+	 */
+	void getEnumerations();
+
+	/*!
+	 * \brief getCustomFields
+	 */
+	void getCustomFields();
+
 signals:
 	/*!
 	 * \brief baseUrlChanged
@@ -133,6 +143,14 @@ signals:
 	 * \param entries
 	 */
 	void timeEntriesReceived(const QJsonArray& entries);
+
+	/*!
+	 * \brief enumerationsReceived
+	 * \param entries
+	 */
+	void enumerationsReceived(const QJsonArray& enums);
+
+	void customFieldsReceived(const QJsonArray& customFields);
 
 	/*!
 	 * \brief errorOccurred
