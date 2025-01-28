@@ -13,7 +13,6 @@ ApplicationWindow {
 	height: 1024
 	title: "Redmine Time Tracker"
 
-
 	Material.theme: Material.Dark
 	Material.accent: Material.LightGreen
 
@@ -31,6 +30,9 @@ ApplicationWindow {
 			messageDialog.text = "Time entry created successfully"
 			messageDialog.open()
 		}
+	}
+	TimeTracker {
+		id: timeTrackerInstance
 	}
 
 	Dialog {
@@ -92,6 +94,7 @@ ApplicationWindow {
 			Layout.fillWidth: true
 			Layout.fillHeight: true
 			client: redmineClient
+			timeTracker: timeTrackerInstance
 		}
 
 		BusyIndicator {
