@@ -2,7 +2,7 @@
 #include <QLoggingCategory>
 #include <QUrlQuery>
 
-#include "../Utils/qsettingshelper.h"
+#include "qsettingshelper.h"
 
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
 
