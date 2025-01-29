@@ -21,7 +21,7 @@ bool TimeEntryDatabase::initialize()
 	tmpDir = QDir(homePath + "/AppData/Local"); // QCoreApplication::instance()->applicationDirPath();
 #endif
 #ifdef Q_OS_LINUX
-	applicationDir = QDir("/tmp/");
+	tmpDir = QDir(homePath + "/.config/");
 #endif
 
 	const QString databaseDirName = QCoreApplication::instance()->applicationName(); // QStringLiteral("database");
