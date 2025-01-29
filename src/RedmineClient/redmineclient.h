@@ -22,6 +22,16 @@ namespace QRedmineClient {
 /*!
  * \brief The RedmineClient class
  */
+
+namespace ApiResources {
+	static const QString ISSUE = QStringLiteral("issues/%0.json"); // arg[0] == id
+	static const QString ISSUES = QStringLiteral("issues.json");
+	static const QString PROJECT = QStringLiteral("projects/%0.json"); // arg[0] == id
+	static const QString PROJECTS = QStringLiteral("projects.json");
+	static const QString TIME_ENTRY = QStringLiteral("time_entries/%0.json"); // arg[0] == id
+	static const QString TIME_ENTRIES = QStringLiteral("time_entries.json");
+}
+
 class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_OBJECT
 	QML_ELEMENT

@@ -90,7 +90,7 @@ void RedmineClient::createTimeEntry(
 	QJsonDocument doc(timeEntryData);
 	QByteArray data = doc.toJson();
 
-	mNetworkManager->post(createRequest("/time_entries.json"), data);
+	mNetworkManager->post(createRequest(ApiResources::TIME_ENTRIES), data);
 }
 
 void RedmineClient::updateTimeEntry(int timeEntryId, double hours, const QString& comments)
@@ -113,10 +113,9 @@ void RedmineClient::updateTimeEntry(int timeEntryId, double hours, const QString
 void RedmineClient::getTimeEntries(int issueId)
 {
 	setLoading(true);
-
 	QUrlQuery query;
 	query.addQueryItem("issue_id", QString::number(issueId));
-	mNetworkManager->get(createRequest("/time_entries.json", query));
+	mNetworkManager->get(createRequest(ApiResources::TIME_ENTRIES, query));
 }
 
 void RedmineClient::handleNetworkReply(QNetworkReply* reply)
