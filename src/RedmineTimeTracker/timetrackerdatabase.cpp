@@ -41,17 +41,26 @@ bool TimeEntryDatabase::initialize()
 	}
 
 	QSqlQuery query;
-	return query.exec("CREATE TABLE IF NOT EXISTS time_entries ("
-					  "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-					  "issue_id INTEGER NOT NULL,"
-					  "hours REAL NOT NULL,"
-					  "comments TEXT,"
-					  "spent_on DATETIME NOT NULL,"
-					  "sync_status INTEGER DEFAULT 0," // 0 = not synced, 1 = synced
-					  "redmine_id INTEGER," // ID from Redmine after sync
-					  "created_at DATETIME NOT NULL,"
-					  "updated_at DATETIME NOT NULL"
-					  ")");
+	bool status = false;
+	status &= query.exec("CREATE TABLE IF NOT EXISTS enum_time_entry_activities ("
+						 "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+						 "enum_id INTEGER NOT NULL,"
+						 "is_default BOOLEAN NOT NULL,"
+						 "name TEXT NOT NULL"
+						 ")");
+	status &= query.exec("CREATE TABLE IF NOT EXISTS time_entries ("
+						 "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+						 "issue_id INTEGER NOT NULL,"
+						 "hours REAL NOT NULL,"
+						 "comments TEXT,"
+						 "spent_on DATETIME NOT NULL,"
+						 "sync_status INTEGER DEFAULT 0," // 0 = not synced, 1 = synced
+						 "redmine_id INTEGER," // ID from Redmine after sync
+						 "created_at DATETIME NOT NULL,"
+						 "updated_at DATETIME NOT NULL"
+						 ")");
+
+	return status;
 }
 
 bool TimeEntryDatabase::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
