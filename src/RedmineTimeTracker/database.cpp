@@ -1,4 +1,4 @@
-#include "timetrackerdatabase.h"
+#include "database.h"
 #include <QDateTime>
 #include <QDir>
 #include <QJsonObject>
@@ -7,12 +7,14 @@
 #include <QSqlError>
 #include <QSqlQuery>
 #include <qcoreapplication.h>
+#include <qjsonobject.h>
 #include <qstringliteral.h>
+#include <utility>
 
 Q_LOGGING_CATEGORY(lcTimeEntryDataBase, "qredmine.timeentry.database")
 
 namespace QRedmineClient {
-bool TimeEntryDatabase::initialize()
+bool Database::initialize()
 {
 	QDir tmpDir;
 	const auto homePath = QDir::homePath();
@@ -63,7 +65,7 @@ bool TimeEntryDatabase::initialize()
 	return status;
 }
 
-bool TimeEntryDatabase::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
+bool Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
 {
 	QSqlQuery query;
 	query.prepare("INSERT INTO time_entries "
@@ -81,12 +83,14 @@ bool TimeEntryDatabase::addTimeEntry(int issueId, double hours, const QString& c
 	return query.exec();
 }
 
-bool TimeEntryDatabase::updateSyncStatus(int id, int redmineId)
+bool Database::updateSyncStatus(int id, int redmineId)
 {
 	QSqlQuery query;
-	query.prepare("UPDATE time_entries "
-				  "SET sync_status = 1, redmine_id = ?, updated_at = ? "
-				  "WHERE id = ?");
+	if (!query.prepare("UPDATE time_entries "
+					   "SET sync_status = 1, redmine_id = ?, updated_at = ? "
+					   "WHERE id = ?")) {
+		return false;
+	}
 
 	query.addBindValue(redmineId);
 	query.addBindValue(QDateTime::currentDateTime());
@@ -95,7 +99,30 @@ bool TimeEntryDatabase::updateSyncStatus(int id, int redmineId)
 	return query.exec();
 }
 
-QVector<QVariantMap> TimeEntryDatabase::getUnsyncedEntries()
+bool Database::addTimeEntryActivities(const QJsonArray& activities)
+{
+	QSqlQuery query;
+	bool status = false;
+	if (!query.prepare("INSERT INTO enum_time_entry_activities "
+					   "(enum_id, is_default, name) "
+					   "VALUES (?, ?, ?)")) {
+		return false;
+	}
+
+	for (const auto& activity : std::as_const(activities)) {
+		QJsonObject obj = activity.toObject();
+		const auto id = obj["id"].toInt();
+		const auto is_default = obj["is_default"].toBool();
+		const auto name = obj["name"].toString();
+		query.addBindValue(id);
+		query.addBindValue(is_default);
+		query.addBindValue(name);
+		status &= query.exec();
+	}
+	return status;
+}
+
+QVector<QVariantMap> Database::getUnsyncedEntries()
 {
 	QVector<QVariantMap> entries;
 	QSqlQuery query("SELECT * FROM time_entries WHERE sync_status = 0");
@@ -113,7 +140,7 @@ QVector<QVariantMap> TimeEntryDatabase::getUnsyncedEntries()
 	return entries;
 }
 
-QJsonArray TimeEntryDatabase::getRecentEntries(int limit)
+QJsonArray Database::getRecentEntries(int limit)
 {
 	QJsonArray entries;
 	QSqlQuery query;

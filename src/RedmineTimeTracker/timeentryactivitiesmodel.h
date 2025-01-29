@@ -18,7 +18,7 @@ public:
 	void setTimeEntryActivities(const QVariantList& newTimeEntryActivities);
 
 public slots:
-	void addTimeEntryActivities(QJsonArray& ativities);
+	void addTimeEntryActivities(const QJsonArray& activities);
 
 signals:
 	void timeEntryActivitiesChanged();

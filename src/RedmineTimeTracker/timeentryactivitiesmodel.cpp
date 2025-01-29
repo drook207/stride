@@ -1,4 +1,5 @@
 #include "timeentryactivitiesmodel.h"
+#include "database.h"
 #include <QJsonObject>
 
 namespace QRedmineClient {
@@ -15,18 +16,20 @@ void TimeEntryActivitiesModel::setTimeEntryActivities(const QVariantList& newTim
 		return;
 	}
 	mTimeEntryActivities = newTimeEntryActivities;
+
 	emit timeEntryActivitiesChanged();
 }
 
-void TimeEntryActivitiesModel::addTimeEntryActivities(QJsonArray& ativities)
+void TimeEntryActivitiesModel::addTimeEntryActivities(const QJsonArray& activities)
 {
-	if (!ativities.isEmpty()) {
-		QVariantList timeEntryActivities;
-		for (const QJsonValue& value : std::as_const(ativities)) {
-			timeEntryActivities.append(value.toObject().toVariantMap());
+	if (!activities.isEmpty()) {
+		QVariantList timeEntryActivitiesList;
+		for (const QJsonValue& value : std::as_const(activities)) {
+			timeEntryActivitiesList.append(value.toObject().toVariantMap());
 		}
 
-		setTimeEntryActivities(timeEntryActivities);
+		setTimeEntryActivities(timeEntryActivitiesList);
+		Database::addTimeEntryActivities(activities);
 	}
 }
 

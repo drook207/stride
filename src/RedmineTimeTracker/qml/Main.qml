@@ -40,6 +40,15 @@ ApplicationWindow {
 	TimeTracker {
 		id: timeTrackerInstance
 	}
+	TimeEntryActivitiesModel {
+		id: activitiesModel
+	}
+	Connections {
+		target: redmineClient
+		function onTimeEntryActivitiesReceived(value) {
+			activitiesModel.addTimeEntryActivities(value)
+		}
+	}
 
 	Dialog {
 		id: messageDialog

@@ -179,7 +179,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 				emit timeEntriesReceived(response["time_entries"].toArray());
 			}
 			if (response.contains("time_entry_activities")) {
-				emit enumerationsReceived(response["time_entry_activities"].toArray());
+				emit timeEntryActivitiesReceived(response["time_entry_activities"].toArray());
 			}
 			if (response.contains("issue_priorities")) {
 				emit enumerationsReceived(response["issue_priorities"].toArray());

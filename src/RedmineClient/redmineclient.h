@@ -157,6 +157,12 @@ signals:
 	 */
 	void enumerationsReceived(const QJsonArray& enums);
 
+	/*!
+	 * \brief timeEntryActivitiesReceived
+	 * \param enums
+	 */
+	void timeEntryActivitiesReceived(const QJsonArray& activities);
+
 	void customFieldsReceived(const QJsonArray& customFields);
 
 	/*!

@@ -3,7 +3,7 @@
 #include <QStringLiteral>
 
 namespace QRedmineClient {
-class TimeEntryDatabase {
+class Database {
 public:
 	static bool initialize();
 
@@ -16,5 +16,6 @@ public:
 
 public slots:
 	static bool updateSyncStatus(int id, int redmineId);
+	static bool addTimeEntryActivities(const QJsonArray& activities);
 };
 }

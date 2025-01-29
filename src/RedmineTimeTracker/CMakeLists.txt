@@ -49,8 +49,8 @@ qt_add_qml_module(
 	SOURCES
 	timetracker.h
 	timetracker.cpp
-	timetrackerdatabase.h
-	timetrackerdatabase.cpp
+	database.h
+	database.cpp
 	RESOURCES
 	qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
 	qml/Assets/Icons/solid/gear.svg
