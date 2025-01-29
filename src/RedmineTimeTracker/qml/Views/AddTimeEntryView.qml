@@ -1,4 +1,5 @@
 import QtQuick
+import QtQml
 import QtQuick.Controls
 import QtQuick.Layouts
 import drook207.timeTracker
@@ -13,6 +14,25 @@ GroupBox {
 		client: docroot.client
 		timeTracker: docroot.timeTracker
 	}
+	function saveInput() {
+		docroot.addDialog.spentOn = spentOnField.text
+		docroot.addDialog.issueId = issueIdField.text
+		var german = Qt.locale("de_DE")
+		const number = Number.fromLocaleString(german, timeSpentField.text)
+		docroot.addDialog.hours = number
+
+		console.log("Timer triggered")
+	}
+
+	Timer {
+		id: inputValidatorTimer
+		interval: 500
+		onTriggered: {
+
+			docroot.saveInput()
+		}
+	}
+
 	anchors.fill: parent
 	ColumnLayout {
 		anchors.fill: parent
@@ -30,9 +50,14 @@ GroupBox {
 				validator: IntValidator {
 					bottom: 1
 				}
-				onAcceptableInputChanged: {
-
-					docroot.addDialog.issueId = issueIdField.text
+				onAccepted: {
+					if (acceptableInput) {
+						console.log("Issue Id field: ", issueIdField.text)
+						docroot.addDialog.issueId = issueIdField.text
+					}
+				}
+				onTextChanged: {
+					inputValidatorTimer.restart()
 				}
 			}
 
@@ -52,6 +77,9 @@ GroupBox {
 						console.log("Test:", text, ", Testfloat: ", number)
 						docroot.addDialog.hours = number
 					}
+				}
+				onTextChanged: {
+					inputValidatorTimer.restart()
 				}
 			}
 

@@ -54,7 +54,7 @@ bool TimeEntryDatabase::initialize()
 					  ")");
 }
 
-bool TimeEntryDatabase::addTimeEntry(int issueId, double hours, const QString& comments)
+bool TimeEntryDatabase::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
 {
 	QSqlQuery query;
 	query.prepare("INSERT INTO time_entries "
@@ -65,7 +65,7 @@ bool TimeEntryDatabase::addTimeEntry(int issueId, double hours, const QString& c
 	query.addBindValue(issueId);
 	query.addBindValue(hours);
 	query.addBindValue(comments);
-	query.addBindValue(now);
+	query.addBindValue(spentOn);
 	query.addBindValue(now);
 	query.addBindValue(now);
 
