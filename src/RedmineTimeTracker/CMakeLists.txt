@@ -132,3 +132,18 @@ qt_generate_deploy_qml_app_script(
 	NO_UNSUPPORTED_PLATFORM_ERROR
 	DEPLOY_USER_QML_MODULES_ON_UNSUPPORTED_PLATFORM)
 install(SCRIPT ${deploy_script})
+
+include(CPack)
+
+set(CPACK_PACKAGE_NAME "RedmineTimeTracker")
+
+set(CPACK_PACKAGE_VENDOR "drook207")
+
+set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/LICENSE)
+
+set(CPACK_NSIS_MUI_ICON
+	"${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker/qml/Assets/Icons/app-icon.ico")
+set(CPACK_NSIS_MUI_UNIICON
+	"${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker/qml/Assets/Icons/app-icon.ico")
+set(CPACK_CREATE_DESKTOP_LINKS Redmine-Time-Tracker)
+set(CPACK_PACKAGE_EXECUTABLES "Redmine-Time-Tracker" "RedmineTimeTracker")
