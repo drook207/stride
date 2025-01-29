@@ -17,14 +17,12 @@ GroupBox {
 		spacing: 10
 
 		GridLayout {
-			columns: 2
+			columns: 1
+			rows: 2
 			Layout.fillWidth: true
 			rowSpacing: 10
 			columnSpacing: 10
 
-			Label {
-				text: "Issue ID:"
-			}
 			TextField {
 				id: issueIdField
 				Layout.fillWidth: true

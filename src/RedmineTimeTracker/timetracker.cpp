@@ -131,6 +131,7 @@ void TimeTracker::addRecentEntry(const QVariantMap& entry)
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return;
 	}
+	mRecentEntries.append(entry);
 	emit recentEntriesChanged();
 }
 

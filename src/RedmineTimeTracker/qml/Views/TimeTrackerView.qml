@@ -59,6 +59,7 @@ Item {
 					timeTracker: docroot.timeTracker
 				}
 			}
+
 			AddTimeEntryView {
 				id: addTimeEntryView
 				timeTracker: docroot.timeTracker
