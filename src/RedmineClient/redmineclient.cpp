@@ -4,7 +4,7 @@
 #include <QtLogging>
 #include <QStringLiteral>
 
-#include "../Utils/qsettingshelper.h"
+#include "qsettingshelper.h"
 
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
 
