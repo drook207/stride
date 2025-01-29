@@ -18,7 +18,8 @@ ApplicationWindow {
 
 	RedmineClient {
 		id: redmineClient
-		baseUrl: redmineClient.baseUrl === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
+		baseUrl: redmineClient.baseUrl
+				 === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
 		apiKey: redmineClient.apiKey === "" ? "your-api-key" : redmineClient.apiKey
 
 		onErrorOccurred: function (error) {
@@ -30,6 +31,11 @@ ApplicationWindow {
 			messageDialog.text = "Time entry created successfully"
 			messageDialog.open()
 		}
+	}
+	Component.onCompleted: {
+		redmineClient.getEnumerations(0)
+		redmineClient.getEnumerations(1)
+		redmineClient.getEnumerations(2)
 	}
 	TimeTracker {
 		id: timeTrackerInstance

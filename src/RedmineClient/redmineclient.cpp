@@ -2,6 +2,8 @@
 #include <QLoggingCategory>
 #include <QSettings>
 #include <QUrlQuery>
+#include <qlogging.h>
+#include <qstringliteral.h>
 
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
 
@@ -119,10 +121,26 @@ void RedmineClient::getTimeEntries(int issueId)
 	mNetworkManager->get(createRequest(endpoint));
 }
 
-void RedmineClient::getEnumerations()
+void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 {
 	setLoading(true);
-	QString endpoint = QString("/enumerations.json");
+	QString endpoint;
+	switch (enumerationType) {
+		case TIME_ENTRY_ACTIVITIES:
+			endpoint = QString("/enumerations/time_entry_activities.json");
+			break;
+		case ISSUE_PRIORITIES:
+			endpoint = QString("/enumerations/issue_priorities.json");
+			break;
+		case DOCUMENT_CATEGORIES:
+			endpoint = QString("/enumerations/document_categories.json");
+			break;
+		default:
+			qWarning(lcRedmineClient()) << QT_TR_NOOP(
+				QStringLiteral("No valid Enumeration type is provided: <%0>").arg(enumerationType));
+			return;
+	}
+
 	mNetworkManager->get(createRequest(endpoint));
 }
 
@@ -151,27 +169,43 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	QJsonDocument doc = QJsonDocument::fromJson(data);
 	QJsonObject response = doc.object();
 
-	QString operation = reply->url().path();
-	if (reply->operation() == QNetworkAccessManager::PostOperation) {
-		// Create time entry response
-		if (response.contains("time_entry")) {
-			emit timeEntryCreated(response["time_entry"].toObject());
-		}
-	} else if (reply->operation() == QNetworkAccessManager::PutOperation) {
-		// Update time entry response
-		int timeEntryId = operation.split('/').at(2).split('.').at(0).toInt();
-		emit timeEntryUpdated(timeEntryId);
-	} else if (reply->operation() == QNetworkAccessManager::GetOperation) {
-		// Get time entries response
-		if (response.contains("time_entries")) {
-			emit timeEntriesReceived(response["time_entries"].toArray());
-		}
-		if (response.contains("enumerations")) {
-			emit enumerationsReceived(response["enumerations"].toArray());
-		}
-		if (response.contains("custom_fields")) {
-			emit customFieldsReceived(response["custom_fields"].toArray());
-		}
+	QString path = reply->url().path();
+	const int id = path.split('/').at(2).split('.').at(0).toInt();
+	switch (reply->operation()) {
+		case QNetworkAccessManager::HeadOperation:
+			break;
+		case QNetworkAccessManager::GetOperation:
+			if (response.contains("time_entries")) {
+				emit timeEntriesReceived(response["time_entries"].toArray());
+			}
+			if (response.contains("time_entry_activities")) {
+				emit enumerationsReceived(response["time_entry_activities"].toArray());
+			}
+			if (response.contains("issue_priorities")) {
+				emit enumerationsReceived(response["issue_priorities"].toArray());
+			}
+			if (response.contains("document_categories")) {
+				emit enumerationsReceived(response["document_categories"].toArray());
+			}
+			if (response.contains("custom_fields")) {
+				emit customFieldsReceived(response["custom_fields"].toArray());
+			}
+			break;
+		case QNetworkAccessManager::PutOperation:
+			emit timeEntryUpdated(id);
+			break;
+
+		case QNetworkAccessManager::PostOperation:
+			if (response.contains("time_entry")) {
+				emit timeEntryCreated(response["time_entry"].toObject());
+			}
+			break;
+		case QNetworkAccessManager::DeleteOperation:
+			break;
+		case QNetworkAccessManager::CustomOperation:
+			break;
+		case QNetworkAccessManager::UnknownOperation:
+			break;
 	}
 }
 }

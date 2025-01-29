@@ -31,6 +31,13 @@ class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
 
 public:
+	enum EnumerationTypes {
+		TIME_ENTRY_ACTIVITIES,
+		ISSUE_PRIORITIES,
+		DOCUMENT_CATEGORIES
+
+	};
+	Q_ENUM(EnumerationTypes)
 	/*!
 	 * \brief RedmineClient
 	 * \param parent
@@ -103,7 +110,7 @@ public slots:
 	/*!
 	 * \brief getEnumerations
 	 */
-	void getEnumerations();
+	void getEnumerations(EnumerationTypes enumerationType);
 
 	/*!
 	 * \brief getCustomFields
