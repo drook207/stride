@@ -8,7 +8,7 @@ GroupBox {
 	id: docroot
 	title: "Time Tracking"
 	Layout.fillWidth: true
-	property TimeTracker timeTracker: TimeTracker {}
+	property TimeTracker timeTracker: undefined
 	property RedmineClient client: undefined
 	property SubmitDialog submitDialog: undefined
 
@@ -17,14 +17,12 @@ GroupBox {
 		spacing: 10
 
 		GridLayout {
-			columns: 2
+			columns: 1
+			rows: 2
 			Layout.fillWidth: true
 			rowSpacing: 10
 			columnSpacing: 10
 
-			Label {
-				text: "Issue ID:"
-			}
 			TextField {
 				id: issueIdField
 				Layout.fillWidth: true
@@ -60,14 +58,11 @@ GroupBox {
 
 			Button {
 				text: !docroot.timeTracker.isTracking ? "Start Tracking" : docroot.timeTracker.isPaused ? "Resume" : "Pause"
-				enabled: issueIdField.text !== ""
-						 || docroot.timeTracker.isTracking
-				highlighted: docroot.timeTracker.isTracking
-							 && !docroot.timeTracker.isPaused
+				enabled: issueIdField.text !== "" || docroot.timeTracker.isTracking
+				highlighted: docroot.timeTracker.isTracking && !docroot.timeTracker.isPaused
 				onClicked: {
 					if (!docroot.timeTracker.isTracking) {
-						docroot.timeTracker.startTracking(
-									parseInt(issueIdField.text))
+						docroot.timeTracker.startTracking(parseInt(issueIdField.text))
 					} else if (docroot.timeTracker.isPaused) {
 						docroot.timeTracker.resumeTracking()
 					} else {

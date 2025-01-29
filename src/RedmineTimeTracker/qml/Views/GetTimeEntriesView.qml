@@ -7,7 +7,7 @@ import drook207.redmineClient
 GroupBox {
 	id: docroot
 	title: "Entries from Id"
-	property TimeTracker timeTracker: TimeTracker {}
+	property TimeTracker timeTracker: undefined
 	property RedmineClient client: undefined
 	anchors.fill: parent
 	ColumnLayout {
@@ -67,8 +67,7 @@ GroupBox {
 								Layout.leftMargin: 10
 							}
 							Label {
-								text: Qt.formatDateTime(modelData.spent_on,
-														"yyyy-MM-dd hh:mm")
+								text: Qt.formatDateTime(modelData.spent_on, "yyyy-MM-dd hh:mm")
 								Layout.fillWidth: true
 								horizontalAlignment: Text.AlignRight
 							}

@@ -119,6 +119,20 @@ void RedmineClient::getTimeEntries(int issueId)
 	mNetworkManager->get(createRequest(endpoint));
 }
 
+void RedmineClient::getEnumerations()
+{
+	setLoading(true);
+	QString endpoint = QString("/enumerations.json");
+	mNetworkManager->get(createRequest(endpoint));
+}
+
+void RedmineClient::getCustomFields()
+{
+	setLoading(true);
+	QString endpoint = QString("/custom_fields.json");
+	mNetworkManager->get(createRequest(endpoint));
+}
+
 void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 {
 	reply->deleteLater();
@@ -129,7 +143,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		QByteArray data = reply->readAll();
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();
-		qDebug(lcRedmineClient) << QT_TR_NOOP(QStringLiteral("Error response data: ")) << response;
+		qWarning(lcRedmineClient) << QT_TR_NOOP(QStringLiteral("Error response data: ")) << response;
 		return;
 	}
 
@@ -151,6 +165,12 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		// Get time entries response
 		if (response.contains("time_entries")) {
 			emit timeEntriesReceived(response["time_entries"].toArray());
+		}
+		if (response.contains("enumerations")) {
+			emit enumerationsReceived(response["enumerations"].toArray());
+		}
+		if (response.contains("custom_fields")) {
+			emit customFieldsReceived(response["custom_fields"].toArray());
 		}
 	}
 }

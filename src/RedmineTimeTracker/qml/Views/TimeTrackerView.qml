@@ -7,7 +7,7 @@ import drook207.redmineClient
 Item {
 
 	id: docroot
-	property TimeTracker timeTracker: TimeTracker {}
+	property TimeTracker timeTracker: undefined
 	property RedmineClient client: undefined
 
 	Connections {
@@ -59,6 +59,7 @@ Item {
 					timeTracker: docroot.timeTracker
 				}
 			}
+
 			AddTimeEntryView {
 				id: addTimeEntryView
 				timeTracker: docroot.timeTracker

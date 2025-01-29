@@ -7,7 +7,8 @@ class TimeEntryDatabase {
 public:
 	static bool initialize();
 
-	static bool addTimeEntry(int issueId, double hours, const QString& comments);
+	static bool addTimeEntry(
+		int issueId, double hours, const QString& comments, const QDateTime& spentOn = QDateTime::currentDateTime());
 
 	static QVector<QVariantMap> getUnsyncedEntries();
 

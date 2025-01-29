@@ -1,4 +1,5 @@
 import QtQuick
+import QtQml
 import QtQuick.Controls
 import QtQuick.Layouts
 import drook207.timeTracker
@@ -13,6 +14,25 @@ GroupBox {
 		client: docroot.client
 		timeTracker: docroot.timeTracker
 	}
+	function saveInput() {
+		docroot.addDialog.spentOn = spentOnField.text
+		docroot.addDialog.issueId = issueIdField.text
+		var german = Qt.locale("de_DE")
+		const number = Number.fromLocaleString(german, timeSpentField.text)
+		docroot.addDialog.hours = number
+
+		console.log("Timer triggered")
+	}
+
+	Timer {
+		id: inputValidatorTimer
+		interval: 500
+		onTriggered: {
+
+			docroot.saveInput()
+		}
+	}
+
 	anchors.fill: parent
 	ColumnLayout {
 		anchors.fill: parent
@@ -30,33 +50,36 @@ GroupBox {
 				validator: IntValidator {
 					bottom: 1
 				}
-				onAcceptableInputChanged: {
-
-					docroot.addDialog.issueId = issueIdField.text
+				onAccepted: {
+					if (acceptableInput) {
+						console.log("Issue Id field: ", issueIdField.text)
+						docroot.addDialog.issueId = issueIdField.text
+					}
+				}
+				onTextChanged: {
+					inputValidatorTimer.restart()
 				}
 			}
 
 			TextField {
 				id: timeSpentField
 				Layout.fillWidth: true
-				placeholderText: qsTr("Enter time spent (eg. 1.0)")
+				placeholderText: qsTr("Enter time spent (eg. 1,0)")
 				validator: DoubleValidator {
 					bottom: 0
 					decimals: 2
 					notation: DoubleValidator.StandardNotation
-					locale: "C"
 				}
-				onAcceptableInputChanged: {
-
-					if (text.length > 0 && acceptableInput) {
-						let parsed = parseFloat(timeSpentField.text)
-						console.log("Final parsed value:", parsed)
-						docroot.addDialog.hours = parseFloat(parsed)
+				onAccepted: {
+					if (acceptableInput) {
+						var german = Qt.locale("de_DE")
+						const number = Number.fromLocaleString(german, text)
+						console.log("Test:", text, ", Testfloat: ", number)
+						docroot.addDialog.hours = number
 					}
 				}
 				onTextChanged: {
-					console.log("Raw text:", text)
-					console.log("Parsed value:", parseFloat(text))
+					inputValidatorTimer.restart()
 				}
 			}
 

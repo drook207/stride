@@ -123,12 +123,16 @@ void TimeTracker::addRecentEntry(const QVariantMap& entry)
 	const auto hours = entry["hours"].toDouble();
 	const auto comment = entry["comments"].toString();
 	const auto issueId = entry["issueId"].toInt();
-	const bool result = TimeEntryDatabase::addTimeEntry(issueId, hours, comment);
+	const auto spentOn = entry["date"].toString();
+	QDateTime spentOnAsDateTime =
+		spentOn.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromString(spentOn, "yyyy-MM-dd");
+	const bool result = TimeEntryDatabase::addTimeEntry(issueId, hours, comment, spentOnAsDateTime);
 	if (!result) {
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return;
 	}
-	emit entriesFromIdChanged();
+	mRecentEntries.append(entry);
+	emit recentEntriesChanged();
 }
 
 void TimeTracker::addEntriesFromId(const QJsonArray& entries)

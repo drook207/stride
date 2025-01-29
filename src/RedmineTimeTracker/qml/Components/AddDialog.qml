@@ -21,22 +21,24 @@ Dialog {
 
 	onAccepted: {
 
-		const hours = parseFloat(docroot.hours)
-		const issueId = parseInt(docroot.issueId)
-		const comments = docroot.comment
-		const spentOn = docroot.spentOn === "" ? new Date() : Date.fromLocaleDateString(
-													 docroot.spentOn)
+		const hoursResult = parseFloat(docroot.hours)
+		const issueIdResult = docroot.issueId
+		const commentsResult = docroot.comment
+		const spentOnResult = docroot.spentOn === "" ? new Date() : docroot.spentOn
+		console.log("Add dialog hours value: ", hoursResult)
+		console.log("Add dialog issueId value: ", issueIdResult)
+		console.log("Add dialog comment value: ", commentsResult)
+		console.log("Add dialog spentOn value: ", spentOnResult)
 		// Add to local history
 		docroot.timeTracker.addRecentEntry({
-											   "issueId": issueId,
-											   "hours": hours,
-											   "comments": comments,
-											   "date": spentOn
+											   "issueId": issueIdResult,
+											   "hours": hoursResult,
+											   "comments": commentsResult,
+											   "date": spentOnResult
 										   })
 
 		// Submit to Redmine
-		docroot.client.createTimeEntry(issueId, hours, comments,
-									   docroot.spentOn)
+		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult)
 	}
 
 	onRejected: {
