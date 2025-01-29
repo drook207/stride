@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QObject>
 #include <QString>
+#include <QUrlQuery>
 #include <QtQml/qqmlregistration.h>
 #include <QtQmlIntegration/qqmlintegration.h>
 
@@ -155,10 +156,11 @@ private:
 
 	/*!
 	 * \brief createRequest
-	 * \param endpoint
+	 * \param endpoint - Target resource, e.g issues.json, projects.json
+	 * \param query - query and parameters for request
 	 * \return
 	 */
-	QNetworkRequest createRequest(const QString& endpoint);
+	QNetworkRequest createRequest(const QString& endpoint, const QUrlQuery& query = QUrlQuery());
 	QString mBaseUrl;
 	QString mApiKey;
 	bool mLoading;

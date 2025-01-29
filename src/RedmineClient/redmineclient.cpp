@@ -57,9 +57,9 @@ void RedmineClient::setLoading(bool loading)
 	}
 }
 
-QNetworkRequest RedmineClient::createRequest(const QString& endpoint)
+QNetworkRequest RedmineClient::createRequest(const QString& endpoint, const QUrlQuery& query)
 {
-	QUrl url(mBaseUrl + endpoint);
+	QUrl url(mBaseUrl + endpoint + "?" + query.toString());
 	QNetworkRequest request(url);
 	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 	request.setRawHeader("X-Redmine-API-Key", mApiKey.toUtf8());
@@ -106,15 +106,17 @@ void RedmineClient::updateTimeEntry(int timeEntryId, double hours, const QString
 	QJsonDocument doc(timeEntryData);
 	QByteArray data = doc.toJson();
 
-	QString endpoint = QString("/time_entries/%1.json").arg(timeEntryId);
+	QString endpoint = ApiResources::TIME_ENTRY.arg(timeEntryId);
 	mNetworkManager->put(createRequest(endpoint), data);
 }
 
 void RedmineClient::getTimeEntries(int issueId)
 {
 	setLoading(true);
-	QString endpoint = QString("/time_entries.json?issue_id=%1").arg(issueId);
-	mNetworkManager->get(createRequest(endpoint));
+
+	QUrlQuery query;
+	query.addQueryItem("issue_id", QString::number(issueId));
+	mNetworkManager->get(createRequest("/time_entries.json", query));
 }
 
 void RedmineClient::handleNetworkReply(QNetworkReply* reply)
