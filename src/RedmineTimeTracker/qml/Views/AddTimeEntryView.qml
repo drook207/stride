@@ -39,24 +39,19 @@ GroupBox {
 			TextField {
 				id: timeSpentField
 				Layout.fillWidth: true
-				placeholderText: qsTr("Enter time spent (eg. 1.0)")
+				placeholderText: qsTr("Enter time spent (eg. 1,0)")
 				validator: DoubleValidator {
 					bottom: 0
 					decimals: 2
 					notation: DoubleValidator.StandardNotation
-					locale: "C"
 				}
-				onAcceptableInputChanged: {
-
-					if (text.length > 0 && acceptableInput) {
-						let parsed = parseFloat(timeSpentField.text)
-						console.log("Final parsed value:", parsed)
-						docroot.addDialog.hours = parseFloat(parsed)
+				onAccepted: {
+					if (acceptableInput) {
+						var german = Qt.locale("de_DE")
+						const number = Number.fromLocaleString(german, text)
+						console.log("Test:", text, ", Testfloat: ", number)
+						docroot.addDialog.hours = number
 					}
-				}
-				onTextChanged: {
-					console.log("Raw text:", text)
-					console.log("Parsed value:", parseFloat(text))
 				}
 			}
 

@@ -18,3 +18,10 @@ if(${CMAKE_SOURCE_DIR} EQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 add_subdirectory(src)
+include(CPack)
+
+set(CPACK_PACKAGE_NAME "RedmineTimeTracker")
+
+set(CPACK_PACKAGE_VENDOR "drook207")
+
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
