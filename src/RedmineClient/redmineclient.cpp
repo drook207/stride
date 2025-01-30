@@ -15,13 +15,13 @@ RedmineClient::RedmineClient(QObject* parent)
 	, mNetworkManager(new QNetworkAccessManager(this))
 {
 	connect(mNetworkManager, &QNetworkAccessManager::finished, this, &RedmineClient::handleNetworkReply);
-	auto baseUrl = Utils::GetSetting("client/baseUrl").toString();
-	auto apiKey = Utils::GetSetting("client/apiKey").toString();
-	if (!baseUrl.isEmpty()) {
-		setBaseUrl(baseUrl);
+	auto url = Utils::GetSetting("client/baseUrl").toString();
+	auto key = Utils::GetSetting("client/apiKey").toString();
+	if (!url.isEmpty()) {
+		setBaseUrl(url);
 	}
-	if (!apiKey.isEmpty()) {
-		setApiKey(apiKey);
+	if (!key.isEmpty()) {
+		setApiKey(key);
 	}
 }
 
