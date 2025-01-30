@@ -192,6 +192,8 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			break;
 		case QNetworkAccessManager::PutOperation:
 			path = reply->url().path();
+			// TODO Add logic to ensure that the recepted id is the correct one
+			// TODO Make the split more obvious
 			id = path.split('/').at(2).split('.').at(0).toInt();
 			emit timeEntryUpdated(id);
 			break;
