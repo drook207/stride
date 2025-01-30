@@ -2,8 +2,8 @@
 #include <QLoggingCategory>
 #include <QSettings>
 #include <QUrlQuery>
-#include <qlogging.h>
-#include <qstringliteral.h>
+#include <QtLogging>
+#include <QStringLiteral>
 
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
 
