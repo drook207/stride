@@ -1,8 +1,8 @@
 #include "redmineclient.h"
 #include <QLoggingCategory>
+#include <QStringLiteral>
 #include <QUrlQuery>
 #include <QtLogging>
-#include <QStringLiteral>
 
 #include "qsettingshelper.h"
 
@@ -44,6 +44,7 @@ void RedmineClient::setApiKey(const QString& key)
 {
 	if (mApiKey != key) {
 		mApiKey = key;
+		Utils::SaveSetting("client/apiKey", mApiKey);
 		Utils::SaveSetting("client/apiKey", mApiKey);
 		emit apiKeyChanged();
 	}
