@@ -11,7 +11,7 @@
 #include <qstringliteral.h>
 #include <utility>
 
-Q_LOGGING_CATEGORY(lcTimeEntryDataBase, "qredmine.timeentry.database")
+Q_LOGGING_CATEGORY(lcDataBase, "qredmine.timeentry.database")
 
 namespace QRedmineClient {
 bool Database::initialize()
