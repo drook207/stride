@@ -167,8 +167,8 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	QJsonDocument doc = QJsonDocument::fromJson(data);
 	QJsonObject response = doc.object();
 
-	QString path = reply->url().path();
-	const int id = path.split('/').at(2).split('.').at(0).toInt();
+	QString path {};
+	int id {};
 	switch (reply->operation()) {
 		case QNetworkAccessManager::HeadOperation:
 			break;
@@ -190,6 +190,8 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			}
 			break;
 		case QNetworkAccessManager::PutOperation:
+			path = reply->url().path();
+			id = path.split('/').at(2).split('.').at(0).toInt();
 			emit timeEntryUpdated(id);
 			break;
 
