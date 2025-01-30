@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QObject>
 #include <QString>
+#include <QUrlQuery>
 #include <QtQml/qqmlregistration.h>
 #include <QtQmlIntegration/qqmlintegration.h>
 
@@ -21,6 +22,16 @@ namespace QRedmineClient {
 /*!
  * \brief The RedmineClient class
  */
+
+namespace ApiResources {
+	static const QString ISSUE = QStringLiteral("issues/%0.json"); // arg[0] == id
+	static const QString ISSUES = QStringLiteral("issues.json");
+	static const QString PROJECT = QStringLiteral("projects/%0.json"); // arg[0] == id
+	static const QString PROJECTS = QStringLiteral("projects.json");
+	static const QString TIME_ENTRY = QStringLiteral("time_entries/%0.json"); // arg[0] == id
+	static const QString TIME_ENTRIES = QStringLiteral("time_entries.json");
+}
+
 class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_OBJECT
 	QML_ELEMENT
@@ -174,10 +185,11 @@ private:
 
 	/*!
 	 * \brief createRequest
-	 * \param endpoint
+	 * \param endpoint - Target resource, e.g issues.json, projects.json
+	 * \param query - query and parameters for request
 	 * \return
 	 */
-	QNetworkRequest createRequest(const QString& endpoint);
+	QNetworkRequest createRequest(const QString& endpoint, const QUrlQuery& query = QUrlQuery());
 	QString mBaseUrl;
 	QString mApiKey;
 	bool mLoading;
