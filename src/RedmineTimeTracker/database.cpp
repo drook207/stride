@@ -6,6 +6,7 @@
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <qcontainerfwd.h>
 #include <qcoreapplication.h>
 #include <qjsonobject.h>
 #include <qstringliteral.h>
@@ -26,7 +27,7 @@ bool Database::initialize()
 	tmpDir = QDir(homePath + "/.config/");
 #endif
 
-	const QString databaseDirName = QCoreApplication::instance()->applicationName(); // QStringLiteral("database");
+	const QString databaseDirName = QCoreApplication::instance()->applicationName();
 
 	if (!tmpDir.exists(databaseDirName)) {
 		tmpDir.mkdir(databaseDirName);
@@ -38,38 +39,36 @@ bool Database::initialize()
 	db.setDatabaseName(databaseName);
 
 	if (!db.open()) {
-		qWarning(lcTimeEntryDataBase) << "Failed to open database:" << db.lastError().text();
+		qWarning(lcDataBase) << QT_TR_NOOP(QStringLiteral("Failed to open database: <%0>")).arg(db.lastError().text());
 		return false;
 	}
 
 	QSqlQuery query;
-	bool status = false;
-	status &= query.exec("CREATE TABLE IF NOT EXISTS enum_time_entry_activities ("
-						 "enum_id INTEGER NOT NULL,"
-						 "is_default BOOLEAN NOT NULL,"
-						 "name TEXT NOT NULL"
-						 ")");
-	status &= query.exec("CREATE TABLE IF NOT EXISTS time_entries ("
-						 "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-						 "issue_id INTEGER NOT NULL,"
-						 "hours REAL NOT NULL,"
-						 "comments TEXT,"
-						 "spent_on DATETIME NOT NULL,"
-						 "sync_status INTEGER DEFAULT 0," // 0 = not synced, 1 = synced
-						 "redmine_id INTEGER," // ID from Redmine after sync
-						 "created_at DATETIME NOT NULL,"
-						 "updated_at DATETIME NOT NULL"
-						 ")");
 
-	return status;
+	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRY_ACTIVITIES_TABLE, query)) {
+		return false;
+	}
+
+	if (!evaluateQueryExec(query)) {
+		return false;
+	}
+
+	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRY_TABLE, query)) {
+		return false;
+	}
+
+	if (!evaluateQueryExec(query)) {
+		return false;
+	}
+	return true;
 }
 
 bool Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
 {
 	QSqlQuery query;
-	query.prepare("INSERT INTO time_entries "
-				  "(issue_id, hours, comments, spent_on, created_at, updated_at) "
-				  "VALUES (?, ?, ?, ?, ?, ?)");
+	if (!evaluateQueryPrepare(SqlQueries::ADD_TIME_ENTRY, query)) {
+		return false;
+	}
 
 	QDateTime now = QDateTime::currentDateTime();
 	query.addBindValue(issueId);
@@ -79,15 +78,16 @@ bool Database::addTimeEntry(int issueId, double hours, const QString& comments, 
 	query.addBindValue(now);
 	query.addBindValue(now);
 
-	return query.exec();
+	if (!evaluateQueryExec(query)) {
+		return false;
+	}
+	return true;
 }
 
 bool Database::updateSyncStatus(int id, int redmineId)
 {
 	QSqlQuery query;
-	if (!query.prepare("UPDATE time_entries "
-					   "SET sync_status = 1, redmine_id = ?, updated_at = ? "
-					   "WHERE id = ?")) {
+	if (!evaluateQueryPrepare(SqlQueries::UPDATE_SYNC_STATE, query)) {
 		return false;
 	}
 
@@ -95,16 +95,17 @@ bool Database::updateSyncStatus(int id, int redmineId)
 	query.addBindValue(QDateTime::currentDateTime());
 	query.addBindValue(id);
 
-	return query.exec();
+	if (!evaluateQueryExec(query)) {
+		return false;
+	}
+	return true;
 }
 
 bool Database::addTimeEntryActivities(const QJsonArray& activities)
 {
 	QSqlQuery query;
 	bool status = false;
-	if (!query.prepare("INSERT INTO enum_time_entry_activities "
-					   "(enum_id, is_default, name) "
-					   "VALUES (?, ?, ?)")) {
+	if (!evaluateQueryPrepare(SqlQueries::ADD_TIME_ENTRY_ACTIVITIE, query)) {
 		return false;
 	}
 
@@ -116,15 +117,50 @@ bool Database::addTimeEntryActivities(const QJsonArray& activities)
 		query.addBindValue(id);
 		query.addBindValue(is_default);
 		query.addBindValue(name);
-		status &= query.exec();
+		status &= evaluateQueryExec(query);
 	}
 	return status;
+}
+
+bool Database::evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& query)
+{
+	if (sqlCommand.isEmpty()) {
+		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("Empty sql command"));
+		return false;
+	}
+	if (!query.prepare(sqlCommand.toString())) {
+		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("SQL Query prepare <%0> failed with: <%1>")
+												 .arg(query.lastQuery(), query.lastError().text()));
+		return false;
+	}
+	return true;
+}
+
+bool Database::evaluateQueryExec(QSqlQuery& query)
+{
+	if (!query.isValid()) {
+		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("Invalid SQL Query"));
+		return false;
+	}
+	if (!query.exec()) {
+		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("SQL Query prepare <%0> failed with: <%1>")
+												 .arg(query.lastQuery(), query.lastError().text()));
+		return false;
+	}
+	return true;
 }
 
 QVector<QVariantMap> Database::getUnsyncedEntries()
 {
 	QVector<QVariantMap> entries;
-	QSqlQuery query("SELECT * FROM time_entries WHERE sync_status = 0");
+
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_UNSYNCED_ENTRIES, query)) {
+		return QVector<QVariantMap>();
+	}
+	if (!evaluateQueryExec(query)) {
+		return QVector<QVariantMap>();
+	}
 
 	while (query.next()) {
 		QVariantMap entry;
@@ -143,23 +179,27 @@ QJsonArray Database::getRecentEntries(int limit)
 {
 	QJsonArray entries;
 	QSqlQuery query;
-	query.prepare("SELECT * FROM time_entries "
-				  "ORDER BY created_at DESC "
-				  "LIMIT ?");
-	query.addBindValue(limit);
-	if (query.exec()) {
-		while (query.next()) {
-			QJsonObject entry;
-			entry["id"] = query.value("id").toInt();
-			entry["issue_id"] = query.value("issue_id").toInt();
-			entry["hours"] = query.value("hours").toDouble();
-			entry["comments"] = query.value("comments").toString();
-			entry["spent_on"] = query.value("spent_on").toString();
-			entry["sync_status"] = query.value("sync_status").toInt();
-			entry["redmine_id"] = query.value("redmine_id").toInt();
-			entries.append(entry);
-		}
+	if (!evaluateQueryPrepare(SqlQueries::GET_RECENT_ENTRIES, query)) {
+		return entries;
 	}
+
+	query.addBindValue(limit);
+	if (!evaluateQueryExec(query)) {
+		return entries;
+	}
+
+	while (query.next()) {
+		QJsonObject entry;
+		entry["id"] = query.value("id").toInt();
+		entry["issue_id"] = query.value("issue_id").toInt();
+		entry["hours"] = query.value("hours").toDouble();
+		entry["comments"] = query.value("comments").toString();
+		entry["spent_on"] = query.value("spent_on").toString();
+		entry["sync_status"] = query.value("sync_status").toInt();
+		entry["redmine_id"] = query.value("redmine_id").toInt();
+		entries.append(entry);
+	}
+
 	return entries;
 }
 }
