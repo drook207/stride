@@ -45,7 +45,6 @@ bool Database::initialize()
 	QSqlQuery query;
 	bool status = false;
 	status &= query.exec("CREATE TABLE IF NOT EXISTS enum_time_entry_activities ("
-						 "id INTEGER PRIMARY KEY AUTOINCREMENT,"
 						 "enum_id INTEGER NOT NULL,"
 						 "is_default BOOLEAN NOT NULL,"
 						 "name TEXT NOT NULL"
