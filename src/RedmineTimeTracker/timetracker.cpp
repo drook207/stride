@@ -5,7 +5,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
-#include <QSettings>
 
 Q_LOGGING_CATEGORY(lcTimeTracker, "qredmine.timetracker")
 

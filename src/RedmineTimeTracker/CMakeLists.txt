@@ -116,7 +116,8 @@ target_link_libraries(
 			Qt6::Quick
 			Qt6::Qml
 			Qt6::Sql
-			redmineclientplugin)
+			redmineclientplugin
+			utils)
 install(
 	TARGETS RedmineTimeTracker
 	BUNDLE DESTINATION .
