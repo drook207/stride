@@ -142,6 +142,20 @@ void TimeTracker::addEntriesFromId(const QJsonArray& entries)
 	}
 }
 
+void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
+{
+	const auto id = issue["id"].toInt(-1);
+	const auto project = issue["project"]["id"].toInt();
+	const auto status = issue["status"]["id"].toInt();
+	const auto description = issue["description"].toString();
+	const auto createdOn = issue["created_on"].toVariant().toDateTime();
+	const auto updatedOn = issue["updated_on"].toVariant().toDateTime();
+
+	if (!TimeEntryDatabase::addIssue(id, project, status, description, createdOn, updatedOn)) {
+		qWarning() << "Could not add issue  " << issue;
+	}
+}
+
 void TimeTracker::loadRecentEntries()
 {
 	auto entries = TimeEntryDatabase::getRecentEntries();

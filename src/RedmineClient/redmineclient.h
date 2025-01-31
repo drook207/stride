@@ -80,6 +80,7 @@ public:
 	 */
 	bool loading() const;
 
+	Q_INVOKABLE void getIssue(int issueId);
 public slots:
 	// Create a new time entry
 	/*!
@@ -149,6 +150,12 @@ signals:
 	 * \param error
 	 */
 	void errorOccurred(const QString& error);
+
+	/*!
+	 * \brief issueReceived Emitted every time a signal is received
+	 * \param issue The QJsonObject containing issue details
+	 */
+	void issueReceived(const QJsonObject& issue);
 
 private slots:
 	/*!

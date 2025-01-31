@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QObject>
 #include <QString>
 #include <QTimer>
@@ -96,6 +97,8 @@ public slots:
 	void addRecentEntry(const QVariantMap& entry);
 
 	void addEntriesFromId(const QJsonArray& entries);
+
+	void addIssueToDatabase(const QJsonObject& issue);
 
 signals:
 	/*!

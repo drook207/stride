@@ -99,4 +99,22 @@ ApplicationWindow {
 			Layout.alignment: Qt.AlignHCenter
 		}
 	}
+
+
+	Rectangle {
+		anchors {
+			top: parent.top
+			left: parent.left
+		}
+		width: 20
+		height: 20
+		color: "red"
+
+		MouseArea {
+			anchors.fill: parent
+			onClicked: {
+				redmineClient.getIssue(37444)
+			}
+		}
+	}
 }

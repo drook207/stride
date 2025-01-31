@@ -33,17 +33,71 @@ bool TimeEntryDatabase::initialize()
 	}
 
 	QSqlQuery query;
-	return query.exec("CREATE TABLE IF NOT EXISTS time_entries ("
-					  "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-					  "issue_id INTEGER NOT NULL,"
-					  "hours REAL NOT NULL,"
-					  "comments TEXT,"
-					  "spent_on DATETIME NOT NULL,"
-					  "sync_status INTEGER DEFAULT 0," // 0 = not synced, 1 = synced
-					  "redmine_id INTEGER," // ID from Redmine after sync
-					  "created_at DATETIME NOT NULL,"
-					  "updated_at DATETIME NOT NULL"
-					  ")");
+	if (!query.exec("CREATE TABLE IF NOT EXISTS time_entries ("
+					"id INTEGER PRIMARY KEY AUTOINCREMENT,"
+					"issue_id INTEGER NOT NULL,"
+					"hours REAL NOT NULL,"
+					"comments TEXT,"
+					"spent_on DATETIME NOT NULL,"
+					"sync_status INTEGER DEFAULT 0," // 0 = not synced, 1 = synced
+					"redmine_id INTEGER," // ID from Redmine after sync
+					"created_at DATETIME NOT NULL,"
+					"updated_at DATETIME NOT NULL"
+					")")) {
+		qWarning() << QStringLiteral("Could not create time_entries table: %0").arg(query.lastError().text());
+		return false;
+	}
+
+	return createIssuesDatabase();
+}
+
+bool TimeEntryDatabase::createIssuesDatabase()
+{
+	QSqlQuery query;
+	if (!query.prepare("CREATE TABLE IF NOT EXISTS issues ("
+					   "id INTEGER PRIMARY KEY NOT NULL, "
+					   "project_id INTEGER, "
+					   "status_id INTEGER NOT NULL, "
+					   "description TEXT, "
+					   "created_on DATETIME NOT NULL, "
+					   "updated_on DATETIME NOT NULL)")) {
+		qWarning() << QStringLiteral("Could not prepare issues table creation query: %0").arg(query.lastError().text());
+		return false;
+	}
+
+	if (!query.exec()) {
+		qWarning() << QStringLiteral("Could not execute issues table creation query: %0").arg(query.lastError().text());
+		return false;
+	}
+
+	return true;
+}
+
+bool TimeEntryDatabase::addIssue(int issueId, int projectId, int statusId, const QString& description,
+	const QDateTime& createdOn, const QDateTime& updatedOn)
+{
+	QSqlQuery query;
+	// INSERT OR REPLACE
+	if (!query.prepare("REPLACE INTO issues ("
+					   "id, project_id, status_id, description, created_on, updated_on) VALUES "
+					   "(:id,:project_id,:status_id,:description,:created_on,:updated_on)")) {
+		qWarning() << QStringLiteral("Could not prepare issue creation query: %0").arg(query.lastError().text());
+		return false;
+	}
+
+	query.bindValue(":id", issueId);
+	query.bindValue(":project_id", projectId);
+	query.bindValue(":status_id", statusId);
+	query.bindValue(":description", description);
+	query.bindValue(":created_on", createdOn);
+	query.bindValue(":updated_on", updatedOn);
+
+	if (!query.exec()) {
+		qWarning() << QStringLiteral("Could not execute issue creation query: %0").arg(query.lastError().text());
+		return false;
+	}
+
+	return true;
 }
 
 bool TimeEntryDatabase::addTimeEntry(int issueId, double hours, const QString& comments)

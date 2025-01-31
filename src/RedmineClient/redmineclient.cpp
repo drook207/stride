@@ -118,6 +118,12 @@ void RedmineClient::getTimeEntries(int issueId)
 	mNetworkManager->get(createRequest(ApiResources::TIME_ENTRIES, query));
 }
 
+void RedmineClient::getIssue(int issueId)
+{
+	setLoading(true);
+	mNetworkManager->get(createRequest(ApiResources::ISSUE.arg(QString::number(issueId))));
+}
+
 void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 {
 	reply->deleteLater();
@@ -150,6 +156,11 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		// Get time entries response
 		if (response.contains("time_entries")) {
 			emit timeEntriesReceived(response["time_entries"].toArray());
+		}
+		if (response.contains("issue")) {
+			QJsonObject issue = response["issue"].toObject();
+			qInfo() << "Received " << issue;
+			emit issueReceived(issue);
 		}
 	}
 }

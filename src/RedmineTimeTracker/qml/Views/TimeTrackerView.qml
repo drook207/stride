@@ -16,6 +16,14 @@ Item {
 			docroot.timeTracker.addEntriesFromId(entries)
 		}
 	}
+
+	Connections {
+		target: docroot.client
+		function onIssueReceived(issue) {
+			docroot.timeTracker.addIssueToDatabase(issue)
+		}
+	}
+
 	SubmitDialog {
 		id: submitDialog
 		timeTracker: docroot.timeTracker
