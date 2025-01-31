@@ -18,8 +18,7 @@ ApplicationWindow {
 
 	RedmineClient {
 		id: redmineClient
-		baseUrl: redmineClient.baseUrl
-				 === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
+		baseUrl: redmineClient.baseUrl === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
 		apiKey: redmineClient.apiKey === "" ? "your-api-key" : redmineClient.apiKey
 
 		onErrorOccurred: function (error) {
@@ -115,6 +114,19 @@ ApplicationWindow {
 		BusyIndicator {
 			running: redmineClient.loading
 			Layout.alignment: Qt.AlignHCenter
+		}
+	}
+
+	ConnectionStateLamp {
+		anchors {
+			left: parent.left
+			bottom: parent.bottom
+			margins: 10
+		}
+		connectionState: redmineClient.connectionState
+
+		onConnectionStateChanged: {
+			console.log("Conn state " + connectionState + " " + RedmineClient.OFFLINE)
 		}
 	}
 }

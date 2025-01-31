@@ -51,6 +51,8 @@ qt_add_qml_module(
 	timetracker.cpp
 	database.h
 	database.cpp
+	timeentryactivitiesmodel.h
+	timeentryactivitiesmodel.cpp
 	RESOURCES
 	qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
 	qml/Assets/Icons/solid/gear.svg
@@ -61,9 +63,9 @@ qt_add_qml_module(
 	${CMAKE_BINARY_DIR}/qt/qml/drook207/timeTracker
 	QML_FILES
 	qml/Views/AddTimeEntryView.qml
-	QML_FILES
 	qml/Components/AddDialog.qml
-	SOURCES timeentryactivitiesmodel.h timeentryactivitiesmodel.cpp)
+	qml/Components/ConnectionStateLamp.qml
+	)
 
 if(ANDROID)
 	if(QT_KNOWN_POLICY_QTP0002)
