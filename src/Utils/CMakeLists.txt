@@ -11,7 +11,8 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 
 qt_add_library(utils STATIC
 	Utils_global.h
-	qsettingshelper.h)
+	qsettingshelper.h
+	stringhelper.h)
 
 
 target_include_directories(utils INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
