@@ -26,7 +26,7 @@ void QRedmineClient::RedmineClient::setupConnectionCheckTimer()
 	connect(this, &RedmineClient::apiKeyChanged, this, &RedmineClient::activatePeriodicConnectionCheck);
 	connect(this, &RedmineClient::connectionStateChanged, this, [&] {
 		QString state = QMetaEnum::fromType<RedmineClient::ConnectionState>().valueToKey(mConnectionState);
-		qInfo() << QStringLiteral("Connection state changed to: %0").arg(state);
+		qDebug(lcRedmineClient) << QStringLiteral("Connection state changed to: %0").arg(state);
 	});
 	activatePeriodicConnectionCheck();
 }

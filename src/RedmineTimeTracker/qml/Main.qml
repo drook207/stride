@@ -124,9 +124,5 @@ ApplicationWindow {
 			margins: 10
 		}
 		connectionState: redmineClient.connectionState
-
-		onConnectionStateChanged: {
-			console.log("Conn state " + connectionState + " " + RedmineClient.OFFLINE)
-		}
 	}
 }
