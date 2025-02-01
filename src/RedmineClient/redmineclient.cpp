@@ -1,5 +1,6 @@
 #include "redmineclient.h"
 #include <QLoggingCategory>
+#include <QMetaEnum>
 #include <QStringLiteral>
 #include <QUrlQuery>
 #include <QtLogging>
@@ -9,6 +10,27 @@
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
 
 namespace QRedmineClient {
+
+const QList<QNetworkReply::NetworkError> RedmineClient::REASONS_FOR_CONNECTION_LOSS = {
+	QNetworkReply::HostNotFoundError, QNetworkReply::TimeoutError, QNetworkReply::OperationCanceledError,
+	QNetworkReply::TemporaryNetworkFailureError, QNetworkReply::AuthenticationRequiredError,
+	QNetworkReply::UnknownServerError
+};
+
+void QRedmineClient::RedmineClient::setupConnectionCheckTimer()
+{
+	mConnectionCheckTimer.setInterval(5000);
+	connect(&mConnectionCheckTimer, &QTimer::timeout, this, &RedmineClient::checkConnection);
+
+	connect(this, &RedmineClient::baseUrlChanged, this, &RedmineClient::activatePeriodicConnectionCheck);
+	connect(this, &RedmineClient::apiKeyChanged, this, &RedmineClient::activatePeriodicConnectionCheck);
+	connect(this, &RedmineClient::connectionStateChanged, this, [&] {
+		QString state = QMetaEnum::fromType<RedmineClient::ConnectionState>().valueToKey(mConnectionState);
+		qDebug(lcRedmineClient) << QStringLiteral("Connection state changed to: %0").arg(state);
+	});
+	activatePeriodicConnectionCheck();
+}
+
 RedmineClient::RedmineClient(QObject* parent)
 	: QObject(parent)
 	, mLoading(false)
@@ -23,11 +45,29 @@ RedmineClient::RedmineClient(QObject* parent)
 	if (!key.isEmpty()) {
 		setApiKey(key);
 	}
+
+	setupConnectionCheckTimer();
 }
 
 RedmineClient::~RedmineClient() { delete mNetworkManager; }
 
 QString RedmineClient::baseUrl() const { return mBaseUrl; }
+
+void RedmineClient::activatePeriodicConnectionCheck()
+{
+	if (mBaseUrl.isEmpty() || mApiKey.isEmpty()) {
+		return;
+	}
+
+	mConnectionCheckTimer.start();
+}
+
+void RedmineClient::checkConnection()
+{
+	QUrlQuery query;
+	query.addQueryItem("limit", 0);
+	mNetworkManager->get(createRequest(ApiResources::ISSUES, query));
+}
 
 void RedmineClient::setBaseUrl(const QString& url)
 {
@@ -67,6 +107,33 @@ QNetworkRequest RedmineClient::createRequest(const QString& endpoint, const QUrl
 	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 	request.setRawHeader("X-Redmine-API-Key", mApiKey.toUtf8());
 	return request;
+}
+
+RedmineClient::ConnectionState RedmineClient::connectionState() const { return mConnectionState; }
+
+void RedmineClient::setConnectionState(RedmineClient::ConnectionState newConnectionState)
+{
+	if (mConnectionState == newConnectionState) {
+		return;
+	}
+	mConnectionState = newConnectionState;
+	emit connectionStateChanged();
+}
+
+void RedmineClient::toggleConnectionState(ConnectionState newConnectionState)
+{
+	ConnectionState target = newConnectionState;
+	switch (mConnectionState) {
+		case OFFLINE:
+			target = newConnectionState;
+			break;
+		case TEMPORARY_OFFLINE:
+		case ONLINE:
+			// We have been online before, so we only become temporary offline again
+			target = OFFLINE == newConnectionState ? TEMPORARY_OFFLINE : newConnectionState;
+			break;
+	}
+	setConnectionState(target);
 }
 
 void RedmineClient::createTimeEntry(
@@ -161,9 +228,23 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		QByteArray data = reply->readAll();
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();
-		qWarning(lcRedmineClient) << QT_TR_NOOP(QStringLiteral("Error response data: ")) << response;
+
+		qWarning(lcRedmineClient) << tr("[%0] %1: ").arg(reply->error()).arg(reply->errorString())
+								  << QJsonDocument(response).toJson(QJsonDocument::Compact);
+
+		if (REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {
+			toggleConnectionState(ConnectionState::OFFLINE);
+			if (reply->error() == QNetworkReply::HostNotFoundError ||
+				reply->error() == QNetworkReply::AuthenticationRequiredError) {
+				mConnectionCheckTimer.stop();
+			}
+		}
+
 		return;
 	}
+
+	activatePeriodicConnectionCheck();
+	setConnectionState(ConnectionState::ONLINE);
 
 	QByteArray data = reply->readAll();
 	QJsonDocument doc = QJsonDocument::fromJson(data);
