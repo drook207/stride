@@ -13,6 +13,8 @@ Item {
 		edge: Qt.RightEdge
 		interactive: true
 		modal: true
+		dim: false
+
 		Material.roundedScale: Material.NotRounded
 
 		ColumnLayout {
