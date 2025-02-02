@@ -1,8 +1,9 @@
-import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.Effects
 import drook207.timeTracker
 import drook207.redmineClient
 
@@ -125,4 +126,6 @@ ApplicationWindow {
 		}
 		connectionState: redmineClient.connectionState
 	}
+
+	BurgerMenu {}
 }

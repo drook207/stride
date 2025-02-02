@@ -1,97 +1,86 @@
 import QtQuick
 import QtQuick.Controls
-import QtQml
+import QtQuick.Controls.Material
+import QtQuick.Layouts
+import QtQuick.Effects
 
-Rectangle {
-	width: 300
-	height: 400
-	color: "white"
-
-	Button {
-		id: menuButton
-		anchors {
-			left: parent.left
-			top: parent.top
-			margins: 10
-		}
-		width: 40
-		height: 40
-
-		Image {
-			anchors.centerIn: parent
-			source: "qrc:/qml/Assets/Icons/solid/bars.svg" // Replace with your burger icon
-			width: 24
-			height: 24
-		}
-
-		onClicked: menu.visible = !menu.visible
-	}
-
-	Rectangle {
-		id: menu
+Item {
+	anchors.fill: parent
+	Drawer {
+		id: drawer
 		width: 200
 		height: parent.height
-		color: "#f0f0f0"
-		visible: false
+		edge: Qt.RightEdge
+		interactive: true
+		modal: true
+		Material.roundedScale: Material.NotRounded
 
-		Column {
+		ColumnLayout {
 			anchors {
 				top: parent.top
-				topMargin: 60
 				left: parent.left
 				right: parent.right
 			}
-			spacing: 10
+			spacing: 0
 
-			MenuItem {
+			Button {
+				Layout.fillWidth: true
+				Layout.preferredHeight: 80
 				text: "Home"
-				onClicked: {
-					menu.visible = false
-					console.log("Home clicked")
-				}
+				flat: true
+				Material.roundedScale: Material.NotRounded
 			}
 
-			MenuItem {
+			Rectangle {
+				id: divider
+				Layout.fillWidth: true
+				Layout.preferredHeight: 2
+				color: Material.frameColor
+
+				MultiEffect {
+					source: divider
+					anchors.fill: divider
+					shadowBlur: 1
+					shadowEnabled: true
+					shadowColor: "black"
+					shadowVerticalOffset: 0
+					shadowHorizontalOffset: 0
+				}
+			}
+			Button {
+				Layout.fillWidth: true
+				Layout.preferredHeight: 80
+				flat: true
+				text: "Time Tracking"
+				Material.roundedScale: Material.NotRounded
+			}
+
+			Rectangle {
+				Layout.fillWidth: true
+				Layout.preferredHeight: 4
+				Layout.margins: 0
+				color: Material.accentColor
+			}
+			Button {
+				Layout.fillWidth: true
+				Layout.preferredHeight: 80
+				Layout.margins: 0
+				flat: true
 				text: "Settings"
-				onClicked: {
-					menu.visible = false
-					console.log("Settings clicked")
-				}
-			}
-
-			MenuItem {
-				text: "About"
-				onClicked: {
-					menu.visible = false
-					console.log("About clicked")
-				}
+				Material.roundedScale: Material.NotRounded
+				padding: 0
 			}
 		}
 	}
+
+	Button {
+		anchors {
+			right: parent.right
+			top: parent.top
+		}
+		icon.source: "qrc:/qt/qml/drook207/timeTracker/qml/Assets/Icons/solid/bars.svg"
+		onClicked: drawer.open()
+		Material.roundedScale: Material.NotRounded
+		display: AbstractButton.IconOnly
+	}
 }
-// // MenuItem component
-// Component {
-// 	id: menuItemComponent
-
-// 	Rectangle {
-// 		property alias text: itemText.text
-// 		signal clicked()
-
-// 		width: parent.width
-// 		height: 50
-// 		color: mouseArea.pressed ? "#e0e0e0" : "transparent"
-
-// 		Text {
-// 			id: itemText
-// 			anchors.verticalCenter: parent.verticalCenter
-// 			x: 20
-// 			font.pixelSize: 16
-// 		}
-
-// 		MouseArea {
-// 			id: mouseArea
-// 			anchors.fill: parent
-// 			onClicked: parent.clicked()
-// 		}
-// 	}
-// }
