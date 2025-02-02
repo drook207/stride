@@ -85,11 +85,6 @@ ApplicationWindow {
 				text: Qt.application.version
 			}
 		}
-
-		// TimeTrackerView {
-		// 	client: redmineClient
-		// 	timeTracker: timeTrackerInstance
-		// }
 	}
 
 	Popup {
