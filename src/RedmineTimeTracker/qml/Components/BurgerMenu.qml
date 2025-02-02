@@ -5,7 +5,17 @@ import QtQuick.Layouts
 import QtQuick.Effects
 
 Item {
+	id: burgerMenu
 	anchors.fill: parent
+
+	required property StackView view
+	required property var componentsToLoad
+	required property var buttonTitles
+
+	Component.onCompleted: {
+		console.log("buttonTitles: " + buttonTitles)
+	}
+
 	Drawer {
 		id: drawer
 		width: 200
@@ -25,52 +35,48 @@ Item {
 			}
 			spacing: 0
 
-			Button {
-				Layout.fillWidth: true
-				Layout.preferredHeight: 80
-				text: "Home"
-				flat: true
-				Material.roundedScale: Material.NotRounded
-			}
+			Repeater {
+				model: burgerMenu.buttonTitles
 
-			Rectangle {
-				id: divider
-				Layout.fillWidth: true
-				Layout.preferredHeight: 2
-				color: Material.frameColor
+				Button {
+					required property int index
 
-				MultiEffect {
-					source: divider
-					anchors.fill: divider
-					shadowBlur: 1
-					shadowEnabled: true
-					shadowColor: "black"
-					shadowVerticalOffset: 0
-					shadowHorizontalOffset: 0
+					Layout.fillWidth: true
+					Layout.preferredHeight: 80
+					text: burgerMenu.buttonTitles[index]
+					flat: true
+					Material.roundedScale: Material.NotRounded
+
+					Component.onCompleted: {
+						console.log("2 buttonTitles: " + burgerMenu.buttonTitles)
+					}
+
+					onClicked: {
+						burgerMenu.view.replaceCurrentItem(burgerMenu.componentsToLoad[index])
+					}
+
+					Rectangle {
+						id: divider
+						visible: parent.index != (burgerMenu.componentsToLoad.count - 1)
+						anchors {
+							left: parent.left
+							right: parent.right
+							bottom: parent.bottom
+						}
+						height: 4
+						color: Material.frameColor
+
+						MultiEffect {
+							source: divider
+							anchors.fill: divider
+							shadowBlur: 1
+							shadowEnabled: true
+							shadowColor: "black"
+							shadowVerticalOffset: 0
+							shadowHorizontalOffset: 0
+						}
+					}
 				}
-			}
-			Button {
-				Layout.fillWidth: true
-				Layout.preferredHeight: 80
-				flat: true
-				text: "Time Tracking"
-				Material.roundedScale: Material.NotRounded
-			}
-
-			Rectangle {
-				Layout.fillWidth: true
-				Layout.preferredHeight: 4
-				Layout.margins: 0
-				color: Material.accentColor
-			}
-			Button {
-				Layout.fillWidth: true
-				Layout.preferredHeight: 80
-				Layout.margins: 0
-				flat: true
-				text: "Settings"
-				Material.roundedScale: Material.NotRounded
-				padding: 0
 			}
 		}
 	}
@@ -79,6 +85,7 @@ Item {
 		anchors {
 			right: parent.right
 			top: parent.top
+
 		}
 		icon.source: "qrc:/qt/qml/drook207/timeTracker/qml/Assets/Icons/solid/bars.svg"
 		onClicked: drawer.open()

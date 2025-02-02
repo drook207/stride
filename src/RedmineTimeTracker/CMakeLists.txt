@@ -44,10 +44,11 @@ qt_add_qml_module(
 	qml/Views/RecentEntriesView.qml
 	qml/Views/TrackTimeView.qml
 	qml/Views/GetTimeEntriesView.qml
-	qml/Components/SubmitDialog.qml
-	qml/Components/BurgerMenu.qml
 	qml/Views/AddTimeEntryView.qml
 	qml/Views/SettingsView.qml
+	qml/Components/SubmitDialog.qml
+	qml/Components/MessageDialog.qml
+	qml/Components/BurgerMenu.qml
 	qml/Components/AddDialog.qml
 	qml/Components/ConnectionStateLamp.qml
 	SOURCES

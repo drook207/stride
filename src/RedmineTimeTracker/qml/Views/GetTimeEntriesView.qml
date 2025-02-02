@@ -7,9 +7,10 @@ import drook207.redmineClient
 GroupBox {
 	id: docroot
 	title: "Entries from Id"
-	property TimeTracker timeTracker: undefined
-	property RedmineClient client: undefined
-	anchors.fill: parent
+
+	required property TimeTracker timeTracker
+	required property RedmineClient client
+
 	ColumnLayout {
 		anchors.fill: parent
 		spacing: 10

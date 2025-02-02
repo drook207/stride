@@ -7,19 +7,15 @@ import drook207.redmineClient
 Item {
 
 	id: docroot
-	property TimeTracker timeTracker: undefined
-	property RedmineClient client: undefined
+	required property TimeTracker timeTracker
+	required property RedmineClient client
+	required property SubmitDialog submitDialog
 
 	Connections {
 		target: docroot.client
 		function onTimeEntriesReceived(entries) {
 			docroot.timeTracker.addEntriesFromId(entries)
 		}
-	}
-	SubmitDialog {
-		id: submitDialog
-		timeTracker: docroot.timeTracker
-		client: docroot.client
 	}
 	ColumnLayout {
 		anchors.fill: parent
@@ -52,7 +48,7 @@ Item {
 					id: trackTimeView
 					timeTracker: docroot.timeTracker
 					client: docroot.client
-					submitDialog: submitDialog
+					submitDialog: docroot.submitDialog
 				}
 				RecentEntriesView {
 					id: recentEntriesView

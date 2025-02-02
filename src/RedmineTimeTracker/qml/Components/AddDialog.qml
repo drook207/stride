@@ -6,11 +6,14 @@ import drook207.redmineClient
 
 Dialog {
 	id: docroot
+	parent: Overlay.overlay
+	width: parent.width * 0.8
+	height: content.implicitHeight + 200
+
 	title: "Add Time Entry"
 	standardButtons: Dialog.Yes | Dialog.No
 	x: (parent.width - width) / 2
 	y: (parent.height - height) / 2
-	parent: Overlay.overlay
 	modal: true
 	property TimeTracker timeTracker: undefined
 	property RedmineClient client: undefined
@@ -46,6 +49,7 @@ Dialog {
 	}
 
 	contentItem: ColumnLayout {
+		id: content
 		spacing: 10
 
 		Label {

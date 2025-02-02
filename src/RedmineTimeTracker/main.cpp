@@ -1,4 +1,5 @@
 // main.cpp
+#include <QDirIterator>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -12,6 +13,7 @@ int main(int argc, char* argv[])
 	app.setOrganizationName("YourOrg");
 	app.setOrganizationDomain("yourorg.com");
 	app.setApplicationName("RedmineTimeTracker");
+	app.setApplicationVersion("1.0.0");
 
 	// Create QML engine and load main QML file
 	QQmlApplicationEngine engine;
