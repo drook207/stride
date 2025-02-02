@@ -12,10 +12,6 @@ Item {
 	required property var componentsToLoad
 	required property var buttonTitles
 
-	Component.onCompleted: {
-		console.log("buttonTitles: " + buttonTitles)
-	}
-
 	Drawer {
 		id: drawer
 		width: 200
@@ -46,10 +42,6 @@ Item {
 					text: burgerMenu.buttonTitles[index]
 					flat: true
 					Material.roundedScale: Material.NotRounded
-
-					Component.onCompleted: {
-						console.log("2 buttonTitles: " + burgerMenu.buttonTitles)
-					}
 
 					onClicked: {
 						burgerMenu.view.replaceCurrentItem(burgerMenu.componentsToLoad[index])
@@ -85,9 +77,9 @@ Item {
 		anchors {
 			right: parent.right
 			top: parent.top
-
 		}
-		icon.source: "qrc:/qt/qml/drook207/timeTracker/qml/Assets/Icons/solid/bars.svg"
+		icon.width: 5
+		icon.source: "qrc:/qt/qml/drook207/timeTracker/qml/Assets/Icons/solid/ellipsis-vertical.svg"
 		onClicked: drawer.open()
 		Material.roundedScale: Material.NotRounded
 		display: AbstractButton.IconOnly

@@ -62,6 +62,7 @@ qt_add_qml_module(
 	qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
 	qml/Assets/Icons/solid/gear.svg
 	qml/Assets/Icons/solid/bars.svg
+	qml/Assets/Icons/solid/ellipsis-vertical.svg
 	qml/Assets/Icons/app-icon.svg
 	qml/Assets/Icons/app-icon.ico
 	OUTPUT_DIRECTORY

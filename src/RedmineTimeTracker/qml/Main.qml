@@ -32,6 +32,7 @@ ApplicationWindow {
 			messageDialog.open()
 		}
 	}
+
 	Component.onCompleted: {
 		redmineClient.getEnumerations(0)
 		redmineClient.getEnumerations(1)
