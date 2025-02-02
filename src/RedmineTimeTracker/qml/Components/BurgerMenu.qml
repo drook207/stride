@@ -76,6 +76,7 @@ Item {
 	Button {
 		anchors {
 			right: parent.right
+			rightMargin: drawer.width * drawer.position
 			top: parent.top
 		}
 		icon.width: 5

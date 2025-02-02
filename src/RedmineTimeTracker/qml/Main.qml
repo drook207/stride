@@ -152,6 +152,10 @@ ApplicationWindow {
 	}
 
 	BurgerMenu {
+		anchors {
+			topMargin: -5
+		}
+
 		view: stackView
 		componentsToLoad: [trackTimeView, addTimeEntryView, getTimeEntriesView, settingsView]
 		buttonTitles: ["Track Time", "Add Time Entry", "Get Time Entries", "Settings"]
