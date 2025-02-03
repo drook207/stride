@@ -40,6 +40,7 @@ qt_add_qml_module(
 	1.0
 	QML_FILES
 	qml/Main.qml
+	qml/Header.qml
 	qml/Views/TimeTrackerView.qml
 	qml/Views/RecentEntriesView.qml
 	qml/Views/TrackTimeView.qml

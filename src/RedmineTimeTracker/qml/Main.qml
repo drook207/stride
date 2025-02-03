@@ -51,8 +51,24 @@ ApplicationWindow {
 		}
 	}
 
+	Header {
+		id: header
+		anchors {
+			left: parent.left
+			right: parent.right
+			top: parent.top
+			topMargin: 5
+		}
+	}
+
 	ColumnLayout {
-		anchors.fill: parent
+		anchors {
+			top: header.bottom
+			bottom: parent.bottom
+			left: parent.left
+			right: parent.right
+		}
+
 		anchors.margins: 10
 		spacing: 10
 
@@ -83,7 +99,8 @@ ApplicationWindow {
 					verticalCenter: parent.verticalCenter
 				}
 
-				text: Qt.application.version
+				color: Material.accentColor
+				text: Application.version
 			}
 		}
 	}
@@ -152,9 +169,6 @@ ApplicationWindow {
 	}
 
 	BurgerMenu {
-		anchors {
-			topMargin: -5
-		}
 
 		view: stackView
 		componentsToLoad: [trackTimeView, addTimeEntryView, getTimeEntriesView, settingsView]

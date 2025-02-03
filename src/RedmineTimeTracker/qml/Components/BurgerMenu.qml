@@ -1,6 +1,6 @@
+import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QtQuick.Effects
 
@@ -21,8 +21,19 @@ Item {
 		modal: true
 		dim: false
 
-		Material.roundedScale: Material.NotRounded
+		background: Rectangle {
+			color: Material.dialogColor
 
+			border {
+				color: "black"
+				width: 1
+			}
+
+			topLeftRadius: 5
+			bottomLeftRadius: 5
+		}
+
+		Material.roundedScale: Material.NotRounded
 		ColumnLayout {
 			anchors {
 				top: parent.top
@@ -38,7 +49,7 @@ Item {
 					required property int index
 
 					Layout.fillWidth: true
-					Layout.preferredHeight: 80
+					Layout.preferredHeight: 35
 					text: burgerMenu.buttonTitles[index]
 					flat: true
 					Material.roundedScale: Material.NotRounded
@@ -52,37 +63,36 @@ Item {
 						visible: parent.index != (burgerMenu.componentsToLoad.count - 1)
 						anchors {
 							left: parent.left
+							leftMargin: 2
 							right: parent.right
+							rightMargin: 2
 							bottom: parent.bottom
 						}
-						height: 4
+						height: 2
 						color: Material.frameColor
-
-						MultiEffect {
-							source: divider
-							anchors.fill: divider
-							shadowBlur: 1
-							shadowEnabled: true
-							shadowColor: "black"
-							shadowVerticalOffset: 0
-							shadowHorizontalOffset: 0
-						}
 					}
 				}
 			}
 		}
 	}
 
-	Button {
+	RoundButton {
+		id: menuButton
 		anchors {
 			right: parent.right
-			rightMargin: drawer.width * drawer.position
+			rightMargin: drawer.width * drawer.position + 5
 			top: parent.top
+			topMargin: 0
 		}
-		icon.width: 5
-		icon.source: "qrc:/qt/qml/drook207/timeTracker/qml/Assets/Icons/solid/ellipsis-vertical.svg"
+		padding: 0
+		width: 35
+		height: 35
+		icon {
+			width: 5
+			height: menuButton.height / 2
+			source: "qrc:/qt/qml/drook207/timeTracker/qml/Assets/Icons/solid/ellipsis-vertical.svg"
+		}
 		onClicked: drawer.open()
-		Material.roundedScale: Material.NotRounded
 		display: AbstractButton.IconOnly
 	}
 }
