@@ -71,8 +71,12 @@ void RedmineClient::checkConnection()
 
 void RedmineClient::setBaseUrl(const QString& url)
 {
-	if (mBaseUrl != url) {
-		mBaseUrl = url;
+	auto newUrl = url;
+	if (!newUrl.endsWith('/')) {
+		newUrl = url + "/";
+	}
+	if (mBaseUrl != newUrl) {
+		mBaseUrl = newUrl;
 		Utils::SaveSetting("client/baseUrl", mBaseUrl);
 		emit baseUrlChanged();
 	}

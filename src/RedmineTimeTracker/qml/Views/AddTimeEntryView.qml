@@ -33,9 +33,13 @@ GroupBox {
 		}
 	}
 
-	anchors.fill: parent
 	ColumnLayout {
-		anchors.fill: parent
+		anchors {
+			left: parent.left
+			right: parent.right
+			top: parent.top
+		}
+
 		spacing: 5
 		GridLayout {
 			columns: 1

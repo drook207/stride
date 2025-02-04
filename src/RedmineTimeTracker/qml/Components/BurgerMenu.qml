@@ -1,97 +1,98 @@
+import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
-import QtQml
+import QtQuick.Layouts
+import QtQuick.Effects
 
-Rectangle {
-	width: 300
-	height: 400
-	color: "white"
+Item {
+	id: burgerMenu
+	anchors.fill: parent
 
-	Button {
-		id: menuButton
-		anchors {
-			left: parent.left
-			top: parent.top
-			margins: 10
-		}
-		width: 40
-		height: 40
+	required property StackView view
+	required property var componentsToLoad
+	required property var buttonTitles
 
-		Image {
-			anchors.centerIn: parent
-			source: "qrc:/qml/Assets/Icons/solid/bars.svg" // Replace with your burger icon
-			width: 24
-			height: 24
-		}
-
-		onClicked: menu.visible = !menu.visible
-	}
-
-	Rectangle {
-		id: menu
+	Drawer {
+		id: drawer
 		width: 200
 		height: parent.height
-		color: "#f0f0f0"
-		visible: false
+		edge: Qt.RightEdge
+		interactive: true
+		modal: true
+		dim: false
 
-		Column {
+		background: Rectangle {
+			color: Material.dialogColor
+
+			border {
+				color: "black"
+				width: 1
+			}
+
+			topLeftRadius: 5
+			bottomLeftRadius: 5
+		}
+
+		Material.roundedScale: Material.NotRounded
+		ColumnLayout {
 			anchors {
 				top: parent.top
-				topMargin: 60
 				left: parent.left
 				right: parent.right
 			}
-			spacing: 10
+			spacing: 0
 
-			MenuItem {
-				text: "Home"
-				onClicked: {
-					menu.visible = false
-					console.log("Home clicked")
-				}
-			}
+			Repeater {
+				model: burgerMenu.buttonTitles
 
-			MenuItem {
-				text: "Settings"
-				onClicked: {
-					menu.visible = false
-					console.log("Settings clicked")
-				}
-			}
+				Button {
+					required property int index
 
-			MenuItem {
-				text: "About"
-				onClicked: {
-					menu.visible = false
-					console.log("About clicked")
+					Layout.fillWidth: true
+					Layout.preferredHeight: 35
+					text: burgerMenu.buttonTitles[index]
+					flat: true
+					Material.roundedScale: Material.NotRounded
+
+					onClicked: {
+						burgerMenu.view.replaceCurrentItem(burgerMenu.componentsToLoad[index])
+					}
+
+					Rectangle {
+						id: divider
+						visible: parent.index != (burgerMenu.componentsToLoad.count - 1)
+						anchors {
+							left: parent.left
+							leftMargin: 2
+							right: parent.right
+							rightMargin: 2
+							bottom: parent.bottom
+						}
+						height: 2
+						color: Material.frameColor
+					}
 				}
 			}
 		}
 	}
+
+	RoundButton {
+		id: menuButton
+		anchors {
+			right: parent.right
+			rightMargin: drawer.width * drawer.position + 5
+			top: parent.top
+			topMargin: 0
+		}
+		padding: 0
+		width: 35
+		height: 35
+		icon {
+			width: 5
+			height: menuButton.height / 2
+			source: "qrc:/qt/qml/drook207/timeTracker/qml/Assets/Icons/solid/ellipsis-vertical.svg"
+		}
+		onClicked: drawer.open()
+		display: AbstractButton.IconOnly
+	}
 }
-// // MenuItem component
-// Component {
-// 	id: menuItemComponent
-
-// 	Rectangle {
-// 		property alias text: itemText.text
-// 		signal clicked()
-
-// 		width: parent.width
-// 		height: 50
-// 		color: mouseArea.pressed ? "#e0e0e0" : "transparent"
-
-// 		Text {
-// 			id: itemText
-// 			anchors.verticalCenter: parent.verticalCenter
-// 			x: 20
-// 			font.pixelSize: 16
-// 		}
-
-// 		MouseArea {
-// 			id: mouseArea
-// 			anchors.fill: parent
-// 			onClicked: parent.clicked()
-// 		}
-// 	}
-// }

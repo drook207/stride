@@ -8,12 +8,17 @@ GroupBox {
 	id: docroot
 	title: "Time Tracking"
 	Layout.fillWidth: true
-	property TimeTracker timeTracker: undefined
-	property RedmineClient client: undefined
-	property SubmitDialog submitDialog: undefined
+	required property TimeTracker timeTracker
+	required property RedmineClient client
+	required property SubmitDialog submitDialog
 
 	ColumnLayout {
-		anchors.fill: parent
+		anchors {
+			left: parent.left
+			right: parent.right
+			top: parent.top
+		}
+
 		spacing: 10
 
 		GridLayout {

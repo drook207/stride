@@ -5,10 +5,13 @@ import drook207.timeTracker
 
 GroupBox {
 	id: docroot
+
+	required property TimeTracker timeTracker
+
 	title: "Recent Time Entries"
 	Layout.fillWidth: true
 	Layout.fillHeight: true
-	property TimeTracker timeTracker: undefined
+
 	ListView {
 		id: recentEntries
 		anchors.fill: parent

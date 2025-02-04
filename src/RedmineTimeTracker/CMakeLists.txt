@@ -40,12 +40,18 @@ qt_add_qml_module(
 	1.0
 	QML_FILES
 	qml/Main.qml
+	qml/Header.qml
 	qml/Views/TimeTrackerView.qml
 	qml/Views/RecentEntriesView.qml
 	qml/Views/TrackTimeView.qml
 	qml/Views/GetTimeEntriesView.qml
+	qml/Views/AddTimeEntryView.qml
+	qml/Views/SettingsView.qml
 	qml/Components/SubmitDialog.qml
+	qml/Components/MessageDialog.qml
 	qml/Components/BurgerMenu.qml
+	qml/Components/AddDialog.qml
+	qml/Components/ConnectionStateLamp.qml
 	SOURCES
 	timetracker.h
 	timetracker.cpp
@@ -57,14 +63,11 @@ qt_add_qml_module(
 	qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
 	qml/Assets/Icons/solid/gear.svg
 	qml/Assets/Icons/solid/bars.svg
+	qml/Assets/Icons/solid/ellipsis-vertical.svg
 	qml/Assets/Icons/app-icon.svg
 	qml/Assets/Icons/app-icon.ico
 	OUTPUT_DIRECTORY
 	${CMAKE_BINARY_DIR}/qt/qml/drook207/timeTracker
-	QML_FILES
-	qml/Views/AddTimeEntryView.qml
-	qml/Components/AddDialog.qml
-	qml/Components/ConnectionStateLamp.qml
 	)
 
 if(ANDROID)
