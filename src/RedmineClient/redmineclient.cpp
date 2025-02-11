@@ -1,36 +1,82 @@
 #include "redmineclient.h"
 #include <QLoggingCategory>
+#include <QMetaEnum>
+#include <QStringLiteral>
 #include <QUrlQuery>
+#include <QtLogging>
 
 #include "qsettingshelper.h"
 
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
 
 namespace QRedmineClient {
+
+const QList<QNetworkReply::NetworkError> RedmineClient::REASONS_FOR_CONNECTION_LOSS = {
+	QNetworkReply::HostNotFoundError, QNetworkReply::TimeoutError, QNetworkReply::OperationCanceledError,
+	QNetworkReply::TemporaryNetworkFailureError, QNetworkReply::AuthenticationRequiredError,
+	QNetworkReply::UnknownServerError
+};
+
+void QRedmineClient::RedmineClient::setupConnectionCheckTimer()
+{
+	mConnectionCheckTimer.setInterval(5000);
+	connect(&mConnectionCheckTimer, &QTimer::timeout, this, &RedmineClient::checkConnection);
+
+	connect(this, &RedmineClient::baseUrlChanged, this, &RedmineClient::activatePeriodicConnectionCheck);
+	connect(this, &RedmineClient::apiKeyChanged, this, &RedmineClient::activatePeriodicConnectionCheck);
+	connect(this, &RedmineClient::connectionStateChanged, this, [&] {
+		QString state = QMetaEnum::fromType<RedmineClient::ConnectionState>().valueToKey(mConnectionState);
+		qDebug(lcRedmineClient) << QStringLiteral("Connection state changed to: %0").arg(state);
+	});
+	activatePeriodicConnectionCheck();
+}
+
 RedmineClient::RedmineClient(QObject* parent)
 	: QObject(parent)
 	, mLoading(false)
 	, mNetworkManager(new QNetworkAccessManager(this))
 {
 	connect(mNetworkManager, &QNetworkAccessManager::finished, this, &RedmineClient::handleNetworkReply);
-	auto baseUrl = Utils::GetSetting("client/baseUrl").toString();
-	auto apiKey = Utils::GetSetting("client/apiKey").toString();
-	if (!baseUrl.isEmpty()) {
-		setBaseUrl(baseUrl);
+	auto url = Utils::GetSetting("client/baseUrl").toString();
+	auto key = Utils::GetSetting("client/apiKey").toString();
+	if (!url.isEmpty()) {
+		setBaseUrl(url);
 	}
-	if (!apiKey.isEmpty()) {
-		setApiKey(apiKey);
+	if (!key.isEmpty()) {
+		setApiKey(key);
 	}
+
+	setupConnectionCheckTimer();
 }
 
 RedmineClient::~RedmineClient() { delete mNetworkManager; }
 
 QString RedmineClient::baseUrl() const { return mBaseUrl; }
 
+void RedmineClient::activatePeriodicConnectionCheck()
+{
+	if (mBaseUrl.isEmpty() || mApiKey.isEmpty()) {
+		return;
+	}
+
+	mConnectionCheckTimer.start();
+}
+
+void RedmineClient::checkConnection()
+{
+	QUrlQuery query;
+	query.addQueryItem("limit", 0);
+	mNetworkManager->get(createRequest(ApiResources::ISSUES, query));
+}
+
 void RedmineClient::setBaseUrl(const QString& url)
 {
-	if (mBaseUrl != url) {
-		mBaseUrl = url;
+	auto newUrl = url;
+	if (!newUrl.endsWith('/')) {
+		newUrl = url + "/";
+	}
+	if (mBaseUrl != newUrl) {
+		mBaseUrl = newUrl;
 		Utils::SaveSetting("client/baseUrl", mBaseUrl);
 		emit baseUrlChanged();
 	}
@@ -42,6 +88,7 @@ void RedmineClient::setApiKey(const QString& key)
 {
 	if (mApiKey != key) {
 		mApiKey = key;
+		Utils::SaveSetting("client/apiKey", mApiKey);
 		Utils::SaveSetting("client/apiKey", mApiKey);
 		emit apiKeyChanged();
 	}
@@ -66,15 +113,42 @@ QNetworkRequest RedmineClient::createRequest(const QString& endpoint, const QUrl
 	return request;
 }
 
+RedmineClient::ConnectionState RedmineClient::connectionState() const { return mConnectionState; }
+
+void RedmineClient::setConnectionState(RedmineClient::ConnectionState newConnectionState)
+{
+	if (mConnectionState == newConnectionState) {
+		return;
+	}
+	mConnectionState = newConnectionState;
+	emit connectionStateChanged();
+}
+
+void RedmineClient::toggleConnectionState(ConnectionState newConnectionState)
+{
+	ConnectionState target = newConnectionState;
+	switch (mConnectionState) {
+		case OFFLINE:
+			target = newConnectionState;
+			break;
+		case TEMPORARY_OFFLINE:
+		case ONLINE:
+			// We have been online before, so we only become temporary offline again
+			target = OFFLINE == newConnectionState ? TEMPORARY_OFFLINE : newConnectionState;
+			break;
+	}
+	setConnectionState(target);
+}
+
 void RedmineClient::createTimeEntry(
-	int issueId, double hours, const QString& comments, const QDateTime& spentOn, int activityId)
+	int issueId, double hours, const QString& comments, const QString& spentOn, int activityId)
 {
 	setLoading(true);
 
 	QJsonObject timeEntryData;
 	QJsonObject timeEntry;
 	timeEntry["issue_id"] = issueId;
-	timeEntry["spent_on"] = spentOn.toString("yyyy-MM-dd");
+	timeEntry["spent_on"] = spentOn;
 	timeEntry["hours"] = hours;
 	timeEntry["comments"] = comments;
 	// FIXME Currently not supported
@@ -124,6 +198,36 @@ void RedmineClient::getIssue(int issueId)
 	mNetworkManager->get(createRequest(ApiResources::ISSUE.arg(QString::number(issueId))));
 }
 
+void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
+{
+	setLoading(true);
+	QString endpoint;
+	switch (enumerationType) {
+		case TIME_ENTRY_ACTIVITIES:
+			endpoint = QString("/enumerations/time_entry_activities.json");
+			break;
+		case ISSUE_PRIORITIES:
+			endpoint = QString("/enumerations/issue_priorities.json");
+			break;
+		case DOCUMENT_CATEGORIES:
+			endpoint = QString("/enumerations/document_categories.json");
+			break;
+		default:
+			qWarning(lcRedmineClient()) << QT_TR_NOOP(
+				QStringLiteral("No valid Enumeration type is provided: <%0>").arg(enumerationType));
+			return;
+	}
+
+	mNetworkManager->get(createRequest(endpoint));
+}
+
+void RedmineClient::getCustomFields()
+{
+	setLoading(true);
+	QString endpoint = QString("/custom_fields.json");
+	mNetworkManager->get(createRequest(endpoint));
+}
+
 void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 {
 	reply->deleteLater();
@@ -134,34 +238,72 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		QByteArray data = reply->readAll();
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();
-		qDebug(lcRedmineClient) << QT_TR_NOOP(QStringLiteral("Error response data: ")) << response;
+
+		qWarning(lcRedmineClient) << tr("[%0] %1: ").arg(reply->error()).arg(reply->errorString())
+								  << QJsonDocument(response).toJson(QJsonDocument::Compact);
+
+		if (REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {
+			toggleConnectionState(ConnectionState::OFFLINE);
+			if (reply->error() == QNetworkReply::HostNotFoundError ||
+				reply->error() == QNetworkReply::AuthenticationRequiredError) {
+				mConnectionCheckTimer.stop();
+			}
+		}
+
 		return;
 	}
+
+	activatePeriodicConnectionCheck();
+	setConnectionState(ConnectionState::ONLINE);
 
 	QByteArray data = reply->readAll();
 	QJsonDocument doc = QJsonDocument::fromJson(data);
 	QJsonObject response = doc.object();
 
-	QString operation = reply->url().path();
-	if (reply->operation() == QNetworkAccessManager::PostOperation) {
-		// Create time entry response
-		if (response.contains("time_entry")) {
-			emit timeEntryCreated(response["time_entry"].toObject());
-		}
-	} else if (reply->operation() == QNetworkAccessManager::PutOperation) {
-		// Update time entry response
-		int timeEntryId = operation.split('/').at(2).split('.').at(0).toInt();
-		emit timeEntryUpdated(timeEntryId);
-	} else if (reply->operation() == QNetworkAccessManager::GetOperation) {
-		// Get time entries response
-		if (response.contains("time_entries")) {
-			emit timeEntriesReceived(response["time_entries"].toArray());
-		}
-		if (response.contains("issue")) {
-			QJsonObject issue = response["issue"].toObject();
-			qInfo() << "Received " << issue;
-			emit issueReceived(issue);
-		}
+	QString path {};
+	int id {};
+	switch (reply->operation()) {
+		case QNetworkAccessManager::HeadOperation:
+			break;
+		case QNetworkAccessManager::GetOperation:
+			if (response.contains("time_entries")) {
+				emit timeEntriesReceived(response["time_entries"].toArray());
+			}
+			if (response.contains("time_entry_activities")) {
+				emit timeEntryActivitiesReceived(response["time_entry_activities"].toArray());
+			}
+			if (response.contains("issue_priorities")) {
+				emit enumerationsReceived(response["issue_priorities"].toArray());
+			}
+			if (response.contains("document_categories")) {
+				emit enumerationsReceived(response["document_categories"].toArray());
+			}
+			if (response.contains("custom_fields")) {
+				emit customFieldsReceived(response["custom_fields"].toArray());
+			}
+			if (response.contains("issue")) {
+				emit issueReceived(response["issue"].toObject());
+			}
+			break;
+		case QNetworkAccessManager::PutOperation:
+			path = reply->url().path();
+			// TODO Add logic to ensure that the recepted id is the correct one
+			// TODO Make the split more obvious
+			id = path.split('/').at(2).split('.').at(0).toInt();
+			emit timeEntryUpdated(id);
+			break;
+
+		case QNetworkAccessManager::PostOperation:
+			if (response.contains("time_entry")) {
+				emit timeEntryCreated(response["time_entry"].toObject());
+			}
+			break;
+		case QNetworkAccessManager::DeleteOperation:
+			break;
+		case QNetworkAccessManager::CustomOperation:
+			break;
+		case QNetworkAccessManager::UnknownOperation:
+			break;
 	}
 }
 }

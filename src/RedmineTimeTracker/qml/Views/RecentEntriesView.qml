@@ -5,10 +5,13 @@ import drook207.timeTracker
 
 GroupBox {
 	id: docroot
+
+	required property TimeTracker timeTracker
+
 	title: "Recent Time Entries"
 	Layout.fillWidth: true
 	Layout.fillHeight: true
-	property TimeTracker timeTracker: TimeTracker {}
+
 	ListView {
 		id: recentEntries
 		anchors.fill: parent
@@ -35,8 +38,7 @@ GroupBox {
 						Layout.leftMargin: 10
 					}
 					Label {
-						text: Qt.formatDateTime(modelData.spent_on,
-												"yyyy-MM-dd hh:mm")
+						text: Qt.formatDateTime(modelData.spent_on, "yyyy-MM-dd hh:mm")
 						Layout.fillWidth: true
 						horizontalAlignment: Text.AlignRight
 					}

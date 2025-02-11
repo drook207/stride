@@ -7,8 +7,9 @@ import drook207.redmineClient
 Item {
 
 	id: docroot
-	property TimeTracker timeTracker: TimeTracker {}
-	property RedmineClient client: undefined
+	required property TimeTracker timeTracker
+	required property RedmineClient client
+	required property SubmitDialog submitDialog
 
 	Connections {
 		target: docroot.client
@@ -40,6 +41,10 @@ Item {
 				text: qsTr("Track Time")
 			}
 			TabButton {
+				text: qsTr("Add Time Entry")
+			}
+
+			TabButton {
 				text: qsTr("Get Time Entries")
 			}
 		}
@@ -56,13 +61,20 @@ Item {
 					id: trackTimeView
 					timeTracker: docroot.timeTracker
 					client: docroot.client
-					submitDialog: submitDialog
+					submitDialog: docroot.submitDialog
 				}
 				RecentEntriesView {
 					id: recentEntriesView
 					timeTracker: docroot.timeTracker
 				}
 			}
+
+			AddTimeEntryView {
+				id: addTimeEntryView
+				timeTracker: docroot.timeTracker
+				client: docroot.client
+			}
+
 			GetTimeEntriesView {
 				id: getRecentEntriesView
 				timeTracker: docroot.timeTracker

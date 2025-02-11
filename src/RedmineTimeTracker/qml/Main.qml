@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
+import QtQuick.Effects
 import drook207.timeTracker
 import drook207.redmineClient
 
@@ -18,8 +19,7 @@ ApplicationWindow {
 
 	RedmineClient {
 		id: redmineClient
-		baseUrl: redmineClient.baseUrl
-				 === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
+		baseUrl: redmineClient.baseUrl === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
 		apiKey: redmineClient.apiKey === "" ? "your-api-key" : redmineClient.apiKey
 
 		onErrorOccurred: function (error) {
@@ -33,73 +33,102 @@ ApplicationWindow {
 		}
 	}
 
-	Dialog {
-		id: messageDialog
-		title: "Message"
-		standardButtons: Dialog.Ok
-		x: (parent.width - width) / 2
-		y: (parent.height - height) / 2
-		parent: Overlay.overlay
-		modal: true
+	Component.onCompleted: {
+		redmineClient.getEnumerations(0)
+		redmineClient.getEnumerations(1)
+		redmineClient.getEnumerations(2)
+	}
+	TimeTracker {
+		id: timeTrackerInstance
+	}
+	TimeEntryActivitiesModel {
+		id: activitiesModel
+	}
+	Connections {
+		target: redmineClient
+		function onTimeEntryActivitiesReceived(value) {
+			activitiesModel.addTimeEntryActivities(value)
+		}
+	}
 
-		property alias text: messageLabel.text
-
-		contentItem: Label {
-			id: messageLabel
-			wrapMode: Text.WordWrap
+	Header {
+		id: header
+		anchors {
+			left: parent.left
+			right: parent.right
+			top: parent.top
+			topMargin: 5
 		}
 	}
 
 	ColumnLayout {
-		anchors.fill: parent
+		anchors {
+			top: header.bottom
+			bottom: parent.bottom
+			left: parent.left
+			right: parent.right
+		}
+
 		anchors.margins: 10
 		spacing: 10
 
-		GroupBox {
-			title: "Connection Settings"
-			Layout.fillWidth: true
-
-			GridLayout {
-				columns: 2
-				rowSpacing: 10
-				columnSpacing: 10
-				anchors.fill: parent
-
-				Label {
-					text: "Redmine URL:"
-				}
-				TextField {
-					Layout.fillWidth: true
-					text: redmineClient.baseUrl
-					onTextChanged: redmineClient.baseUrl = text
-					placeholderText: "Enter your Redmine URL"
-				}
-
-				Label {
-					text: "API Key:"
-				}
-				TextField {
-					Layout.fillWidth: true
-					text: redmineClient.apiKey
-					onTextChanged: redmineClient.apiKey = text
-					echoMode: TextInput.Password
-					placeholderText: "Enter your API key"
-				}
-			}
-		}
-
-		TimeTrackerView {
+		StackView {
+			id: stackView
 			Layout.fillWidth: true
 			Layout.fillHeight: true
-			client: redmineClient
+			initialItem: trackTimeView
 		}
+		Item {
+			id: footer
+			Layout.fillWidth: true
+			Layout.minimumHeight: 20
+			Layout.maximumHeight: 20
 
-		BusyIndicator {
-			running: redmineClient.loading
-			Layout.alignment: Qt.AlignHCenter
+			ConnectionStateLamp {
+				anchors {
+					left: parent.left
+					verticalCenter: parent.verticalCenter
+				}
+				connectionState: redmineClient.connectionState
+			}
+
+			Text {
+				id: version
+				anchors {
+					right: parent.right
+					verticalCenter: parent.verticalCenter
+				}
+
+				color: Material.accentColor
+				text: Application.version
+			}
 		}
 	}
 
+	Popup {
+
+		id: busyIndicator
+		BusyIndicator {
+			running: redmineClient.loading
+
+			onRunningChanged: {
+				if (running) {
+					busyIndicator.open()
+				} else {
+					busyIndicator.close()
+				}
+			}
+		}
+	}
+
+	Component {
+		id: trackTimeView
+		TrackTimeView {
+			timeTracker: timeTrackerInstance
+			client: redmineClient
+			submitDialog: subDialog
+		}
+	}
 
 	Rectangle {
 		anchors {
@@ -117,4 +146,50 @@ ApplicationWindow {
 			}
 		}
 	}
+
+	Component {
+		id: addTimeEntryView
+		AddTimeEntryView {
+			timeTracker: timeTrackerInstance
+			client: redmineClient
+		}
+	}
+
+	Component {
+		id: getTimeEntriesView
+
+		GetTimeEntriesView {
+			timeTracker: timeTrackerInstance
+			client: redmineClient
+		}
+	}
+
+	Component {
+		id: settingsView
+
+		SettingsView {
+			timeTracker: timeTrackerInstance
+			client: redmineClient
+			submitDialog: subDialog
+		}
+	}
+
+	MessageDialog {
+		id: messageDialog
+	}
+
+	SubmitDialog {
+		id: subDialog
+
+		timeTracker: timeTrackerInstance
+		client: redmineClient
+	}
+
+	BurgerMenu {
+
+		view: stackView
+		componentsToLoad: [trackTimeView, addTimeEntryView, getTimeEntriesView, settingsView]
+		buttonTitles: ["Track Time", "Add Time Entry", "Get Time Entries", "Settings"]
+	}
+
 }

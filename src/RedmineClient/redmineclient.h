@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <QUrlQuery>
 #include <QtQml/qqmlregistration.h>
 #include <QtQmlIntegration/qqmlintegration.h>
@@ -40,8 +41,25 @@ class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_PROPERTY(QString baseUrl READ baseUrl WRITE setBaseUrl NOTIFY baseUrlChanged)
 	Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
 	Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
-
+	Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged FINAL)
 public:
+	enum EnumerationTypes {
+		TIME_ENTRY_ACTIVITIES,
+		ISSUE_PRIORITIES,
+		DOCUMENT_CATEGORIES
+
+	};
+	Q_ENUM(EnumerationTypes)
+
+	enum ConnectionState {
+		OFFLINE, // Either never connected to server or API key / url is wrong
+		TEMPORARY_OFFLINE, // Connection was established but now Redmine server is not reachable anymore
+		ONLINE // Connected and authorized
+	};
+	Q_ENUM(ConnectionState)
+
+	static const QList<QNetworkReply::NetworkError> REASONS_FOR_CONNECTION_LOSS;
+
 	/*!
 	 * \brief RedmineClient
 	 * \param parent
@@ -80,8 +98,12 @@ public:
 	 */
 	bool loading() const;
 
-	Q_INVOKABLE void getIssue(int issueId);
+	void getIssue(int issueId);
+
+	RedmineClient::ConnectionState connectionState() const;
+
 public slots:
+
 	// Create a new time entry
 	/*!
 	 * \brief createTimeEntry
@@ -92,8 +114,8 @@ public slots:
 	 * \param activityId
 	 */
 	void createTimeEntry(int issueId, double hours, const QString& comments,
-		const QDateTime& spentOn = QDateTime::currentDateTime(),
-		int activityId = 0); // 9 is often "Development"
+		const QString& spentOn = QDateTime::currentDateTime().toString("yyyy-MM-dd"),
+		int activityId = 4); // 4 is often "Development"
 
 	// Update an existing time entry
 	/*!
@@ -110,6 +132,16 @@ public slots:
 	 * \param issueId
 	 */
 	void getTimeEntries(int issueId);
+
+	/*!
+	 * \brief getEnumerations
+	 */
+	void getEnumerations(EnumerationTypes enumerationType);
+
+	/*!
+	 * \brief getCustomFields
+	 */
+	void getCustomFields();
 
 signals:
 	/*!
@@ -146,6 +178,20 @@ signals:
 	void timeEntriesReceived(const QJsonArray& entries);
 
 	/*!
+	 * \brief enumerationsReceived
+	 * \param entries
+	 */
+	void enumerationsReceived(const QJsonArray& enums);
+
+	/*!
+	 * \brief timeEntryActivitiesReceived
+	 * \param enums
+	 */
+	void timeEntryActivitiesReceived(const QJsonArray& activities);
+
+	void customFieldsReceived(const QJsonArray& customFields);
+
+	/*!
 	 * \brief errorOccurred
 	 * \param error
 	 */
@@ -157,6 +203,8 @@ signals:
 	 */
 	void issueReceived(const QJsonObject& issue);
 
+	void connectionStateChanged();
+
 private slots:
 	/*!
 	 * \brief handleNetworkReply
@@ -164,12 +212,22 @@ private slots:
 	 */
 	void handleNetworkReply(QNetworkReply* reply);
 
+	void activatePeriodicConnectionCheck();
+
+	void checkConnection();
+
 private:
 	/*!
 	 * \brief setLoading
 	 * \param loading
 	 */
 	void setLoading(bool loading);
+
+	ConnectionState mConnectionState = ConnectionState::OFFLINE;
+	QTimer mConnectionCheckTimer;
+	void setupConnectionCheckTimer();
+	void setConnectionState(RedmineClient::ConnectionState newConnectionState);
+	void toggleConnectionState(RedmineClient::ConnectionState newConnectionState);
 
 	/*!
 	 * \brief createRequest

@@ -1,6 +1,6 @@
 // timetracker.cpp
 #include "timetracker.h"
-#include "timetrackerdatabase.h"
+#include "database.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -17,7 +17,7 @@ TimeTracker::TimeTracker(QObject* parent)
 {
 	connect(&mTimer, &QTimer::timeout, this, &TimeTracker::updateElapsedTime);
 	mTimer.setInterval(1000); // Update every second
-	TimeEntryDatabase::initialize();
+	Database::initialize();
 	loadRecentEntries();
 }
 
@@ -122,12 +122,16 @@ void TimeTracker::addRecentEntry(const QVariantMap& entry)
 	const auto hours = entry["hours"].toDouble();
 	const auto comment = entry["comments"].toString();
 	const auto issueId = entry["issueId"].toInt();
-	const bool result = TimeEntryDatabase::addTimeEntry(issueId, hours, comment);
+	const auto spentOn = entry["date"].toString();
+	QDateTime spentOnAsDateTime =
+		spentOn.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromString(spentOn, "yyyy-MM-dd");
+	const bool result = Database::addTimeEntry(issueId, hours, comment, spentOnAsDateTime);
 	if (!result) {
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return;
 	}
-	emit entriesFromIdChanged();
+	mRecentEntries.append(entry);
+	emit recentEntriesChanged();
 }
 
 void TimeTracker::addEntriesFromId(const QJsonArray& entries)
@@ -151,14 +155,14 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 	const auto createdOn = issue["created_on"].toVariant().toDateTime();
 	const auto updatedOn = issue["updated_on"].toVariant().toDateTime();
 
-	if (!TimeEntryDatabase::addIssue(id, project, status, description, createdOn, updatedOn)) {
+	if (!Database::addIssue(id, project, status, description, createdOn, updatedOn)) {
 		qWarning() << "Could not add issue  " << issue;
 	}
 }
 
 void TimeTracker::loadRecentEntries()
 {
-	auto entries = TimeEntryDatabase::getRecentEntries();
+	auto entries = Database::getRecentEntries();
 	if (!entries.isEmpty()) {
 		mRecentEntries.clear();
 		for (const QJsonValue& value : std::as_const(entries)) {

@@ -24,7 +24,13 @@ if(QT_KNOWN_POLICY_QTP0004)
 	qt_policy(SET QTP0004 NEW)
 endif()
 
-qt_add_executable(RedmineTimeTracker main.cpp)
+if(WIN32)
+	enable_language(RC)
+	set(APP_ICON_RESOURCE_WINDOWS
+		${CMAKE_CURRENT_SOURCE_DIR}/qml/Assets/Icons/app.rc)
+endif()
+
+qt_add_executable(RedmineTimeTracker main.cpp ${APP_ICON_RESOURCE_WINDOWS})
 
 qt_add_qml_module(
 	RedmineTimeTracker
@@ -34,23 +40,35 @@ qt_add_qml_module(
 	1.0
 	QML_FILES
 	qml/Main.qml
+	qml/Header.qml
 	qml/Views/TimeTrackerView.qml
 	qml/Views/RecentEntriesView.qml
 	qml/Views/TrackTimeView.qml
 	qml/Views/GetTimeEntriesView.qml
+	qml/Views/AddTimeEntryView.qml
+	qml/Views/SettingsView.qml
 	qml/Components/SubmitDialog.qml
+	qml/Components/MessageDialog.qml
 	qml/Components/BurgerMenu.qml
+	qml/Components/AddDialog.qml
+	qml/Components/ConnectionStateLamp.qml
 	SOURCES
 	timetracker.h
 	timetracker.cpp
-	timetrackerdatabase.h
-	timetrackerdatabase.cpp
+	database.h
+	database.cpp
+	timeentryactivitiesmodel.h
+	timeentryactivitiesmodel.cpp
 	RESOURCES
 	qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
 	qml/Assets/Icons/solid/gear.svg
 	qml/Assets/Icons/solid/bars.svg
+	qml/Assets/Icons/solid/ellipsis-vertical.svg
+	qml/Assets/Icons/app-icon.svg
+	qml/Assets/Icons/app-icon.ico
 	OUTPUT_DIRECTORY
-	${CMAKE_BINARY_DIR}/qt/qml/drook207/timeTracker)
+	${CMAKE_BINARY_DIR}/qt/qml/drook207/timeTracker
+	)
 
 if(ANDROID)
 	if(QT_KNOWN_POLICY_QTP0002)
@@ -59,7 +77,7 @@ if(ANDROID)
 	set_target_properties(
 		RedmineTimeTracker
 		PROPERTIES QT_ANDROID_PACKAGE_SOURCE_DIR
-		           "${CMAKE_CURRENT_SOURCE_DIR}/android"
+				   "${CMAKE_CURRENT_SOURCE_DIR}/android"
 				   QT_ANDROID_PACKAGE_NAME "drook207.redminetimetracker"
 				   QT_ANDROID_TARGET_SDK_VERSION 35
 				   QT_ANDROID_VERSION_CODE 20
@@ -83,23 +101,23 @@ if(ANDROID)
 endif()
 
 set_target_properties(RedmineTimeTracker PROPERTIES WIN32_EXECUTABLE TRUE
-	                                                MACOSX_BUNDLE TRUE)
+													MACOSX_BUNDLE TRUE)
 
 if(IOS)
 	set(asset_catalog_path "ios/Assets.xcassets")
 	target_sources(RedmineTimeTracker PRIVATE "${asset_catalog_path}")
 	set_source_files_properties(${asset_catalog_path}
-		                        PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+								PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	set_target_properties(
 		RedmineTimeTracker
 		PROPERTIES XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon)
 endif()
 target_include_directories(RedmineTimeTracker
-	                       INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+						   INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(
 	RedmineTimeTracker
 	PRIVATE Qt6::Core
-	        Qt6::Network
+			Qt6::Network
 			Qt6::Gui
 			Qt6::Quick
 			Qt6::Qml
@@ -121,3 +139,18 @@ qt_generate_deploy_qml_app_script(
 	NO_UNSUPPORTED_PLATFORM_ERROR
 	DEPLOY_USER_QML_MODULES_ON_UNSUPPORTED_PLATFORM)
 install(SCRIPT ${deploy_script})
+
+include(CPack)
+
+set(CPACK_PACKAGE_NAME "RedmineTimeTracker")
+
+set(CPACK_PACKAGE_VENDOR "drook207")
+
+set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/LICENSE)
+
+set(CPACK_NSIS_MUI_ICON
+	"${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker/qml/Assets/Icons/app-icon.ico")
+set(CPACK_NSIS_MUI_UNIICON
+	"${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker/qml/Assets/Icons/app-icon.ico")
+set(CPACK_CREATE_DESKTOP_LINKS Redmine-Time-Tracker)
+set(CPACK_PACKAGE_EXECUTABLES "Redmine-Time-Tracker" "RedmineTimeTracker")
