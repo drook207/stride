@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(Utils
-	LANGUAGES CXX
-	VERSION 0.0.1)
+        LANGUAGES CXX
+        VERSION 0.0.1)
 
 qt_standard_project_setup()
 
@@ -10,9 +10,11 @@ find_package(QT NAMES Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 
 qt_add_library(utils STATIC
-	Utils_global.h
-	qsettingshelper.h
-	stringhelper.h)
+        Utils_global.h
+        qsettingshelper.h
+        stringhelper.h
+        logging.cpp
+        logging.h)
 
 
 target_include_directories(utils INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
