@@ -98,8 +98,6 @@ public:
 	 */
 	bool loading() const;
 
-	void getIssue(int issueId);
-
 	RedmineClient::ConnectionState connectionState() const;
 
 public slots:
@@ -142,6 +140,12 @@ public slots:
 	 * \brief getCustomFields
 	 */
 	void getCustomFields();
+
+	/*!
+	 * \brief getIssue
+	 * \param issueId
+	 */
+	void getIssue(int issueId);
 
 signals:
 	/*!

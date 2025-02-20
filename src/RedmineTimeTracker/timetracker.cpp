@@ -17,7 +17,9 @@ TimeTracker::TimeTracker(QObject* parent)
 {
 	connect(&mTimer, &QTimer::timeout, this, &TimeTracker::updateElapsedTime);
 	mTimer.setInterval(1000); // Update every second
-	Database::initialize();
+	if (!Database::initialize()) {
+		qCWarning(lcTimeTracker) << "Could not initialise database";
+	}
 	loadRecentEntries();
 }
 
@@ -149,13 +151,14 @@ void TimeTracker::addEntriesFromId(const QJsonArray& entries)
 void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 {
 	const auto id = issue["id"].toInt(-1);
+	const auto subject = issue["subject"].toString();
 	const auto project = issue["project"]["id"].toInt();
 	const auto status = issue["status"]["id"].toInt();
 	const auto description = issue["description"].toString();
 	const auto createdOn = issue["created_on"].toVariant().toDateTime();
 	const auto updatedOn = issue["updated_on"].toVariant().toDateTime();
 
-	if (!Database::addIssue(id, project, status, description, createdOn, updatedOn)) {
+	if (!Database::addIssue(id, subject, project, status, description, createdOn, updatedOn)) {
 		qWarning() << "Could not add issue  " << issue;
 	}
 }

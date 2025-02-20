@@ -81,7 +81,7 @@ bool Database::createIssuesDatabase()
 	return true;
 }
 
-bool Database::addIssue(int issueId, int projectId, int statusId, const QString& description,
+bool Database::addIssue(int issueId, const QString& subject, int projectId, int statusId, const QString& description,
 	const QDateTime& createdOn, const QDateTime& updatedOn)
 {
 	QSqlQuery query;
@@ -91,6 +91,7 @@ bool Database::addIssue(int issueId, int projectId, int statusId, const QString&
 	}
 
 	query.bindValue(":id", issueId);
+	query.bindValue(":subject", subject);
 	query.bindValue(":project_id", projectId);
 	query.bindValue(":status_id", statusId);
 	query.bindValue(":description", description);
@@ -102,6 +103,19 @@ bool Database::addIssue(int issueId, int projectId, int statusId, const QString&
 	}
 
 	return true;
+}
+
+QSqlQuery Database::getIssues()
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUES, query)) {
+		return QSqlQuery();
+	}
+	if (!evaluateQueryExec(query)) {
+		return QSqlQuery();
+	}
+
+	return query;
 }
 
 bool Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)

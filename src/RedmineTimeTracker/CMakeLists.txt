@@ -68,6 +68,8 @@ qt_add_qml_module(
 	qml/Assets/Icons/app-icon.ico
 	OUTPUT_DIRECTORY
 	${CMAKE_BINARY_DIR}/qt/qml/drook207/timeTracker
+        SOURCES issuemodel.h issuemodel.cpp
+        QML_FILES qml/Components/TextFieldWithSuggestions.qml
 	)
 
 if(ANDROID)
