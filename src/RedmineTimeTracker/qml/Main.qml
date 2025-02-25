@@ -60,6 +60,14 @@ ApplicationWindow {
         }
     }
 
+    Connections {
+        target: redmineClient
+        function onTimeEntriesReceived(entries) {
+            console.log("Time entries received")
+            timeTrackerInstance.addEntriesFromId(entries)
+        }
+    }
+
     Header {
         id: header
         anchors {
