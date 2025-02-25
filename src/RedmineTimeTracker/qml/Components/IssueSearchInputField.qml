@@ -14,6 +14,8 @@ Item {
 
     signal accepted
 
+    signal textChanged
+
     Item {
 
         IssueModel {
@@ -58,6 +60,8 @@ Item {
             } else {
                 searchField.value = -1
             }
+
+            searchField.textChanged()
         }
 
         onAccepted: {

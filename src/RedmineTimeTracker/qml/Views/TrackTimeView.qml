@@ -32,7 +32,7 @@ GroupBox {
             IssueSearchInputField {
                 id: issueField
                 Layout.fillWidth: true
-                Layout.preferredHeight: 80
+                Layout.preferredHeight: 60
             }
             Label {
                 text: "Elapsed Time:"

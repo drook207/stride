@@ -24,7 +24,7 @@ GroupBox {
             IssueSearchInputField {
                 id: issueField
                 Layout.fillWidth: true
-                Layout.preferredHeight: 80
+                Layout.preferredHeight: 60
                 enabled: !docroot.timeTracker.isTracking
             }
 
@@ -55,7 +55,7 @@ GroupBox {
                                 font.bold: true
                             }
                             Label {
-                                text: "Issue #" + issueField.value
+                                text: "Issue #" + modelData.issue.id
                                 font.bold: true
                             }
                             Label {
