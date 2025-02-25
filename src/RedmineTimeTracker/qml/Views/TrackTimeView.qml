@@ -15,8 +15,12 @@ GroupBox {
 
     Item {
 
+        IssueModel {
+            id: issueModel
+        }
+
         QmlExposedSortFilterModelProxy {
-            id: proxyModel2
+            id: filteredIssuesModel
             filterRole: 258 // IdAndSubjectRole
             sourceModel: issueModel
             filterCaseSensitivity: Qt.CaseInsensitive
@@ -42,20 +46,10 @@ GroupBox {
             IssueSearchInputField {
                 id: issueField
                 Layout.fillWidth: true
-                Layout.preferredHeight: 120
+                Layout.preferredHeight: 80
 
-                proxyModel: proxyModel2
+                proxyModel: filteredIssuesModel
             }
-
-            // TextField {
-            //     id: issueIdField
-            //     Layout.fillWidth: true
-            //     placeholderText: "Enter issue ID"
-            //     validator: IntValidator {
-            //         bottom: 1
-            //     }
-            //     enabled: !docroot.timeTracker.isTracking
-            // }
             Label {
                 text: "Elapsed Time:"
             }
