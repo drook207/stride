@@ -55,7 +55,6 @@ ApplicationWindow {
     Connections {
         target: redmineClient
         function onIssueReceived(issue) {
-            console.log("Issue received: " + issue)
             timeTrackerInstance.addIssueToDatabase(issue)
         }
     }
@@ -63,8 +62,10 @@ ApplicationWindow {
     Connections {
         target: redmineClient
         function onTimeEntriesReceived(entries) {
-            console.log("Time entries received")
             timeTrackerInstance.addEntriesFromId(entries)
+            if (entries.length > 0) {
+                redmineClient.getIssue(entries[0].issue.id)
+            }
         }
     }
 
