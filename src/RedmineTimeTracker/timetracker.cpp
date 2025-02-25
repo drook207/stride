@@ -138,14 +138,12 @@ void TimeTracker::addRecentEntry(const QVariantMap& entry)
 
 void TimeTracker::addEntriesFromId(const QJsonArray& entries)
 {
-	if (!entries.isEmpty()) {
-		mEntriesFromId.clear();
-		for (const QJsonValue& value : std::as_const(entries)) {
-			mEntriesFromId.append(value.toObject().toVariantMap());
-		}
-
-		emit entriesFromIdChanged();
+	mEntriesFromId.clear();
+	for (const QJsonValue& value : std::as_const(entries)) {
+		mEntriesFromId.append(value.toObject().toVariantMap());
 	}
+
+	emit entriesFromIdChanged();
 }
 
 void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
