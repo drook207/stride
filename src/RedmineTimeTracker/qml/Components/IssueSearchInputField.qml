@@ -10,6 +10,9 @@ Item {
     property string textRole: "subject"
     property int value: -1
 
+    readonly property bool acceptableInput: issueField.acceptableInput
+                                            && searchField.value >= 0
+
     TextField {
         id: issueField
         width: parent.width
@@ -18,7 +21,23 @@ Item {
         onTextChanged: {
             searchField.proxyModel.setFilterWildcard(issueField.text)
             searchDropDown.visible = issueField.text.length > 0
+
+            if (acceptableInput) {
+                const re = /^(\d+)\:?.*$/
+                const ok = re.exec(issueField.text)
+                if (ok) {
+                    const result = issueField.text.match(re)
+                    searchField.value = result[1] // Index 0 = Full String, Index 1 = Target Match
+                } else {
+                    console.log("Acceptable Input but regex could not find a match. This should not happen")
+                    searchField.value = -1
+                }
+            } else {
+                searchField.value = -1
+            }
         }
+
+        validator: IssueInputValidator {}
     }
 
     Popup {

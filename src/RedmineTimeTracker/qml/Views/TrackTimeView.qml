@@ -75,7 +75,8 @@ GroupBox {
 
             Button {
                 text: !docroot.timeTracker.isTracking ? "Start Tracking" : docroot.timeTracker.isPaused ? "Resume" : "Pause"
-                enabled: issueField.value >= 0 || docroot.timeTracker.isTracking
+                enabled: issueField.acceptableInput || issueField.value >= 0
+                         || docroot.timeTracker.isTracking
                 highlighted: docroot.timeTracker.isTracking
                              && !docroot.timeTracker.isPaused
                 onClicked: {
