@@ -160,6 +160,8 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 
 	if (!Database::addIssue(id, subject, project, status, description, createdOn, updatedOn)) {
 		qWarning() << "Could not add issue  " << issue;
+	} else {
+		emit issueAddedOrUpdated();
 	}
 }
 

@@ -2,16 +2,37 @@ import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
+import drook207.timeTracker
 
 Item {
     id: searchField
 
-    required property var proxyModel
-    property string textRole: "subject"
     property int value: -1
 
     readonly property bool acceptableInput: issueField.acceptableInput
                                             && searchField.value >= 0
+
+    Item {
+
+        IssueModel {
+            id: issueModel
+        }
+
+        Connections {
+            target: timeTrackerInstance
+            function onIssueAddedOrUpdated() {
+                console.log("Updating Issue list")
+                issueModel.updateIssueList()
+            }
+        }
+
+        QmlExposedSortFilterModelProxy {
+            id: filteredIssuesModel
+            filterRole: 258 // IdAndSubjectRole
+            sourceModel: issueModel
+            filterCaseSensitivity: Qt.CaseInsensitive
+        }
+    }
 
     TextField {
         id: issueField
@@ -19,7 +40,7 @@ Item {
         placeholderText: "Enter issue"
         enabled: !docroot.timeTracker.isTracking
         onTextChanged: {
-            searchField.proxyModel.setFilterWildcard(issueField.text)
+            filteredIssuesModel.setFilterWildcard(issueField.text)
             searchDropDown.visible = issueField.text.length > 0
 
             if (acceptableInput) {
@@ -63,7 +84,7 @@ Item {
                 spacing: 0
                 clip: true
 
-                model: searchField.proxyModel
+                model: filteredIssuesModel
 
                 delegate: Button {
                     required property string id

@@ -4,6 +4,7 @@ namespace QRedmineClient {
 
 void IssueModel::updateIssueList()
 {
+	beginResetModel();
 	mIssues.clear();
 
 	QSqlQuery query = Database::getIssues();
@@ -14,6 +15,8 @@ void IssueModel::updateIssueList()
 			query.value(6).toDateTime() };
 		mIssues.append(issue);
 	}
+
+	endResetModel();
 }
 
 IssueModel::IssueModel(QObject* parent)

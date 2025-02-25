@@ -57,7 +57,6 @@ ApplicationWindow {
         function onIssueReceived(issue) {
             console.log("Issue received: " + issue)
             timeTrackerInstance.addIssueToDatabase(issue)
-            issueModel.updateIssueList()
         }
     }
 

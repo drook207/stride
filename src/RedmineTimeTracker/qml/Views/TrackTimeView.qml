@@ -13,20 +13,6 @@ GroupBox {
     required property RedmineClient client
     required property SubmitDialog submitDialog
 
-    Item {
-
-        IssueModel {
-            id: issueModel
-        }
-
-        QmlExposedSortFilterModelProxy {
-            id: filteredIssuesModel
-            filterRole: 258 // IdAndSubjectRole
-            sourceModel: issueModel
-            filterCaseSensitivity: Qt.CaseInsensitive
-        }
-    }
-
     ColumnLayout {
         anchors {
             left: parent.left
@@ -47,8 +33,6 @@ GroupBox {
                 id: issueField
                 Layout.fillWidth: true
                 Layout.preferredHeight: 80
-
-                proxyModel: filteredIssuesModel
             }
             Label {
                 text: "Elapsed Time:"
@@ -88,6 +72,7 @@ GroupBox {
                     } else {
                         docroot.timeTracker.pauseTracking()
                     }
+                    client.getIssue(issueField.value)
                 }
             }
 
