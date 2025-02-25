@@ -6,54 +6,48 @@ import drook207.redmineClient
 
 Item {
 
-	id: docroot
-	required property TimeTracker timeTracker
-	required property RedmineClient client
-	required property SubmitDialog submitDialog
+    id: docroot
+    required property TimeTracker timeTracker
+    required property RedmineClient client
+    required property SubmitDialog submitDialog
 
-	Connections {
-		target: docroot.client
-		function onTimeEntriesReceived(entries) {
-			docroot.timeTracker.addEntriesFromId(entries)
-		}
-	}
-	ColumnLayout {
-		anchors {
-			left: parent.left
-			right: parent.right
-			top: parent.top
-		}
-		GroupBox {
-			title: "Connection Settings"
-			Layout.fillWidth: true
+    ColumnLayout {
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+        }
+        GroupBox {
+            title: "Connection Settings"
+            Layout.fillWidth: true
 
-			GridLayout {
-				columns: 2
-				rowSpacing: 10
-				columnSpacing: 10
-				anchors.fill: parent
+            GridLayout {
+                columns: 2
+                rowSpacing: 10
+                columnSpacing: 10
+                anchors.fill: parent
 
-				Label {
-					text: "Redmine URL:"
-				}
-				TextField {
-					Layout.fillWidth: true
-					text: redmineClient.baseUrl
-					onTextChanged: redmineClient.baseUrl = text
-					placeholderText: "Enter your Redmine URL"
-				}
+                Label {
+                    text: "Redmine URL:"
+                }
+                TextField {
+                    Layout.fillWidth: true
+                    text: redmineClient.baseUrl
+                    onTextChanged: redmineClient.baseUrl = text
+                    placeholderText: "Enter your Redmine URL"
+                }
 
-				Label {
-					text: "API Key:"
-				}
-				TextField {
-					Layout.fillWidth: true
-					text: redmineClient.apiKey
-					onTextChanged: redmineClient.apiKey = text
-					echoMode: TextInput.Password
-					placeholderText: "Enter your API key"
-				}
-			}
-		}
-	}
+                Label {
+                    text: "API Key:"
+                }
+                TextField {
+                    Layout.fillWidth: true
+                    text: redmineClient.apiKey
+                    onTextChanged: redmineClient.apiKey = text
+                    echoMode: TextInput.Password
+                    placeholderText: "Enter your API key"
+                }
+            }
+        }
+    }
 }

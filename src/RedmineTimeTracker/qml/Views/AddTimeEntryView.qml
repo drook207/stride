@@ -47,6 +47,13 @@ GroupBox {
 			Layout.fillWidth: true
 			rowSpacing: 10
 			columnSpacing: 10
+
+            IssueSearchInputField {
+                id: issueField
+                Layout.fillWidth: true
+                Layout.preferredHeight: 80
+            }
+
 			TextField {
 				id: issueIdField
 				Layout.fillWidth: true

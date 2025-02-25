@@ -12,6 +12,8 @@ Item {
     readonly property bool acceptableInput: issueField.acceptableInput
                                             && searchField.value >= 0
 
+    signal accepted
+
     Item {
 
         IssueModel {
@@ -56,6 +58,10 @@ Item {
             } else {
                 searchField.value = -1
             }
+        }
+
+        onAccepted: {
+            searchField.accepted()
         }
 
         validator: IssueInputValidator {}
