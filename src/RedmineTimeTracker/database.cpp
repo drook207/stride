@@ -188,15 +188,12 @@ bool Database::evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& qu
 												 .arg(query.lastQuery(), query.lastError().text()));
 		return false;
 	}
+
 	return true;
 }
 
 bool Database::evaluateQueryExec(QSqlQuery& query)
 {
-	if (!query.isValid()) {
-		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("Invalid SQL Query"));
-		return false;
-	}
 	if (!query.exec()) {
 		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("SQL Query prepare <%0> failed with: <%1>")
 												 .arg(query.lastQuery(), query.lastError().text()));
