@@ -17,6 +17,12 @@ Q_LOGGING_CATEGORY(lcDataBase, "qredmine.timeentry.database")
 namespace QRedmineClient {
 bool Database::initialize()
 {
+	static bool initialized = false;
+
+	if (initialized) {
+		return initialized;
+	}
+
 	QDir tmpDir;
 	const auto homePath = QDir::homePath();
 #ifdef Q_OS_WIN
@@ -64,6 +70,8 @@ bool Database::initialize()
 	if (!createIssuesDatabase()) {
 		return false;
 	}
+
+	initialized = true;
 	return true;
 }
 
