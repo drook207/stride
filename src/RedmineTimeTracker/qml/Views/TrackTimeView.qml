@@ -13,6 +13,16 @@ GroupBox {
     required property RedmineClient client
     required property SubmitDialog submitDialog
 
+    Item {
+
+        QmlExposedSortFilterModelProxy {
+            id: proxyModel2
+            filterRole: 258 // IdAndSubjectRole
+            sourceModel: issueModel
+            filterCaseSensitivity: Qt.CaseInsensitive
+        }
+    }
+
     ColumnLayout {
         anchors {
             left: parent.left
@@ -24,44 +34,28 @@ GroupBox {
 
         GridLayout {
             columns: 1
-            rows: 2
+            rows: 4
             Layout.fillWidth: true
             rowSpacing: 10
             columnSpacing: 10
 
-            ComboBox {
-                id: issueCombobox
+            IssueSearchInputField {
+                id: issueField
                 Layout.fillWidth: true
-                editable: true
-                model: proxyModel
+                Layout.preferredHeight: 120
 
-                delegate: ItemDelegate {
-                    width: issueCombobox.width
-                    contentItem: Text {
-                        text: "[%0] %1".arg(model.id).arg(model.subject)
-                    }
-                    onClicked: {
-                        issueCombobox.currentText = model.id
-                        issueCombobox.popup().visible = false
-                    }
-                }
-
-                onCurrentTextChanged: {
-
-                    proxyModel.filterRegularExpression = currentText + "\d*"
-                }
+                proxyModel: proxyModel2
             }
 
-            TextField {
-                id: issueIdField
-                Layout.fillWidth: true
-                placeholderText: "Enter issue ID"
-                validator: IntValidator {
-                    bottom: 1
-                }
-                enabled: !docroot.timeTracker.isTracking
-            }
-
+            // TextField {
+            //     id: issueIdField
+            //     Layout.fillWidth: true
+            //     placeholderText: "Enter issue ID"
+            //     validator: IntValidator {
+            //         bottom: 1
+            //     }
+            //     enabled: !docroot.timeTracker.isTracking
+            // }
             Label {
                 text: "Elapsed Time:"
             }
@@ -87,14 +81,13 @@ GroupBox {
 
             Button {
                 text: !docroot.timeTracker.isTracking ? "Start Tracking" : docroot.timeTracker.isPaused ? "Resume" : "Pause"
-                enabled: issueIdField.text !== ""
-                         || docroot.timeTracker.isTracking
+                enabled: issueField.value >= 0 || docroot.timeTracker.isTracking
                 highlighted: docroot.timeTracker.isTracking
                              && !docroot.timeTracker.isPaused
                 onClicked: {
                     if (!docroot.timeTracker.isTracking) {
-                        docroot.timeTracker.startTracking(
-                                    parseInt(issueIdField.text))
+                        docroot.timeTracker.startTracking(parseInt(
+                                                              issueField.value))
                     } else if (docroot.timeTracker.isPaused) {
                         docroot.timeTracker.resumeTracking()
                     } else {
@@ -108,7 +101,7 @@ GroupBox {
                 enabled: docroot.timeTracker.isTracking
                 onClicked: {
                     docroot.submitDialog.comment = commentsField.text
-                    docroot.submitDialog.issueId = issueIdField.text
+                    docroot.submitDialog.issueId = issueField.value
                     docroot.submitDialog.open()
                 }
             }

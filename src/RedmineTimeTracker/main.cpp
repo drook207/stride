@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 	QRedmineClient::IssueModel issueModel;
 	QSortFilterProxyModel proxyModel;
 	proxyModel.setSourceModel(&issueModel);
-	proxyModel.setFilterRole(QRedmineClient::IssueModel::IdRole);
+	proxyModel.setFilterRole(QRedmineClient::IssueModel::SubjectRole);
 	proxyModel.setFilterCaseSensitivity(Qt::CaseInsensitive);
 
 	engine.rootContext()->setContextProperty("issueModel", &issueModel);

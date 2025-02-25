@@ -70,6 +70,8 @@ qt_add_qml_module(
 	${CMAKE_BINARY_DIR}/qt/qml/drook207/timeTracker
         SOURCES issuemodel.h issuemodel.cpp
         QML_FILES qml/Components/TextFieldWithSuggestions.qml
+        SOURCES qmlexposedsortfiltermodelproxy.h qmlexposedsortfiltermodelproxy.cpp
+        QML_FILES qml/Components/IssueSearchInputField.qml
 	)
 
 if(ANDROID)

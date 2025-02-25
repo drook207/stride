@@ -152,7 +152,7 @@ ApplicationWindow {
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                redmineClient.getIssue(1)
+                redmineClient.getIssue(3)
             }
         }
     }
