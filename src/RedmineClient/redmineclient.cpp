@@ -234,7 +234,9 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	setLoading(false);
 
 	if (reply->error() != QNetworkReply::NoError) {
-		emit errorOccurred(reply->errorString());
+		if (reply->error() != QNetworkReply::ContentNotFoundError) {
+			emit errorOccurred(reply->errorString());
+		}
 		QByteArray data = reply->readAll();
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();

@@ -58,6 +58,12 @@ QVariant IssueModel::data(const QModelIndex& index, int role) const
 	return QVariant();
 }
 
+bool IssueModel::hasIssue(int issue)
+{
+	const auto it = std::find_if(mIssues.begin(), mIssues.end(), [&issue](const Issue& i) { return i.id == issue; });
+	return it != mIssues.end();
+}
+
 QHash<int, QByteArray> IssueModel::roleNames() const
 {
 	QHash<int, QByteArray> roles;

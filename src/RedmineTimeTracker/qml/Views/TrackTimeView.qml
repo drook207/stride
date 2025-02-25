@@ -13,6 +13,16 @@ GroupBox {
     required property RedmineClient client
     required property SubmitDialog submitDialog
 
+    Timer {
+        id: inputValidatorTimer
+        interval: 500
+        onTriggered: {
+            if (issueField.acceptableInput) {
+                client.getIssue(issueField.value)
+            }
+        }
+    }
+
     ColumnLayout {
         anchors {
             left: parent.left
@@ -33,6 +43,15 @@ GroupBox {
                 id: issueField
                 Layout.fillWidth: true
                 Layout.preferredHeight: 60
+
+                onAccepted: {
+                    client.getIssue(issueField.value)
+                    inputValidatorTimer.stop()
+                }
+
+                onTextChanged: {
+                    inputValidatorTimer.restart()
+                }
             }
             Label {
                 text: "Elapsed Time:"
@@ -59,7 +78,8 @@ GroupBox {
 
             Button {
                 text: !docroot.timeTracker.isTracking ? "Start Tracking" : docroot.timeTracker.isPaused ? "Resume" : "Pause"
-                enabled: issueField.acceptableInput || issueField.value >= 0
+                enabled: (issueField.knownIssue && issueField.acceptableInput
+                          && issueField.value >= 0)
                          || docroot.timeTracker.isTracking
                 highlighted: docroot.timeTracker.isTracking
                              && !docroot.timeTracker.isPaused

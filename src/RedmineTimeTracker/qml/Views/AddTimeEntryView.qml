@@ -26,7 +26,7 @@ GroupBox {
 
     Timer {
         id: inputValidatorTimer
-        interval: 500
+        interval: 1000
         onTriggered: {
 
             docroot.saveInput()

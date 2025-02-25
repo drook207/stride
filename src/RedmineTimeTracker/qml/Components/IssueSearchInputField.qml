@@ -12,6 +12,8 @@ Item {
     readonly property bool acceptableInput: issueField.acceptableInput
                                             && searchField.value >= 0
 
+    readonly property bool knownIssue: issueModel.hasIssue(value)
+
     signal accepted
 
     signal textChanged
