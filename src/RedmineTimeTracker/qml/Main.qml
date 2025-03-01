@@ -8,170 +8,188 @@ import drook207.timeTracker
 import drook207.redmineClient
 
 ApplicationWindow {
-	id: window
-	visible: true
-	width: 600
-	height: 1024
-	title: "Redmine Time Tracker"
+    id: window
+    visible: true
+    width: 600
+    height: 1024
+    title: "Redmine Time Tracker"
 
-	Material.theme: Material.Dark
-	Material.accent: Material.LightGreen
+    Material.theme: Material.Dark
+    Material.accent: Material.LightGreen
 
-	RedmineClient {
-		id: redmineClient
-		baseUrl: redmineClient.baseUrl === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
-		apiKey: redmineClient.apiKey === "" ? "your-api-key" : redmineClient.apiKey
+    RedmineClient {
+        id: redmineClient
+        baseUrl: redmineClient.baseUrl
+                 === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
+        apiKey: redmineClient.apiKey === "" ? "your-api-key" : redmineClient.apiKey
 
-		onErrorOccurred: function (error) {
-			messageDialog.text = "Error: " + error
-			messageDialog.open()
-		}
+        onErrorOccurred: function (error) {
+            messageDialog.text = "Error: " + error
+            messageDialog.open()
+        }
 
-		onTimeEntryCreated: function (timeEntry) {
-			messageDialog.text = "Time entry created successfully"
-			messageDialog.open()
-		}
-	}
+        onTimeEntryCreated: function (timeEntry) {
+            messageDialog.text = "Time entry created successfully"
+            messageDialog.open()
+        }
+    }
 
-	Component.onCompleted: {
-		redmineClient.getEnumerations(0)
-		redmineClient.getEnumerations(1)
-		redmineClient.getEnumerations(2)
-	}
-	TimeTracker {
-		id: timeTrackerInstance
-	}
-	TimeEntryActivitiesModel {
-		id: activitiesModel
-	}
-	Connections {
-		target: redmineClient
-		function onTimeEntryActivitiesReceived(value) {
-			activitiesModel.addTimeEntryActivities(value)
-		}
-	}
+    Component.onCompleted: {
+        redmineClient.getEnumerations(0)
+        redmineClient.getEnumerations(1)
+        redmineClient.getEnumerations(2)
+    }
+    TimeTracker {
+        id: timeTrackerInstance
+    }
+    TimeEntryActivitiesModel {
+        id: activitiesModel
+    }
+    Connections {
+        target: redmineClient
+        function onTimeEntryActivitiesReceived(value) {
+            activitiesModel.addTimeEntryActivities(value)
+        }
+    }
 
-	Header {
-		id: header
-		anchors {
-			left: parent.left
-			right: parent.right
-			top: parent.top
-			topMargin: 5
-		}
-	}
+    Connections {
+        target: redmineClient
+        function onIssueReceived(issue) {
+            timeTrackerInstance.addIssueToDatabase(issue)
+        }
+    }
 
-	ColumnLayout {
-		anchors {
-			top: header.bottom
-			bottom: parent.bottom
-			left: parent.left
-			right: parent.right
-		}
+    Connections {
+        target: redmineClient
+        function onTimeEntriesReceived(entries) {
+            timeTrackerInstance.addEntriesFromId(entries)
+            if (entries.length > 0) {
+                redmineClient.getIssue(entries[0].issue.id)
+            }
+        }
+    }
 
-		anchors.margins: 10
-		spacing: 10
+    Header {
+        id: header
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+            topMargin: 5
+        }
+    }
 
-		StackView {
-			id: stackView
-			Layout.fillWidth: true
-			Layout.fillHeight: true
-			initialItem: trackTimeView
-		}
-		Item {
-			id: footer
-			Layout.fillWidth: true
-			Layout.minimumHeight: 20
-			Layout.maximumHeight: 20
+    ColumnLayout {
+        anchors {
+            top: header.bottom
+            bottom: parent.bottom
+            left: parent.left
+            right: parent.right
+        }
 
-			ConnectionStateLamp {
-				anchors {
-					left: parent.left
-					verticalCenter: parent.verticalCenter
-				}
-				connectionState: redmineClient.connectionState
-			}
+        anchors.margins: 10
+        spacing: 10
 
-			Text {
-				id: version
-				anchors {
-					right: parent.right
-					verticalCenter: parent.verticalCenter
-				}
+        StackView {
+            id: stackView
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            initialItem: trackTimeView
+        }
+        Item {
+            id: footer
+            Layout.fillWidth: true
+            Layout.minimumHeight: 20
+            Layout.maximumHeight: 20
 
-				color: Material.accentColor
-				text: Application.version
-			}
-		}
-	}
+            ConnectionStateLamp {
+                anchors {
+                    left: parent.left
+                    verticalCenter: parent.verticalCenter
+                }
+                connectionState: redmineClient.connectionState
+            }
 
-	Popup {
+            Text {
+                id: version
+                anchors {
+                    right: parent.right
+                    verticalCenter: parent.verticalCenter
+                }
 
-		id: busyIndicator
-		BusyIndicator {
-			running: redmineClient.loading
+                color: Material.accentColor
+                text: Application.version
+            }
+        }
+    }
 
-			onRunningChanged: {
-				if (running) {
-					busyIndicator.open()
-				} else {
-					busyIndicator.close()
-				}
-			}
-		}
-	}
+    Popup {
 
-	Component {
-		id: trackTimeView
-		TrackTimeView {
-			timeTracker: timeTrackerInstance
-			client: redmineClient
-			submitDialog: subDialog
-		}
-	}
+        id: busyIndicator
+        BusyIndicator {
+            running: redmineClient.loading
 
-	Component {
-		id: addTimeEntryView
-		AddTimeEntryView {
-			timeTracker: timeTrackerInstance
-			client: redmineClient
-		}
-	}
+            onRunningChanged: {
+                if (running) {
+                    busyIndicator.open()
+                } else {
+                    busyIndicator.close()
+                }
+            }
+        }
+    }
 
-	Component {
-		id: getTimeEntriesView
+    Component {
+        id: trackTimeView
+        TrackTimeView {
+            timeTracker: timeTrackerInstance
+            client: redmineClient
+            submitDialog: subDialog
+        }
+    }
 
-		GetTimeEntriesView {
-			timeTracker: timeTrackerInstance
-			client: redmineClient
-		}
-	}
+    Component {
+        id: addTimeEntryView
+        AddTimeEntryView {
+            timeTracker: timeTrackerInstance
+            client: redmineClient
+        }
+    }
 
-	Component {
-		id: settingsView
+    Component {
+        id: getTimeEntriesView
 
-		SettingsView {
-			timeTracker: timeTrackerInstance
-			client: redmineClient
-			submitDialog: subDialog
-		}
-	}
+        GetTimeEntriesView {
+            timeTracker: timeTrackerInstance
+            client: redmineClient
+        }
+    }
 
-	MessageDialog {
-		id: messageDialog
-	}
+    Component {
+        id: settingsView
 
-	SubmitDialog {
-		id: subDialog
+        SettingsView {
+            timeTracker: timeTrackerInstance
+            client: redmineClient
+            submitDialog: subDialog
+        }
+    }
 
-		timeTracker: timeTrackerInstance
-		client: redmineClient
-	}
+    MessageDialog {
+        id: messageDialog
+    }
 
-	BurgerMenu {
+    SubmitDialog {
+        id: subDialog
 
-		view: stackView
-		componentsToLoad: [trackTimeView, addTimeEntryView, getTimeEntriesView, settingsView]
-		buttonTitles: ["Track Time", "Add Time Entry", "Get Time Entries", "Settings"]
-	}
+        timeTracker: timeTrackerInstance
+        client: redmineClient
+    }
+
+    BurgerMenu {
+
+        view: stackView
+        componentsToLoad: [trackTimeView, addTimeEntryView, getTimeEntriesView, settingsView]
+        buttonTitles: ["Track Time", "Add Time Entry", "Get Time Entries", "Settings"]
+    }
 }

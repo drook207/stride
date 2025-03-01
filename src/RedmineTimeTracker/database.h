@@ -49,6 +49,23 @@ namespace SqlQueries {
 		"SELECT * FROM time_entries "
 		"ORDER BY created_at DESC "
 		"LIMIT ?");
+
+	STATIC_CONST_QSTRING(CREATE_ISSUES_TABLE,
+		"CREATE TABLE IF NOT EXISTS issues ("
+		"id INTEGER PRIMARY KEY NOT NULL, "
+		"subject TEXT NOT NULL, "
+		"project_id INTEGER, "
+		"status_id INTEGER NOT NULL, "
+		"description TEXT, "
+		"created_on DATETIME NOT NULL, "
+		"updated_on DATETIME NOT NULL)");
+
+	STATIC_CONST_QSTRING(REPLACE_ISSUE,
+		"REPLACE INTO issues ("
+		"id, subject, project_id, status_id, description, created_on, updated_on) VALUES "
+		"(:id,:subject, :project_id,:status_id,:description,:created_on,:updated_on)");
+
+	STATIC_CONST_QSTRING(GET_ISSUES, "SELECT * FROM issues");
 }
 
 class Database {
@@ -61,6 +78,13 @@ public:
 	static QVector<QVariantMap> getUnsyncedEntries();
 
 	static QJsonArray getRecentEntries(int limit = 50);
+
+	static bool createIssuesDatabase();
+
+	static bool addIssue(int issueId, const QString& subject, int projectId, int statusId, const QString& description,
+		const QDateTime& createdOn, const QDateTime& updatedOn);
+
+	static QSqlQuery getIssues();
 
 public slots:
 	static bool updateSyncStatus(int id, int redmineId);

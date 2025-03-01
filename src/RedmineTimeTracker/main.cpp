@@ -1,9 +1,11 @@
 // main.cpp
+#include "issuemodel.h"
 #include <QDirIterator>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QSortFilterProxyModel>
 
 int main(int argc, char* argv[])
 {
@@ -26,6 +28,7 @@ int main(int argc, char* argv[])
 		Qt::QueuedConnection);
 	engine.addImportPath("drook207.redmineClient");
 	engine.addImportPath("drook207.timeTracker");
+
 	engine.loadFromModule("drook207.timeTracker", "Main");
 
 	return app.exec();

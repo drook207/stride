@@ -9,7 +9,7 @@ Dialog {
 	width: parent.width * 0.8
 	height: messageLabel.implicitHeight + 200
 
-	title: "Message"
+	title: qsTr("Message")
 	standardButtons: Dialog.Ok
 	x: (parent.width - width) / 2
 	y: (parent.height - height) / 2

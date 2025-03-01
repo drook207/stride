@@ -17,6 +17,12 @@ Q_LOGGING_CATEGORY(lcDataBase, "qredmine.timeentry.database")
 namespace QRedmineClient {
 bool Database::initialize()
 {
+	static bool initialized = false;
+
+	if (initialized) {
+		return initialized;
+	}
+
 	QDir tmpDir;
 	const auto homePath = QDir::homePath();
 #ifdef Q_OS_WIN
@@ -60,7 +66,64 @@ bool Database::initialize()
 	if (!evaluateQueryExec(query)) {
 		return false;
 	}
+
+	if (!createIssuesDatabase()) {
+		return false;
+	}
+
+	initialized = true;
 	return true;
+}
+
+bool Database::createIssuesDatabase()
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::CREATE_ISSUES_TABLE, query)) {
+		return false;
+	}
+
+	if (!evaluateQueryExec(query)) {
+		return false;
+	}
+
+	return true;
+}
+
+bool Database::addIssue(int issueId, const QString& subject, int projectId, int statusId, const QString& description,
+	const QDateTime& createdOn, const QDateTime& updatedOn)
+{
+	QSqlQuery query;
+	// INSERT OR REPLACE
+	if (!evaluateQueryPrepare(SqlQueries::REPLACE_ISSUE, query)) {
+		return false;
+	}
+
+	query.bindValue(":id", issueId);
+	query.bindValue(":subject", subject);
+	query.bindValue(":project_id", projectId);
+	query.bindValue(":status_id", statusId);
+	query.bindValue(":description", description);
+	query.bindValue(":created_on", createdOn);
+	query.bindValue(":updated_on", updatedOn);
+
+	if (!evaluateQueryExec(query)) {
+		return false;
+	}
+
+	return true;
+}
+
+QSqlQuery Database::getIssues()
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUES, query)) {
+		return QSqlQuery();
+	}
+	if (!evaluateQueryExec(query)) {
+		return QSqlQuery();
+	}
+
+	return query;
 }
 
 bool Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
@@ -133,20 +196,18 @@ bool Database::evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& qu
 												 .arg(query.lastQuery(), query.lastError().text()));
 		return false;
 	}
+
 	return true;
 }
 
 bool Database::evaluateQueryExec(QSqlQuery& query)
 {
-	if (!query.isValid()) {
-		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("Invalid SQL Query"));
-		return false;
-	}
 	if (!query.exec()) {
 		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("SQL Query prepare <%0> failed with: <%1>")
 												 .arg(query.lastQuery(), query.lastError().text()));
 		return false;
 	}
+
 	return true;
 }
 

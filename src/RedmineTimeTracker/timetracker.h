@@ -2,6 +2,7 @@
 
 #include <QDateTime>
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QObject>
 #include <QString>
 #include <QTimer>
@@ -101,6 +102,12 @@ public slots:
 	 */
 	void addEntriesFromId(const QJsonArray& entries);
 
+	/*!
+	 * \brief addIssueToDatabase Adds an issue to the database using the received JSON object
+	 * \param issue
+	 */
+	void addIssueToDatabase(const QJsonObject& issue);
+
 signals:
 	/*!
 	 * \brief trackingChanged
@@ -128,6 +135,8 @@ signals:
 	void recentEntriesChanged();
 
 	void entriesFromIdChanged();
+
+	void issueAddedOrUpdated();
 
 private slots:
 	/*!

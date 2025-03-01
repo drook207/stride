@@ -15,7 +15,7 @@ Dialog {
 	property string comment: ""
 	property string spentOn: ""
 
-	title: "Submit Time Entry"
+	title: qsTr("Submit Time Entry")
 	standardButtons: Dialog.Yes | Dialog.No
 	anchors.centerIn: parent
 	parent: Overlay.overlay
@@ -52,11 +52,11 @@ Dialog {
 		spacing: 10
 
 		Label {
-			text: "Would you like to submit this time entry?"
+			text: qsTr("Would you like to submit this time entry?")
 		}
 
 		Label {
-			text: "Total time: " + docroot.timeTracker.elapsedTime
+			text: qsTr("Total time: %0").arg(docroot.timeTracker.elapsedTime)
 			font.bold: true
 		}
 	}

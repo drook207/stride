@@ -192,6 +192,12 @@ void RedmineClient::getTimeEntries(int issueId)
 	mNetworkManager->get(createRequest(ApiResources::TIME_ENTRIES, query));
 }
 
+void RedmineClient::getIssue(int issueId)
+{
+	setLoading(true);
+	mNetworkManager->get(createRequest(ApiResources::ISSUE.arg(QString::number(issueId))));
+}
+
 void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 {
 	setLoading(true);
@@ -228,7 +234,9 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	setLoading(false);
 
 	if (reply->error() != QNetworkReply::NoError) {
-		emit errorOccurred(reply->errorString());
+		if (reply->error() != QNetworkReply::ContentNotFoundError) {
+			emit errorOccurred(reply->errorString());
+		}
 		QByteArray data = reply->readAll();
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();
@@ -274,6 +282,9 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			}
 			if (response.contains("custom_fields")) {
 				emit customFieldsReceived(response["custom_fields"].toArray());
+			}
+			if (response.contains("issue")) {
+				emit issueReceived(response["issue"].toObject());
 			}
 			break;
 		case QNetworkAccessManager::PutOperation:

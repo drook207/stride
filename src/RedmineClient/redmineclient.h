@@ -99,6 +99,7 @@ public:
 	bool loading() const;
 
 	RedmineClient::ConnectionState connectionState() const;
+
 public slots:
 
 	// Create a new time entry
@@ -139,6 +140,12 @@ public slots:
 	 * \brief getCustomFields
 	 */
 	void getCustomFields();
+
+	/*!
+	 * \brief getIssue
+	 * \param issueId
+	 */
+	void getIssue(int issueId);
 
 signals:
 	/*!
@@ -193,6 +200,12 @@ signals:
 	 * \param error
 	 */
 	void errorOccurred(const QString& error);
+
+	/*!
+	 * \brief issueReceived Emitted every time a signal is received
+	 * \param issue The QJsonObject containing issue details
+	 */
+	void issueReceived(const QJsonObject& issue);
 
 	void connectionStateChanged();
 
