@@ -9,8 +9,7 @@ Item {
 
     property int value: -1
 
-    readonly property bool acceptableInput: issueField.acceptableInput
-                                            && searchField.value >= 0
+	readonly property bool acceptableInput: issueField.acceptableInput && searchField.value >= 0
 
     readonly property bool knownIssue: issueModel.hasIssue(value)
 
@@ -26,8 +25,7 @@ Item {
 
         Connections {
             target: timeTrackerInstance
-            function onIssueAddedOrUpdated() {
-                console.log("Updating Issue list")
+			function onIssueAddedOrUpdated() {
                 issueModel.updateIssueList()
             }
         }
@@ -43,7 +41,7 @@ Item {
     TextField {
         id: issueField
         width: parent.width
-        placeholderText: "Enter issue"
+		placeholderText: qsTr("Enter issue")
         enabled: !docroot.timeTracker.isTracking
         onTextChanged: {
             filteredIssuesModel.setFilterWildcard(issueField.text)
@@ -58,7 +56,7 @@ Item {
                 } else {
                     console.log("Acceptable Input but regex could not find a match. This should not happen")
                     searchField.value = -1
-                }
+				}
             } else {
                 searchField.value = -1
             }

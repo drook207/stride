@@ -8,7 +8,7 @@ GroupBox {
 
 	required property TimeTracker timeTracker
 
-	title: "Recent Time Entries"
+	title: qsTr("Recent Time Entries")
 	Layout.fillWidth: true
 	Layout.fillHeight: true
 
@@ -26,15 +26,15 @@ GroupBox {
 				RowLayout {
 					Layout.fillWidth: true
 					Label {
-						text: "Id: " + modelData.id
+						text: qsTr("Id: %0").arg(modelData.id)
 						font.bold: true
 					}
 					Label {
-						text: "Issue #" + modelData.issue_id
+						text: qsTr("Issue #%0").arg(modelData.issue_id)
 						font.bold: true
 					}
 					Label {
-						text: modelData.hours.toFixed(2) + " hours"
+						text: qsTr("%0 hours").arg(modelData.hours.toFixed(2))
 						Layout.leftMargin: 10
 					}
 					Label {

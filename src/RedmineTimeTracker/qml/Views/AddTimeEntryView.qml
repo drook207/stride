@@ -20,8 +20,6 @@ GroupBox {
         var german = Qt.locale("de_DE")
         const number = Number.fromLocaleString(german, timeSpentField.text)
         docroot.addDialog.hours = number
-
-        console.log("Timer triggered")
     }
 
     Timer {
@@ -54,8 +52,7 @@ GroupBox {
                 Layout.preferredHeight: 60
 
                 onAccepted: {
-                    if (acceptableInput) {
-                        console.log("Issue Id field: ", issueField.value)
+					if (acceptableInput) {
                         docroot.addDialog.issueId = issueField.value
                     }
                 }
@@ -77,8 +74,7 @@ GroupBox {
                 onAccepted: {
                     if (acceptableInput) {
                         var german = Qt.locale("de_DE")
-                        const number = Number.fromLocaleString(german, text)
-                        console.log("Test:", text, ", Testfloat: ", number)
+						const number = Number.fromLocaleString(german, text)
                         docroot.addDialog.hours = number
                     }
                 }

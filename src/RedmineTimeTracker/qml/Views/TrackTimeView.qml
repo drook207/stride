@@ -7,7 +7,7 @@ import drook207.redmineClient
 
 GroupBox {
     id: docroot
-    title: "Time Tracking"
+	title: qsTr("Time Tracking")
     Layout.fillWidth: true
     required property TimeTracker timeTracker
     required property RedmineClient client
@@ -54,7 +54,7 @@ GroupBox {
                 }
             }
             Label {
-                text: "Elapsed Time:"
+				text: qsTr("Elapsed Time:")
             }
             Label {
                 text: docroot.timeTracker.elapsedTime
@@ -68,7 +68,7 @@ GroupBox {
             id: commentsField
             Layout.fillWidth: true
             Layout.preferredHeight: 80
-            placeholderText: "Enter comments for this time entry"
+			placeholderText: qsTr("Enter comments for this time entry")
             wrapMode: TextEdit.Wrap
         }
 
@@ -77,16 +77,15 @@ GroupBox {
             spacing: 10
 
             Button {
-                text: !docroot.timeTracker.isTracking ? "Start Tracking" : docroot.timeTracker.isPaused ? "Resume" : "Pause"
-                enabled: (issueField.knownIssue && issueField.acceptableInput
-                          && issueField.value >= 0)
-                         || docroot.timeTracker.isTracking
-                highlighted: docroot.timeTracker.isTracking
-                             && !docroot.timeTracker.isPaused
+				text: !docroot.timeTracker.isTracking ? qsTr(
+															"Start Tracking") : docroot.timeTracker.isPaused ? qsTr("Resume") : qsTr(
+																												   "Pause")
+				enabled: (issueField.knownIssue && issueField.acceptableInput && issueField.value >= 0)
+						 || docroot.timeTracker.isTracking
+				highlighted: docroot.timeTracker.isTracking && !docroot.timeTracker.isPaused
                 onClicked: {
                     if (!docroot.timeTracker.isTracking) {
-                        docroot.timeTracker.startTracking(parseInt(
-                                                              issueField.value))
+						docroot.timeTracker.startTracking(parseInt(issueField.value))
                     } else if (docroot.timeTracker.isPaused) {
                         docroot.timeTracker.resumeTracking()
                     } else {

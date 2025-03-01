@@ -18,7 +18,7 @@ Item {
             top: parent.top
         }
         GroupBox {
-            title: "Connection Settings"
+			title: qsTr("Connection Settings")
             Layout.fillWidth: true
 
             GridLayout {
@@ -28,24 +28,24 @@ Item {
                 anchors.fill: parent
 
                 Label {
-                    text: "Redmine URL:"
+					text: qsTr("Redmine URL:")
                 }
                 TextField {
                     Layout.fillWidth: true
                     text: redmineClient.baseUrl
                     onTextChanged: redmineClient.baseUrl = text
-                    placeholderText: "Enter your Redmine URL"
+					placeholderText: qsTr("Enter your Redmine URL")
                 }
 
                 Label {
-                    text: "API Key:"
+					text: qsTr("API Key:")
                 }
                 TextField {
                     Layout.fillWidth: true
                     text: redmineClient.apiKey
                     onTextChanged: redmineClient.apiKey = text
                     echoMode: TextInput.Password
-                    placeholderText: "Enter your API key"
+					placeholderText: qsTr("Enter your API key")
                 }
             }
         }

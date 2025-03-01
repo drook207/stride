@@ -6,7 +6,7 @@ import drook207.redmineClient
 
 GroupBox {
     id: docroot
-    title: "Entries from Id"
+	title: qsTr("Entries from Id")
 
     required property TimeTracker timeTracker
     required property RedmineClient client
@@ -29,12 +29,12 @@ GroupBox {
             }
 
             Button {
-                text: "Get"
+				text: qsTr("Get")
                 onClicked: docroot.client.getTimeEntries(issueField.value)
             }
         }
         GroupBox {
-            title: "Time Entries"
+			title: qsTr("Time Entries")
             Layout.fillWidth: true
             Layout.fillHeight: true
             ListView {
@@ -51,20 +51,19 @@ GroupBox {
                         RowLayout {
                             Layout.fillWidth: true
                             Label {
-                                text: "Id: " + modelData.id
+								text: qsTr("Id: %0").arg(modelData.id)
                                 font.bold: true
                             }
                             Label {
-                                text: "Issue #" + modelData.issue.id
+								text: qsTr("Issue #%0").arg(modelData.issue.id)
                                 font.bold: true
                             }
                             Label {
-                                text: modelData.hours.toFixed(2) + " hours"
+								text: qsTr("%0 hours").arg(modelData.hours.toFixed(2))
                                 Layout.leftMargin: 10
                             }
                             Label {
-                                text: Qt.formatDateTime(modelData.spent_on,
-                                                        "yyyy-MM-dd hh:mm")
+								text: Qt.formatDateTime(modelData.spent_on, "yyyy-MM-dd hh:mm")
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignRight
                             }
