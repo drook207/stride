@@ -32,7 +32,7 @@ Item {
 
         QmlExposedSortFilterModelProxy {
             id: filteredIssuesModel
-            filterRole: 258 // IdAndSubjectRole
+			filterRole: IssueModel.IdAndSubjectRole
             sourceModel: issueModel
             filterCaseSensitivity: Qt.CaseInsensitive
         }
