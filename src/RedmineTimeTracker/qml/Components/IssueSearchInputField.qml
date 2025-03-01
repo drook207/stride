@@ -40,34 +40,36 @@ Item {
 
     TextField {
         id: issueField
+
+		function getAcceptableIssueIdFromInput() {
+			filteredIssuesModel.setFilterWildcard(issueField.text)
+			searchDropDown.visible = issueField.text.length > 0
+
+			if (acceptableInput) {
+				const re = /^(\d+)\:?.*$/
+				const ok = re.exec(issueField.text)
+				if (ok) {
+					const result = issueField.text.match(re)
+					searchField.value = result[1] // Index 0 = Full String, Index 1 = Target Match
+				} else {
+					console.log("Acceptable Input but regex could not find a match. This should not happen")
+					searchField.value = -1
+				}
+			} else {
+				searchField.value = -1
+			}
+
+			searchField.textChanged()
+		}
+
         width: parent.width
 		placeholderText: qsTr("Enter issue")
         enabled: !docroot.timeTracker.isTracking
-        onTextChanged: {
-            filteredIssuesModel.setFilterWildcard(issueField.text)
-            searchDropDown.visible = issueField.text.length > 0
-
-            if (acceptableInput) {
-                const re = /^(\d+)\:?.*$/
-                const ok = re.exec(issueField.text)
-                if (ok) {
-                    const result = issueField.text.match(re)
-                    searchField.value = result[1] // Index 0 = Full String, Index 1 = Target Match
-                } else {
-                    console.log("Acceptable Input but regex could not find a match. This should not happen")
-                    searchField.value = -1
-				}
-            } else {
-                searchField.value = -1
-            }
-
-            searchField.textChanged()
-        }
-
-        onAccepted: {
-            searchField.accepted()
-        }
-
+		onTextChanged: issueField.getAcceptableIssueIdFromInput()
+		onAccepted: {
+			searchField.accepted()
+			issueField.getAcceptableIssueIdFromInput()
+		}
         validator: IssueInputValidator {}
     }
 
