@@ -18,3 +18,4 @@ if(${CMAKE_SOURCE_DIR} EQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 add_subdirectory(src)
+add_subdirectory(tests)
