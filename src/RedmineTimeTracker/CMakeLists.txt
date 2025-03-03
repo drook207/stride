@@ -68,11 +68,11 @@ qt_add_qml_module(
 	qml/Assets/Icons/app-icon.ico
 	OUTPUT_DIRECTORY
 	${CMAKE_BINARY_DIR}/qt/qml/drook207/timeTracker
-        SOURCES issuemodel.h issuemodel.cpp
-        QML_FILES
-        SOURCES qmlexposedsortfiltermodelproxy.h qmlexposedsortfiltermodelproxy.cpp
-        QML_FILES qml/Components/IssueSearchInputField.qml
-        SOURCES issueinputvalidator.h issueinputvalidator.cpp
+		SOURCES issuemodel.h issuemodel.cpp
+		QML_FILES
+		SOURCES qmlexposedsortfiltermodelproxy.h qmlexposedsortfiltermodelproxy.cpp
+		QML_FILES qml/Components/IssueSearchInputField.qml
+		SOURCES issueinputvalidator.h issueinputvalidator.cpp
 	)
 
 if(ANDROID)
@@ -127,7 +127,7 @@ target_link_libraries(
 			Qt6::Quick
 			Qt6::Qml
 			Qt6::Sql
-			redmineclientplugin
+			redmineclient
 			utils)
 install(
 	TARGETS RedmineTimeTracker

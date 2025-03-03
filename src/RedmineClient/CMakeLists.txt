@@ -13,7 +13,7 @@ if(QT_KNOWN_POLICY_QTP0001)
 	qt_policy(SET QTP0001 NEW)
 endif()
 
-qt_add_library(redmineclient STATIC)
+# qt_add_library(redmineclient STATIC)
 
 qt_add_qml_module(
 	redmineclient
@@ -34,7 +34,7 @@ if(ANDROID)
 	set_target_properties(
 		redmineclient
 		PROPERTIES QT_ANDROID_PACKAGE_SOURCE_DIR
-		           "${CMAKE_CURRENT_SOURCE_DIR}/android"
+				   "${CMAKE_CURRENT_SOURCE_DIR}/android"
 				   QT_ANDROID_PACKAGE_NAME "drook207.redmineclient"
 				   QT_ANDROID_TARGET_SDK_VERSION 35
 				   QT_ANDROID_VERSION_CODE 20
@@ -61,7 +61,7 @@ if(IOS)
 	set(asset_catalog_path "ios/Assets.xcassets")
 	target_sources(redmineclient PRIVATE "${asset_catalog_path}")
 	set_source_files_properties(${asset_catalog_path}
-		                        PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+								PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 	set_target_properties(
 		redmineclient
 		PROPERTIES XCODE_ATTRIBUTE_ASSETCATALOG_COMPILER_APPICON_NAME AppIcon)
