@@ -13,7 +13,7 @@ if(QT_KNOWN_POLICY_QTP0001)
 	qt_policy(SET QTP0001 NEW)
 endif()
 
-# qt_add_library(redmineclient STATIC)
+qt_add_library(redmineclient STATIC)
 
 qt_add_qml_module(
 	redmineclient
@@ -68,7 +68,7 @@ if(IOS)
 endif()
 target_include_directories(redmineclient INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(redmineclient PRIVATE Qt6::Core Qt6::Network utils)
-target_compile_definitions(redmineclient PRIVATE QT_REDMINECLIENT_BUILD)
+target_compile_definitions(redmineclient PUBLIC QT_REDMINECLIENT_BUILD)
 install(
 	TARGETS redmineclient
 	BUNDLE DESTINATION .

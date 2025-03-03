@@ -1,6 +1,4 @@
 // main.cpp
-#include "issuemodel.h"
-#include "redmineclient.h"
 #include <QDirIterator>
 #include <QGuiApplication>
 #include <QIcon>
