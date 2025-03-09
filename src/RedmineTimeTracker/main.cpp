@@ -1,5 +1,4 @@
 // main.cpp
-#include "issuemodel.h"
 #include <QDirIterator>
 #include <QGuiApplication>
 #include <QIcon>

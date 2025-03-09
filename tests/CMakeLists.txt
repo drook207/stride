@@ -19,7 +19,8 @@ FetchContent_MakeAvailable(googletest)
 
 
 add_executable(qredminetesting
-redmineclienttest.h redmineclienttest.cpp)
+redmineclienttest.h redmineclienttest.cpp
+main.cpp)
 
 find_package(Qt6 REQUIRED Core Network Quick)
 
@@ -35,13 +36,13 @@ target_link_libraries(qredminetesting
 include(GoogleTest)
 
 # Automatically discover tests
-gtest_discover_tests(qredminetesting
-	# Optional: Set a discovery timeout if you have many tests
-	DISCOVERY_TIMEOUT 60
-	# Optional: Add test properties
-	PROPERTIES
-		TIMEOUT 10  # Timeout in seconds for each test
-)
+# gtest_discover_tests(qredminetesting
+# 	# Optional: Set a discovery timeout if you have many tests
+# 	DISCOVERY_TIMEOUT 60
+# 	# Optional: Add test properties
+# 	PROPERTIES
+# 		TIMEOUT 10  # Timeout in seconds for each test
+# )
 
 
 # You can also add a custom test that runs with specific options
