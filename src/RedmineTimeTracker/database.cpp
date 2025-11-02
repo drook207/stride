@@ -27,7 +27,7 @@ bool Database::initialize()
 	const auto homePath = QDir::homePath();
 #ifdef Q_OS_WIN
 
-	tmpDir = QDir(homePath + "/AppData/Local"); // QCoreApplication::instance()->applicationDirPath();
+	tmpDir = QDir(homePath + "/AppData/Local");
 #endif
 #ifdef Q_OS_LINUX
 	tmpDir = QDir(homePath + "/.config/");
