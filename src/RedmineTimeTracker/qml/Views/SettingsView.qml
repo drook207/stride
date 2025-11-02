@@ -28,24 +28,35 @@ Item {
                 anchors.fill: parent
 
                 Label {
-					text: qsTr("Redmine URL:")
+                    text: qsTr("Redmine URL:")
                 }
                 TextField {
                     Layout.fillWidth: true
                     text: redmineClient.baseUrl
-                    onTextChanged: redmineClient.baseUrl = text
-					placeholderText: qsTr("Enter your Redmine URL")
+                    validator: RegularExpressionValidator {
+                        regularExpression: /^https?:\/\/[^\s\/$.?#].[^\s]*$/
+                    }
+                    onAccepted: {
+                        console.log("Valid URL entered: " + text);
+                        if (text.endsWith("/")) {
+                            redmineClient.baseUrl = text;
+                        } else {
+                            redmineClient.baseUrl = text + "/";
+                        }
+                    }
+
+                    placeholderText: qsTr("Enter your Redmine URL")
                 }
 
                 Label {
-					text: qsTr("API Key:")
+                    text: qsTr("API Key:")
                 }
                 TextField {
                     Layout.fillWidth: true
                     text: redmineClient.apiKey
                     onTextChanged: redmineClient.apiKey = text
                     echoMode: TextInput.Password
-					placeholderText: qsTr("Enter your API key")
+                    placeholderText: qsTr("Enter your API key")
                 }
             }
         }
