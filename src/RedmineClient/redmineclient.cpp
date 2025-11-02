@@ -94,6 +94,15 @@ void RedmineClient::setApiKey(const QString& key)
 	}
 }
 
+void RedmineClient::useSSL(bool useSSL)
+{
+	if (mUseSSL != useSSL) {
+		mUseSSL = useSSL;
+		mNetworkManager->setStrictTransportSecurityEnabled(useSSL);
+		emit useSSLChanged();
+	}
+}
+
 bool RedmineClient::loading() const { return mLoading; }
 
 void RedmineClient::setLoading(bool loading)

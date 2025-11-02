@@ -42,6 +42,7 @@ class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
 	Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
 	Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged FINAL)
+	Q_PROPERTY(bool useSSL READ useSSL WRITE useSSL NOTIFY useSSLChanged FINAL)
 public:
 	enum EnumerationTypes {
 		TIME_ENTRY_ACTIVITIES,
@@ -100,6 +101,8 @@ public:
 
 	RedmineClient::ConnectionState connectionState() const;
 
+	bool useSSL() const { return mUseSSL; }
+
 public slots:
 
 	// Create a new time entry
@@ -147,6 +150,7 @@ public slots:
 	 */
 	void getIssue(int issueId);
 
+	void useSSL(bool useSSL);
 signals:
 	/*!
 	 * \brief baseUrlChanged
@@ -208,6 +212,7 @@ signals:
 	void issueReceived(const QJsonObject& issue);
 
 	void connectionStateChanged();
+	void useSSLChanged();
 
 private slots:
 	/*!
@@ -244,6 +249,7 @@ private:
 	QString mApiKey;
 	bool mLoading;
 	QNetworkAccessManager* mNetworkManager;
+	bool mUseSSL { true };
 };
 }
 Q_DECLARE_METATYPE(QRedmineClient::RedmineClient)
