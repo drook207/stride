@@ -5,6 +5,7 @@ A desktop application built with Qt 6.8 for tracking time spent on Redmine issue
 ## Features
 
 ### Time Tracking
+
 - Start/Stop/Pause functionality
 - Real-time elapsed time display
 - Automatic time calculation
@@ -12,6 +13,7 @@ A desktop application built with Qt 6.8 for tracking time spent on Redmine issue
 - Visual tracking status indicators
 
 ### Redmine Integration
+
 - Automatic synchronization with Redmine
 - Create time entries directly from the app
 - View and manage existing time entries
@@ -19,6 +21,7 @@ A desktop application built with Qt 6.8 for tracking time spent on Redmine issue
 - Error handling and retry mechanisms
 
 ### Offline Support
+
 - SQLite database for local storage
 - Automatic sync when online
 - Track time without internet connection
@@ -35,22 +38,25 @@ A desktop application built with Qt 6.8 for tracking time spent on Redmine issue
 ## Building
 
 1. Clone the repository:
-```bash
-git clone https://github.com/drook207/QRedmineClient.git
-cd QRedmineClient
-```
 
-2. Create build directory:
-```bash
-mkdir build
-cd build
-```
+   ```bash
+   git clone https://github.com/drook207/QRedmineClient.git
+   cd QRedmineClient
+   ```
 
-3. Configure and build:
-```bash
-cmake ..
-cmake --build .
-```
+1. Create build directory:
+
+   ```bash
+   mkdir build
+   cd build
+   ```
+
+1. Configure and build:
+
+   ```bash
+   cmake ..
+   cmake --build .
+   ```
 
 ## Configuration
 
@@ -68,11 +74,10 @@ cmake --build .
 5. Stop tracking when finished
 6. Time entry will be saved locally and synced to Redmine
 
-## Project Structure
-
 ## Database Schema
 
 Time entries are stored in SQLite with the following structure:
+
 - `id`: Primary key
 - `issue_id`: Redmine issue identifier
 - `hours`: Time spent in decimal hours
