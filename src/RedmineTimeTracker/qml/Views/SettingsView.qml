@@ -5,7 +5,6 @@ import drook207.timeTracker
 import drook207.redmineClient
 
 Item {
-
     id: docroot
     required property TimeTracker timeTracker
     required property RedmineClient client
@@ -18,7 +17,7 @@ Item {
             top: parent.top
         }
         GroupBox {
-			title: qsTr("Connection Settings")
+            title: qsTr("Connection Settings")
             Layout.fillWidth: true
 
             GridLayout {
@@ -59,6 +58,12 @@ Item {
                     placeholderText: qsTr("Enter your API key")
                 }
             }
+        }
+        CheckBox {
+            text: qsTr("Use SSL")
+            checked: redmineClient.useSSL
+            onCheckedChanged: redmineClient.useSSL = checked
+            Layout.margins: 10
         }
     }
 }
