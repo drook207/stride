@@ -267,8 +267,8 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	QJsonDocument doc = QJsonDocument::fromJson(data);
 	QJsonObject response = doc.object();
 
-	QString path {};
-	int id {};
+	QString path { };
+	int id { };
 	switch (reply->operation()) {
 		case QNetworkAccessManager::HeadOperation:
 			break;

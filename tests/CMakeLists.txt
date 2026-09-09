@@ -9,9 +9,9 @@ include(FetchContent)
 
 # Download and configure Google Test
 FetchContent_Declare(
-	googletest
-	GIT_REPOSITORY https://github.com/google/googletest.git
-	GIT_TAG v1.15.2  # Specify the version you want
+ googletest
+ GIT_REPOSITORY https://github.com/google/googletest.git
+ GIT_TAG v1.15.2  # Specify the version you want
 )
 # Configure Google Test build options
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -25,12 +25,13 @@ main.cpp)
 find_package(Qt6 REQUIRED Core Network Quick)
 
 target_link_libraries(qredminetesting
-	PRIVATE
-	redmineclient
-	GTest::gtest_main
-	Qt6::Core
-	Qt6::Network
-	Qt6::Quick
+ PRIVATE
+QRedmine::Client
+QRedmine::Utils
+ GTest::gtest_main
+ Qt6::Core
+ Qt6::Network
+ Qt6::Quick
 )
 
 include(GoogleTest)

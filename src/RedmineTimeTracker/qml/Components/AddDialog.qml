@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
-import drook207.timeTracker
-import drook207.redmineClient
+import QRedmine.TimeTracker
+import QRedmine.Client
 
 Dialog {
 	id: docroot

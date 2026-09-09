@@ -36,7 +36,6 @@ namespace ApiResources {
 class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_OBJECT
 	QML_ELEMENT
-	Q_PLUGIN_METADATA(IID "drook207.redmineClient")
 	Q_DISABLE_COPY_MOVE(RedmineClient)
 	Q_PROPERTY(QString baseUrl READ baseUrl WRITE setBaseUrl NOTIFY baseUrlChanged)
 	Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
@@ -252,4 +251,3 @@ private:
 	bool mUseSSL { true };
 };
 }
-Q_DECLARE_METATYPE(QRedmineClient::RedmineClient)

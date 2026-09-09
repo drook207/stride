@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Effects
-import drook207.redmineClient
+import QRedmine.Client
 
 Item {
 	id: connectionStateLamp

@@ -4,8 +4,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
 import QtQuick.Effects
-import drook207.timeTracker
-import drook207.redmineClient
+import QRedmine.TimeTracker
+import QRedmine.Client
 
 ApplicationWindow {
     id: window
@@ -55,14 +55,14 @@ ApplicationWindow {
     Connections {
         target: redmineClient
         function onIssueReceived(issue) {
-            timeTrackerInstance.addIssueToDatabase(issue)
+            TimeTrackerInstance.addIssueToDatabase(issue)
         }
     }
 
     Connections {
         target: redmineClient
         function onTimeEntriesReceived(entries) {
-            timeTrackerInstance.addEntriesFromId(entries)
+            TimeTrackerInstance.addEntriesFromId(entries)
             if (entries.length > 0) {
                 redmineClient.getIssue(entries[0].issue.id)
             }

@@ -90,7 +90,7 @@ Item {
 		icon {
 			width: 5
 			height: menuButton.height / 2
-			source: "qrc:/qt/qml/drook207/timeTracker/qml/Assets/Icons/solid/ellipsis-vertical.svg"
+			source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/ellipsis-vertical.svg"
 		}
 		onClicked: drawer.open()
 		display: AbstractButton.IconOnly

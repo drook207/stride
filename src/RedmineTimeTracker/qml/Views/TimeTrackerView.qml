@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import drook207.timeTracker
-import drook207.redmineClient
+import QRedmine.TimeTracker
+import QRedmine.Client
 
 Item {
 
@@ -27,7 +27,7 @@ Item {
 
 	SubmitDialog {
 		id: submitDialog
-		timeTracker: docroot.timeTracker
+		TimeTracker: docroot.timeTracker
 		client: docroot.client
 	}
 	ColumnLayout {
@@ -59,25 +59,25 @@ Item {
 
 				TrackTimeView {
 					id: trackTimeView
-					timeTracker: docroot.timeTracker
+					TimeTracker: docroot.timeTracker
 					client: docroot.client
 					submitDialog: docroot.submitDialog
 				}
 				RecentEntriesView {
 					id: recentEntriesView
-					timeTracker: docroot.timeTracker
+					TimeTracker: docroot.timeTracker
 				}
 			}
 
 			AddTimeEntryView {
 				id: addTimeEntryView
-				timeTracker: docroot.timeTracker
+				TimeTracker: docroot.timeTracker
 				client: docroot.client
 			}
 
 			GetTimeEntriesView {
 				id: getRecentEntriesView
-				timeTracker: docroot.timeTracker
+				TimeTracker: docroot.timeTracker
 				client: docroot.client
 			}
 		}

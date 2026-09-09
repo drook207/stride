@@ -2,7 +2,7 @@ import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
-import drook207.timeTracker
+import QRedmine.TimeTracker
 
 Item {
     id: searchField
@@ -24,7 +24,7 @@ Item {
         }
 
         Connections {
-            target: timeTrackerInstance
+            target: TimeTrackerInstance
 			function onIssueAddedOrUpdated() {
                 issueModel.updateIssueList()
             }
