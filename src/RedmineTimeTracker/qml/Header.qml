@@ -2,7 +2,6 @@ import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Effects
 import QRedmine.Client
 
 Rectangle {
@@ -91,28 +90,5 @@ Rectangle {
 			flat: true
 			icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/chevron-down.svg"
 		}
-	}
-
-	Rectangle {
-		id: separator
-		anchors {
-			left: parent.left
-			right: parent.right
-			bottom: parent.bottom
-			margins: 10
-		}
-
-		height: 2
-		color: Material.color(Material.frameColor)
-	}
-
-	MultiEffect {
-		source: separator
-		anchors.fill: separator
-		shadowBlur: 0.1
-		shadowEnabled: true
-		shadowColor: "black"
-		shadowVerticalOffset: 0
-		shadowHorizontalOffset: 0
 	}
 }
