@@ -46,12 +46,12 @@ Item {
 				Layout.fillWidth: true
 				label: qsTr("Project ID")
 
-				SpinBox {
+				TextField {
 					id: projectIdField
 					Layout.fillWidth: true
-					from: 1
-					to: 999999
-					editable: true
+					validator: IntValidator {
+						bottom: 1
+					}
 				}
 			}
 
@@ -83,8 +83,8 @@ Item {
 		RoundButton {
 			text: qsTr("Add Issue")
 			highlighted: true
-			enabled: subjectField.text.length > 0 && projectIdField.value > 0
-			onClicked: docroot.client.createIssue(projectIdField.value, subjectField.text, descriptionField.text)
+			enabled: subjectField.text.length > 0 && projectIdField.acceptableInput
+			onClicked: docroot.client.createIssue(parseInt(projectIdField.text), subjectField.text, descriptionField.text)
 		}
 	}
 }
