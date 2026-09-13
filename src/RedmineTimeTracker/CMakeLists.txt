@@ -155,17 +155,49 @@ qt_generate_deploy_qml_app_script(
  DEPLOY_USER_QML_MODULES_ON_UNSUPPORTED_PLATFORM)
 install(SCRIPT ${deploy_script})
 
-include(CPack)
-
 set(CPACK_PACKAGE_NAME "QRedmineTimeTracker")
-
 set(CPACK_PACKAGE_VENDOR "drook207")
-
+set(CPACK_PACKAGE_CONTACT "Pascal Berndt <berndt.pascal90@gmail.com>")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Desktop time tracker for Redmine issues")
 set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/LICENSE)
 
-set(CPACK_NSIS_MUI_ICON
+set(CPACK_PACKAGE_ICON
  "${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker/qml/Assets/Icons/app-icon.ico")
-set(CPACK_NSIS_MUI_UNIICON
- "${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker/qml/Assets/Icons/app-icon.ico")
-set(CPACK_CREATE_DESKTOP_LINKS QRedmine-Time-Tracker)
-set(CPACK_PACKAGE_EXECUTABLES "QRedmine-Time-Tracker" "QRedmineTimeTracker")
+
+if(WIN32)
+  # Windows: Qt Installer Framework (QtIFW) installer.
+  # If binarycreator/repogen aren't found automatically, point CMake at your QtIFW
+  # install (the directory containing "bin", not "bin" itself) via the CPACK_IFW_ROOT
+  # or QTIFWDIR cache/environment variable, e.g.
+  # -DCPACK_IFW_ROOT=C:/Qt/Tools/QtInstallerFramework/4.7
+  set(CPACK_GENERATOR "IFW")
+
+  set(CPACK_IFW_PACKAGE_TITLE "${CPACK_PACKAGE_NAME}")
+  set(CPACK_IFW_PACKAGE_PUBLISHER "${CPACK_PACKAGE_VENDOR}")
+  set(CPACK_IFW_PRODUCT_URL "https://gitlab.com/drook207/QRedmineTimeTracker")
+  set(CPACK_IFW_PACKAGE_ICON "${CPACK_PACKAGE_ICON}")
+  set(CPACK_IFW_PACKAGE_WINDOW_ICON "${CPACK_PACKAGE_ICON}")
+  set(CPACK_IFW_PACKAGE_START_MENU_DIRECTORY "${CPACK_PACKAGE_NAME}")
+  set(CPACK_IFW_TARGET_DIRECTORY "@ApplicationsDir@/${CPACK_PACKAGE_NAME}")
+
+elseif(APPLE)
+  # macOS: a .dmg is the conventional way to hand out an app bundle.
+  set(CPACK_GENERATOR "DragNDrop")
+  set(CPACK_DMG_VOLUME_NAME "${CPACK_PACKAGE_NAME}")
+
+else()
+  # Linux: a portable .tar.gz by default (no extra tooling required); pass
+  # -G DEB (needs dpkg-dev) or -G RPM (needs rpm-build) explicitly to build a
+  # native package instead - the metadata below applies to either.
+  set(CPACK_GENERATOR "TGZ")
+
+  set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
+  set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
+  set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+
+  set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+  set(CPACK_RPM_PACKAGE_GROUP "Applications/Productivity")
+  set(CPACK_RPM_PACKAGE_AUTOREQPROV ON)
+endif()
+
+include(CPack)
