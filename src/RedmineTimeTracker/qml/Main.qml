@@ -3,15 +3,14 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
-import QtQuick.Effects
 import QRedmine.TimeTracker
 import QRedmine.Client
 
 ApplicationWindow {
     id: window
     visible: true
-    width: 600
-    height: 1024
+    width: 1280
+    height: 960
     title: "Redmine Time Tracker"
 
     Material.theme: Material.Dark
@@ -24,20 +23,20 @@ ApplicationWindow {
         apiKey: redmineClient.apiKey === "" ? "your-api-key" : redmineClient.apiKey
 
         onErrorOccurred: function (error) {
-            messageDialog.text = "Error: " + error
-            messageDialog.open()
+            messageDialog.text = "Error: " + error;
+            messageDialog.open();
         }
 
         onTimeEntryCreated: function (timeEntry) {
-            messageDialog.text = "Time entry created successfully"
-            messageDialog.open()
+            messageDialog.text = "Time entry created successfully";
+            messageDialog.open();
         }
     }
 
     Component.onCompleted: {
-        redmineClient.getEnumerations(0)
-        redmineClient.getEnumerations(1)
-        redmineClient.getEnumerations(2)
+        redmineClient.getEnumerations(0);
+        redmineClient.getEnumerations(1);
+        redmineClient.getEnumerations(2);
     }
     TimeTracker {
         id: timeTrackerInstance
@@ -48,23 +47,23 @@ ApplicationWindow {
     Connections {
         target: redmineClient
         function onTimeEntryActivitiesReceived(value) {
-            activitiesModel.addTimeEntryActivities(value)
+            activitiesModel.addTimeEntryActivities(value);
         }
     }
 
     Connections {
         target: redmineClient
         function onIssueReceived(issue) {
-            TimeTrackerInstance.addIssueToDatabase(issue)
+            timeTrackerInstance.addIssueToDatabase(issue);
         }
     }
 
     Connections {
         target: redmineClient
         function onTimeEntriesReceived(entries) {
-            TimeTrackerInstance.addEntriesFromId(entries)
+            timeTrackerInstance.addEntriesFromId(entries);
             if (entries.length > 0) {
-                redmineClient.getIssue(entries[0].issue.id)
+                redmineClient.getIssue(entries[0].issue.id);
             }
         }
     }
@@ -124,16 +123,15 @@ ApplicationWindow {
     }
 
     Popup {
-
         id: busyIndicator
         BusyIndicator {
             running: redmineClient.loading
 
             onRunningChanged: {
                 if (running) {
-                    busyIndicator.open()
+                    busyIndicator.open();
                 } else {
-                    busyIndicator.close()
+                    busyIndicator.close();
                 }
             }
         }
