@@ -1,6 +1,6 @@
 # Redmine Time Tracker
 
-A desktop application built with Qt 6.8 for tracking time spent on Redmine issues. Features automatic time tracking, offline support, and seamless integration with Redmine's REST API.
+A desktop application built with Qt 6 for tracking time spent on Redmine issues, for Linux and Windows. Features automatic time tracking, offline support, and seamless integration with Redmine's REST API.
 
 ## Features
 
@@ -14,11 +14,13 @@ A desktop application built with Qt 6.8 for tracking time spent on Redmine issue
 
 ### Redmine Integration
 
+- Full issue and project management (create, update, list, delete)
 - Automatic synchronization with Redmine
-- Create time entries directly from the app
+- Create, update, and delete time entries directly from the app
 - View and manage existing time entries
-- Secure API key authentication
-- Error handling and retry mechanisms
+- API key stored in the OS-native secure storage (Windows Credential Manager, Linux Secret Service/KWallet) - never in plain text
+- Automatic Redmine REST API version detection, so newer features can be gated on server capability
+- Error handling, connection-state indicator, and retry mechanisms
 
 ### Offline Support
 
@@ -31,38 +33,53 @@ A desktop application built with Qt 6.8 for tracking time spent on Redmine issue
 ## Requirements
 
 - Qt 6.8 or higher
-- CMake 3.16 or higher
+- CMake 3.16 or higher (3.23+ to use the provided CMake Presets)
 - C++17 compatible compiler
 - SQLite
+- Linux, or Windows with MSVC or MinGW
+- Internet access on first configure - GoogleTest and [QtKeychain](https://github.com/frankosterfeld/qtkeychain) are fetched automatically via CMake `FetchContent`
 
 ## Building
 
-1. Clone the repository:
+Building uses the CMake Presets in `CMakePresets.json`:
 
-   ```bash
-   git clone https://github.com/drook207/QRedmineClient.git
-   cd QRedmineClient
-   ```
+```bash
+git clone https://gitlab.com/drook207/QRedmineTimeTracker.git
+cd QRedmineTimeTracker
 
-1. Create build directory:
+# Point at your Qt installation, e.g. .../Qt/6.8.0/gcc_64 (Linux),
+# .../Qt/6.8.0/msvc2022_64 or .../Qt/6.8.0/mingw_64 (Windows)
+export QT_DIR=/path/to/Qt/6.x.y/<kit>
 
-   ```bash
-   mkdir build
-   cd build
-   ```
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+```
 
-1. Configure and build:
+Run `cmake --list-presets` for the full list - `linux-{debug,release,relwithdebinfo}`,
+`windows-msvc-{debug,release,relwithdebinfo}` (run from an *x64 Native Tools Command
+Prompt for VS*, or after calling `vcvarsall.bat x64`, so `cl.exe` is on `PATH`), and
+`windows-mingw-{debug,release,relwithdebinfo}`. Only the presets matching your current
+OS are shown.
 
-   ```bash
-   cmake ..
-   cmake --build .
-   ```
+## Testing
+
+Unit and integration tests (GoogleTest) live in `tests/`. Build and run them directly:
+
+```bash
+cmake --build --preset linux-debug --target qredminetesting
+./build/linux-debug/tests/qredminetesting
+```
+
+For manual testing against a real server, a disposable local Redmine instance
+(with demo projects/issues/users/time entries) is available via Docker - see
+[docker/README.md](docker/README.md).
 
 ## Configuration
 
 1. Launch the application
 2. Enter your Redmine URL in the settings
-3. Add your API key from Redmine
+3. Add your API key from Redmine - it's written straight to the OS-native secure storage,
+   never persisted in plain text
 4. (Optional) Configure default activity types
 
 ## Usage
@@ -88,19 +105,16 @@ Time entries are stored in SQLite with the following structure:
 - `created_at`: Local creation timestamp
 - `updated_at`: Last modification timestamp
 
-## Test Environment
-
-A disposable local Redmine instance (with demo projects/issues/users/time
-entries) for manual testing is available via Docker - see
-[docker/README.md](docker/README.md).
-
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+3. Install the pre-commit hooks: `pip install pre-commit && pre-commit install`
+   (runs clang-format/clang-tidy/cppcheck/codespell/markdownlint, and enforces
+   [Conventional Commits](https://www.conventionalcommits.org) on commit messages)
+4. Commit your changes
+5. Push to the branch
+6. Create a Pull Request
 
 ## License
 
