@@ -1,16 +1,25 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
+import QtQuick.Effects
 import QRedmine.TimeTracker
 
-GroupBox {
+Item {
 	id: docroot
 
 	required property TimeTracker timeTracker
 
-	title: qsTr("Recent Time Entries")
-	Layout.fillWidth: true
-	Layout.fillHeight: true
+	function formatDuration(hours) {
+		const totalSeconds = Math.round(hours * 3600)
+		const h = Math.floor(totalSeconds / 3600)
+		const m = Math.floor((totalSeconds % 3600) / 60)
+		const s = totalSeconds % 60
+		function pad(value) {
+			return value < 10 ? "0" + value : "" + value
+		}
+		return pad(h) + ":" + pad(m) + ":" + pad(s)
+	}
 
 	ListView {
 		id: recentEntries
@@ -19,42 +28,73 @@ GroupBox {
 		clip: true
 
 		delegate: ItemDelegate {
-			width: parent.width
-			contentItem: ColumnLayout {
-				spacing: 5
+			required property var modelData
 
-				RowLayout {
+			width: ListView.view.width
+			height: rowLayout.implicitHeight + 20
+
+			contentItem: RowLayout {
+				id: rowLayout
+				anchors.verticalCenter: parent.verticalCenter
+				spacing: 15
+
+				Image {
+					id: personIcon
+					source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/user.svg"
+					sourceSize.width: 24
+					sourceSize.height: 24
+					visible: false
+				}
+
+				MultiEffect {
+					source: personIcon
+					Layout.preferredWidth: personIcon.width
+					Layout.preferredHeight: personIcon.height
+					colorization: 1.0
+					colorizationColor: Material.foreground
+				}
+
+				ColumnLayout {
 					Layout.fillWidth: true
+					spacing: 2
+
 					Label {
-						text: qsTr("Id: %0").arg(modelData.id)
+						text: docroot.formatDuration(modelData.hours)
+						color: Material.hintTextColor
+						font.pixelSize: 12
+					}
+
+					Label {
+						text: "#" + modelData.issue_id
 						font.bold: true
+						font.pixelSize: 16
 					}
+
 					Label {
-						text: qsTr("Issue #%0").arg(modelData.issue_id)
-						font.bold: true
-					}
-					Label {
-						text: qsTr("%0 hours").arg(modelData.hours.toFixed(2))
-						Layout.leftMargin: 10
-					}
-					Label {
-						text: Qt.formatDateTime(modelData.spent_on, "yyyy-MM-dd hh:mm")
+						text: modelData.comments
+						visible: modelData.comments !== ""
+						color: Material.secondaryTextColor
+						wrapMode: Text.WordWrap
 						Layout.fillWidth: true
-						horizontalAlignment: Text.AlignRight
-					}
-					Label {
-						text: modelData.sync_status === 0 ? false : true
-						Layout.fillWidth: true
-						horizontalAlignment: Text.AlignRight
 					}
 				}
 
 				Label {
-					text: modelData.comments
-					visible: modelData.comments !== ""
-					wrapMode: Text.WordWrap
-					Layout.fillWidth: true
+					text: Qt.formatDate(modelData.spent_on, "dd.MM.yy")
+					color: Material.hintTextColor
+					font.pixelSize: 12
+					Layout.alignment: Qt.AlignTop
 				}
+			}
+
+			Rectangle {
+				anchors {
+					left: parent.left
+					right: parent.right
+					bottom: parent.bottom
+				}
+				height: 1
+				color: Material.dividerColor
 			}
 		}
 

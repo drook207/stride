@@ -11,10 +11,10 @@ ApplicationWindow {
     visible: true
     width: 1280
     height: 960
-    title: "Redmine Time Tracker"
+    title: Application.name
 
     Material.theme: Material.Dark
-    Material.accent: Material.LightGreen
+    Material.accent: "#9F8FEF"
 
     RedmineClient {
         id: redmineClient
@@ -74,6 +74,10 @@ ApplicationWindow {
             top: parent.top
             topMargin: 5
         }
+
+        connectionState: redmineClient.connectionState
+
+        onMenuToggled: sidebar.expanded = !sidebar.expanded
     }
 
     ColumnLayout {
@@ -87,36 +91,37 @@ ApplicationWindow {
         anchors.margins: 10
         spacing: 10
 
-        StackView {
-            id: stackView
+        RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            initialItem: trackTimeView
+            spacing: 10
+
+            Sidebar {
+                id: sidebar
+                Layout.fillHeight: true
+
+                view: stackView
+                timeTracker: timeTrackerInstance
+                componentsToLoad: [recentEntriesView, addTimeEntryView, getTimeEntriesView, addIssueView, settingsView]
+                buttonTitles: [qsTr("Recent Entries"), qsTr("Add Entry"), qsTr("Search Issue"), qsTr("Add Issue")]
+            }
+
+            StackView {
+                id: stackView
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                initialItem: recentEntriesView
+            }
         }
-        Item {
-            id: footer
+
+        TrackingBar {
+            id: trackingBar
             Layout.fillWidth: true
-            Layout.minimumHeight: 20
-            Layout.maximumHeight: 20
 
-            ConnectionStateLamp {
-                anchors {
-                    left: parent.left
-                    verticalCenter: parent.verticalCenter
-                }
-                connectionState: redmineClient.connectionState
-            }
-
-            Text {
-                id: version
-                anchors {
-                    right: parent.right
-                    verticalCenter: parent.verticalCenter
-                }
-
-                color: Material.accentColor
-                text: Application.version
-            }
+            timeTracker: timeTrackerInstance
+            client: redmineClient
+            submitDialog: subDialog
+            activitiesModel: activitiesModel
         }
     }
 
@@ -136,11 +141,9 @@ ApplicationWindow {
     }
 
     Component {
-        id: trackTimeView
-        TrackTimeView {
+        id: recentEntriesView
+        RecentEntriesView {
             timeTracker: timeTrackerInstance
-            client: redmineClient
-            submitDialog: subDialog
         }
     }
 
@@ -157,6 +160,14 @@ ApplicationWindow {
 
         GetTimeEntriesView {
             timeTracker: timeTrackerInstance
+            client: redmineClient
+        }
+    }
+
+    Component {
+        id: addIssueView
+
+        AddIssueView {
             client: redmineClient
         }
     }
@@ -180,12 +191,5 @@ ApplicationWindow {
 
         timeTracker: timeTrackerInstance
         client: redmineClient
-    }
-
-    BurgerMenu {
-
-        view: stackView
-        componentsToLoad: [trackTimeView, addTimeEntryView, getTimeEntriesView, settingsView]
-        buttonTitles: ["Track Time", "Add Time Entry", "Get Time Entries", "Settings"]
     }
 }

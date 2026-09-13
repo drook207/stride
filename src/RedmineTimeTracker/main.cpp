@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
 	// TODO Get this information from cmake?
 	app.setOrganizationName("YourOrg");
 	app.setOrganizationDomain("yourorg.com");
-	app.setApplicationName("Redmine Time Tracker");
+	app.setApplicationName("Stride");
 	app.setApplicationVersion("0.0.1");
 
 	// Create QML engine and load main QML file

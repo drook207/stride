@@ -41,17 +41,17 @@ qt_add_qml_module(
  QML_FILES
  qml/Main.qml
  qml/Header.qml
- qml/Views/TimeTrackerView.qml
  qml/Views/RecentEntriesView.qml
- qml/Views/TrackTimeView.qml
  qml/Views/GetTimeEntriesView.qml
  qml/Views/AddTimeEntryView.qml
+ qml/Views/AddIssueView.qml
  qml/Views/SettingsView.qml
  qml/Components/SubmitDialog.qml
  qml/Components/MessageDialog.qml
- qml/Components/BurgerMenu.qml
+ qml/Components/Sidebar.qml
+ qml/Components/TrackingBar.qml
  qml/Components/AddDialog.qml
- qml/Components/ConnectionStateLamp.qml
+ qml/Components/LabeledField.qml
  SOURCES
  timetracker.h
  timetracker.cpp
@@ -64,6 +64,16 @@ qt_add_qml_module(
  qml/Assets/Icons/solid/gear.svg
  qml/Assets/Icons/solid/bars.svg
  qml/Assets/Icons/solid/ellipsis-vertical.svg
+ qml/Assets/Icons/solid/clock-rotate-left.svg
+ qml/Assets/Icons/solid/circle-plus.svg
+ qml/Assets/Icons/solid/magnifying-glass.svg
+ qml/Assets/Icons/solid/user.svg
+ qml/Assets/Icons/solid/play.svg
+ qml/Assets/Icons/solid/pause.svg
+ qml/Assets/Icons/solid/xmark.svg
+ qml/Assets/Icons/solid/chevron-down.svg
+ qml/Assets/Icons/solid/chevron-up.svg
+ qml/Assets/Icons/solid/plus.svg
  qml/Assets/Icons/app-icon.svg
  qml/Assets/Icons/app-icon.ico
  OUTPUT_DIRECTORY

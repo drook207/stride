@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QRedmine.TimeTracker
 import QRedmine.Client
 
@@ -15,20 +16,32 @@ Item {
             left: parent.left
             right: parent.right
             top: parent.top
+            margins: 15
         }
-        GroupBox {
-            title: qsTr("Connection Settings")
+        spacing: 15
+
+        Label {
+            text: qsTr("Settings")
+            font.bold: true
+            font.pixelSize: 18
+            color: Material.foreground
+        }
+
+        ColumnLayout {
             Layout.fillWidth: true
+            spacing: 10
 
-            GridLayout {
-                columns: 2
-                rowSpacing: 10
-                columnSpacing: 10
-                anchors.fill: parent
+            Label {
+                text: qsTr("Connection Settings")
+                font.bold: true
+                font.pixelSize: 14
+                color: Material.foreground
+            }
 
-                Label {
-                    text: qsTr("Redmine URL:")
-                }
+            LabeledField {
+                Layout.fillWidth: true
+                label: qsTr("Redmine URL")
+
                 TextField {
                     Layout.fillWidth: true
                     text: redmineClient.baseUrl
@@ -46,10 +59,12 @@ Item {
 
                     placeholderText: qsTr("Enter your Redmine URL")
                 }
+            }
 
-                Label {
-                    text: qsTr("API Key:")
-                }
+            LabeledField {
+                Layout.fillWidth: true
+                label: qsTr("API Key")
+
                 TextField {
                     Layout.fillWidth: true
                     text: redmineClient.apiKey
@@ -59,11 +74,18 @@ Item {
                 }
             }
         }
+
         CheckBox {
             text: qsTr("Use SSL")
             checked: redmineClient.useSSL
             onCheckedChanged: redmineClient.useSSL = checked
-            Layout.margins: 10
+        }
+
+        Label {
+            text: qsTr("Version %0").arg(Application.version)
+            color: Material.hintTextColor
+            font.pixelSize: 11
+            Layout.topMargin: 20
         }
     }
 }

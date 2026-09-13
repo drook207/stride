@@ -1,13 +1,13 @@
 import QtQuick
 import QtQml
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QRedmine.TimeTracker
 import QRedmine.Client
 
-GroupBox {
+Item {
     id: docroot
-    title: qsTr("Add Time Entry")
     property TimeTracker timeTracker: undefined
     property RedmineClient client: undefined
     property AddDialog addDialog: AddDialog {
@@ -36,75 +36,104 @@ GroupBox {
             left: parent.left
             right: parent.right
             top: parent.top
+            margins: 15
         }
 
-        spacing: 5
-        GridLayout {
-            columns: 1
-            rows: 3
+        spacing: 15
+
+        Label {
+            text: qsTr("Add Time Entry")
+            font.bold: true
+            font.pixelSize: 18
+            color: Material.foreground
+        }
+
+        ColumnLayout {
             Layout.fillWidth: true
-            rowSpacing: 10
-            columnSpacing: 10
+            spacing: 10
 
-            IssueSearchInputField {
-                id: issueField
+            LabeledField {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 60
+                label: qsTr("Issue")
 
-                onAccepted: {
-					if (acceptableInput) {
-                        docroot.addDialog.issueId = issueField.value
+                IssueSearchInputField {
+                    id: issueField
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 60
+                    timeTracker: docroot.timeTracker
+
+                    onAccepted: {
+						if (acceptableInput) {
+                            docroot.addDialog.issueId = issueField.value
+                        }
+                    }
+
+                    onTextChanged: {
+                        inputValidatorTimer.restart()
                     }
                 }
-
-                onTextChanged: {
-                    inputValidatorTimer.restart()
-                }
             }
 
-            TextField {
-                id: timeSpentField
+            LabeledField {
                 Layout.fillWidth: true
-                placeholderText: qsTr("Enter time spent (eg. 1,0)")
-                validator: DoubleValidator {
-                    bottom: 0
-                    decimals: 2
-                    notation: DoubleValidator.StandardNotation
-                }
-                onAccepted: {
-                    if (acceptableInput) {
-                        var german = Qt.locale("de_DE")
-						const number = Number.fromLocaleString(german, text)
-                        docroot.addDialog.hours = number
+                label: qsTr("Time spent")
+
+                TextField {
+                    id: timeSpentField
+                    Layout.fillWidth: true
+                    placeholderText: qsTr("Enter time spent (eg. 1,0)")
+                    validator: DoubleValidator {
+                        bottom: 0
+                        decimals: 2
+                        notation: DoubleValidator.StandardNotation
+                    }
+                    onAccepted: {
+                        if (acceptableInput) {
+                            var german = Qt.locale("de_DE")
+							const number = Number.fromLocaleString(german, text)
+                            docroot.addDialog.hours = number
+                        }
+                    }
+                    onTextChanged: {
+                        inputValidatorTimer.restart()
                     }
                 }
-                onTextChanged: {
-                    inputValidatorTimer.restart()
-                }
             }
 
-            TextField {
-                id: spentOnField
+            LabeledField {
                 Layout.fillWidth: true
-                placeholderText: qsTr("Enter date (yyyy-mm-dd)")
-                validator: RegularExpressionValidator {
-                    regularExpression: /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/
-                }
-                onAcceptableInputChanged: {
-                    docroot.addDialog.spentOn = spentOnField.text
+                label: qsTr("Date")
+
+                TextField {
+                    id: spentOnField
+                    Layout.fillWidth: true
+                    placeholderText: qsTr("Enter date (yyyy-mm-dd)")
+                    validator: RegularExpressionValidator {
+                        regularExpression: /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/
+                    }
+                    onAcceptableInputChanged: {
+                        docroot.addDialog.spentOn = spentOnField.text
+                    }
                 }
             }
         }
-        TextArea {
-            id: commentsField
+
+        LabeledField {
             Layout.fillWidth: true
-            Layout.preferredHeight: 80
-            placeholderText: qsTr("Enter comments for this time entry")
-            wrapMode: TextEdit.Wrap
+            label: qsTr("Comments")
+
+            TextArea {
+                id: commentsField
+                Layout.fillWidth: true
+                Layout.preferredHeight: 80
+                placeholderText: qsTr("Enter comments for this time entry")
+                wrapMode: TextEdit.Wrap
+            }
         }
 
-        Button {
+        RoundButton {
             text: qsTr("Add")
+            highlighted: true
             onClicked: {
                 docroot.addDialog.comment = commentsField.text
                 docroot.addDialog.open()

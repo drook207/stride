@@ -14,6 +14,7 @@ Dialog {
 	property string issueId: ""
 	property string comment: ""
 	property string spentOn: ""
+	property int activityId: 0
 
 	title: qsTr("Submit Time Entry")
 	standardButtons: Dialog.Yes | Dialog.No
@@ -38,13 +39,13 @@ Dialog {
 										   })
 
 		// Submit to Redmine
-		docroot.client.createTimeEntry(issueId, hours, comments)
-		docroot.comment.text = ""
+		docroot.client.createTimeEntry(issueId, hours, comments, docroot.spentOn === "" ? Qt.formatDate(new Date(), "yyyy-MM-dd") : docroot.spentOn, docroot.activityId)
+		docroot.comment = ""
 	}
 
 	onRejected: {
 		docroot.timeTracker.stopTracking()
-		docroot.comment.text = ""
+		docroot.comment = ""
 	}
 
 	contentItem: ColumnLayout {

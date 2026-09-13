@@ -1,45 +1,70 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QRedmine.TimeTracker
 import QRedmine.Client
 
-GroupBox {
+Item {
     id: docroot
-	title: qsTr("Entries from Id")
 
     required property TimeTracker timeTracker
     required property RedmineClient client
 
     ColumnLayout {
-        anchors.fill: parent
-        spacing: 10
-        GridLayout {
-            columns: 1
-            rows: 3
-            Layout.fillWidth: true
-            rowSpacing: 10
-            columnSpacing: 10
+        anchors {
+            fill: parent
+            margins: 15
+        }
+        spacing: 15
 
-            IssueSearchInputField {
-                id: issueField
+        Label {
+			text: qsTr("Entries from Id")
+            font.bold: true
+            font.pixelSize: 18
+            color: Material.foreground
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            LabeledField {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 60
-                enabled: !docroot.timeTracker.isTracking
+                label: qsTr("Issue")
+
+                IssueSearchInputField {
+                    id: issueField
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 60
+                    timeTracker: docroot.timeTracker
+                    enabled: !docroot.timeTracker.isTracking
+                }
             }
 
-            Button {
+            RoundButton {
 				text: qsTr("Get")
+                highlighted: true
                 onClicked: docroot.client.getTimeEntries(issueField.value)
             }
         }
-        GroupBox {
-			title: qsTr("Time Entries")
+
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            spacing: 5
+
+            Label {
+				text: qsTr("Time Entries")
+                font.bold: true
+                font.pixelSize: 14
+                color: Material.foreground
+            }
+
             ListView {
                 id: entriesList
-                anchors.fill: parent
+                Layout.fillWidth: true
+                Layout.fillHeight: true
                 model: docroot.timeTracker.entriesFromId
                 clip: true
 

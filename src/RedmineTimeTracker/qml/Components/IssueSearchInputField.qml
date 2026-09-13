@@ -7,6 +7,8 @@ import QRedmine.TimeTracker
 Item {
     id: searchField
 
+    required property TimeTracker timeTracker
+
     property int value: -1
 
 	readonly property bool acceptableInput: issueField.acceptableInput && searchField.value >= 0
@@ -24,7 +26,7 @@ Item {
         }
 
         Connections {
-            target: docroot.timeTracker
+            target: searchField.timeTracker
 			function onIssueAddedOrUpdated() {
                 issueModel.updateIssueList()
             }
@@ -64,7 +66,7 @@ Item {
 
         width: parent.width
 		placeholderText: qsTr("Enter issue")
-        enabled: !docroot.timeTracker.isTracking
+        enabled: !searchField.timeTracker.isTracking
 		onTextChanged: issueField.getAcceptableIssueIdFromInput()
 		onAccepted: {
 			searchField.accepted()
