@@ -15,6 +15,10 @@ FetchContent_Declare(
 )
 # Configure Google Test build options
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+# Don't add GoogleTest/GoogleMock's own install() rules to the build - CPack packages
+# every install() rule in the whole project, not just QRedmineTimeTracker's, so leaving
+# this on bundles GTest's development headers/libraries into the shipped app package.
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 
