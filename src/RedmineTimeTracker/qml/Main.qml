@@ -11,10 +11,13 @@ ApplicationWindow {
     visible: true
     width: 1280
     height: 960
+    visibility: window.isMobile ? Window.FullScreen : Window.AutomaticVisibility
     title: Application.name
 
     Material.theme: Material.Dark
     Material.accent: "#9F8FEF"
+
+    readonly property bool isMobile: Qt.platform.os === "android" || Qt.platform.os === "ios"
 
     RedmineClient {
         id: redmineClient
@@ -66,62 +69,28 @@ ApplicationWindow {
         }
     }
 
-    Header {
-        id: header
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: parent.top
-            topMargin: 5
-        }
-
-        connectionState: redmineClient.connectionState
-
-        onMenuToggled: sidebar.expanded = !sidebar.expanded
+    Loader {
+        anchors.fill: parent
+        sourceComponent: window.isMobile ? mobileShellComponent : desktopShellComponent
     }
 
-    ColumnLayout {
-        anchors {
-            top: header.bottom
-            bottom: parent.bottom
-            left: parent.left
-            right: parent.right
-        }
-
-        anchors.margins: 10
-        spacing: 10
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 10
-
-            Sidebar {
-                id: sidebar
-                Layout.fillHeight: true
-
-                view: stackView
-                timeTracker: timeTrackerInstance
-                componentsToLoad: [recentEntriesView, addTimeEntryView, getTimeEntriesView, addIssueView, settingsView]
-                buttonTitles: [qsTr("Recent Entries"), qsTr("Add Entry"), qsTr("Search Issue"), qsTr("Add Issue")]
-            }
-
-            StackView {
-                id: stackView
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                initialItem: recentEntriesView
-            }
-        }
-
-        TrackingBar {
-            id: trackingBar
-            Layout.fillWidth: true
-
-            timeTracker: timeTrackerInstance
+    Component {
+        id: desktopShellComponent
+        DesktopShell {
             client: redmineClient
-            submitDialog: subDialog
+            timeTracker: timeTrackerInstance
             activitiesModel: activitiesModel
+            submitDialog: subDialog
+        }
+    }
+
+    Component {
+        id: mobileShellComponent
+        MobileShell {
+            client: redmineClient
+            timeTracker: timeTrackerInstance
+            activitiesModel: activitiesModel
+            submitDialog: subDialog
         }
     }
 
@@ -137,48 +106,6 @@ ApplicationWindow {
                     busyIndicator.close();
                 }
             }
-        }
-    }
-
-    Component {
-        id: recentEntriesView
-        RecentEntriesView {
-            timeTracker: timeTrackerInstance
-        }
-    }
-
-    Component {
-        id: addTimeEntryView
-        AddTimeEntryView {
-            timeTracker: timeTrackerInstance
-            client: redmineClient
-        }
-    }
-
-    Component {
-        id: getTimeEntriesView
-
-        GetTimeEntriesView {
-            timeTracker: timeTrackerInstance
-            client: redmineClient
-        }
-    }
-
-    Component {
-        id: addIssueView
-
-        AddIssueView {
-            client: redmineClient
-        }
-    }
-
-    Component {
-        id: settingsView
-
-        SettingsView {
-            timeTracker: timeTrackerInstance
-            client: redmineClient
-            submitDialog: subDialog
         }
     }
 
