@@ -24,7 +24,7 @@ Item {
         }
 
         Connections {
-            target: TimeTrackerInstance
+            target: docroot.timeTracker
 			function onIssueAddedOrUpdated() {
                 issueModel.updateIssueList()
             }
