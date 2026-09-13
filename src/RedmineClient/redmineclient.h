@@ -42,7 +42,11 @@ class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
 	Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged FINAL)
 	Q_PROPERTY(bool useSSL READ useSSL WRITE useSSL NOTIFY useSSLChanged FINAL)
+	Q_PROPERTY(int apiVersion READ apiVersion NOTIFY apiVersionChanged FINAL)
 public:
+	// Redmine's REST API version, not its own value until a response from the server has been seen
+	static constexpr int UNKNOWN_API_VERSION = -1;
+
 	enum EnumerationTypes {
 		TIME_ENTRY_ACTIVITIES,
 		ISSUE_PRIORITIES,
@@ -102,7 +106,29 @@ public:
 
 	bool useSSL() const { return mUseSSL; }
 
+	/*!
+	 * \brief apiVersion The Redmine REST API version last reported by the server via the
+	 * "X-Redmine-API-Version" response header, or UNKNOWN_API_VERSION when not known yet.
+	 * This is Redmine's API feature-level version, not the Redmine application version.
+	 * \return
+	 */
+	int apiVersion() const;
+
+	/*!
+	 * \brief hasApiVersion Whether the server's API version is known to be at least minVersion.
+	 * Use this to guard calls to endpoints/parameters that were only added in later API versions.
+	 * Returns false while the API version is still unknown.
+	 * \param minVersion
+	 * \return
+	 */
+	Q_INVOKABLE bool hasApiVersion(int minVersion) const;
+
 public slots:
+	/*!
+	 * \brief detectApiVersion Issues a lightweight request so the server's API version can be
+	 * read from the response headers. apiVersionChanged is emitted once it becomes known.
+	 */
+	void detectApiVersion();
 
 	// Create a new time entry
 	/*!
@@ -350,6 +376,11 @@ signals:
 	void connectionStateChanged();
 	void useSSLChanged();
 
+	/*!
+	 * \brief apiVersionChanged Emitted once the server's API version becomes known or changes
+	 */
+	void apiVersionChanged();
+
 private slots:
 	/*!
 	 * \brief handleNetworkReply
@@ -381,10 +412,19 @@ private:
 	 * \return
 	 */
 	QNetworkRequest createRequest(const QString& endpoint, const QUrlQuery& query = QUrlQuery());
+
+	/*!
+	 * \brief updateApiVersionFromReply Reads the "X-Redmine-API-Version" header, if present,
+	 * and emits apiVersionChanged when it differs from the previously known value.
+	 * \param reply
+	 */
+	void updateApiVersionFromReply(QNetworkReply* reply);
+
 	QString mBaseUrl;
 	QString mApiKey;
 	bool mLoading;
 	QNetworkAccessManager* mNetworkManager;
 	bool mUseSSL { true };
+	int mApiVersion { UNKNOWN_API_VERSION };
 };
 }

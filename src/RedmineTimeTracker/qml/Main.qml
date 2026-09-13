@@ -34,6 +34,7 @@ ApplicationWindow {
     }
 
     Component.onCompleted: {
+        redmineClient.detectApiVersion();
         redmineClient.getEnumerations(0);
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);

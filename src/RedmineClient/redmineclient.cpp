@@ -101,6 +101,35 @@ void RedmineClient::useSSL(bool useSSL)
 
 bool RedmineClient::loading() const { return mLoading; }
 
+int RedmineClient::apiVersion() const { return mApiVersion; }
+
+bool RedmineClient::hasApiVersion(int minVersion) const
+{
+	return mApiVersion != UNKNOWN_API_VERSION && mApiVersion >= minVersion;
+}
+
+void RedmineClient::detectApiVersion()
+{
+	setLoading(true);
+	QUrlQuery query;
+	query.addQueryItem("limit", "0");
+	mNetworkManager->get(createRequest(ApiResources::ISSUES, query));
+}
+
+void RedmineClient::updateApiVersionFromReply(QNetworkReply* reply)
+{
+	if (!reply->hasRawHeader("X-Redmine-API-Version")) {
+		return;
+	}
+
+	bool ok = false;
+	int version = reply->rawHeader("X-Redmine-API-Version").toInt(&ok);
+	if (ok && version != mApiVersion) {
+		mApiVersion = version;
+		emit apiVersionChanged();
+	}
+}
+
 void RedmineClient::setLoading(bool loading)
 {
 	if (mLoading != loading) {
@@ -375,6 +404,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 {
 	reply->deleteLater();
 	setLoading(false);
+	updateApiVersionFromReply(reply);
 
 	if (reply->error() != QNetworkReply::NoError) {
 		if (reply->error() != QNetworkReply::ContentNotFoundError) {
