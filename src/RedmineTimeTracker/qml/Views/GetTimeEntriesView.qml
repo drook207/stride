@@ -43,6 +43,7 @@ Item {
             }
 
             RoundButton {
+				Layout.alignment: Qt.AlignBottom
 				text: qsTr("Get")
                 highlighted: true
                 onClicked: docroot.client.getTimeEntries(issueField.value)
