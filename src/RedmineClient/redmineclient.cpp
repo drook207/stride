@@ -71,8 +71,15 @@ void RedmineClient::checkConnection()
 
 void RedmineClient::setBaseUrl(const QString& url)
 {
-	if (mBaseUrl != url) {
-		mBaseUrl = url;
+	// createRequest() builds request URLs by concatenating mBaseUrl directly with endpoints such as
+	// "issues.json", so mBaseUrl must always end with a slash or every request URL would be malformed.
+	QString normalizedUrl = url;
+	if (!normalizedUrl.isEmpty() && !normalizedUrl.endsWith('/')) {
+		normalizedUrl += '/';
+	}
+
+	if (mBaseUrl != normalizedUrl) {
+		mBaseUrl = normalizedUrl;
 		Utils::SaveSetting("client/baseUrl", mBaseUrl);
 		emit baseUrlChanged();
 	}
@@ -376,13 +383,13 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 	QString endpoint;
 	switch (enumerationType) {
 		case TIME_ENTRY_ACTIVITIES:
-			endpoint = QString("/enumerations/time_entry_activities.json");
+			endpoint = QString("enumerations/time_entry_activities.json");
 			break;
 		case ISSUE_PRIORITIES:
-			endpoint = QString("/enumerations/issue_priorities.json");
+			endpoint = QString("enumerations/issue_priorities.json");
 			break;
 		case DOCUMENT_CATEGORIES:
-			endpoint = QString("/enumerations/document_categories.json");
+			endpoint = QString("enumerations/document_categories.json");
 			break;
 		default:
 			qWarning(lcRedmineClient()) << QT_TR_NOOP(
@@ -396,7 +403,7 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 void RedmineClient::getCustomFields()
 {
 	setLoading(true);
-	QString endpoint = QString("/custom_fields.json");
+	QString endpoint = QString("custom_fields.json");
 	mNetworkManager->get(createRequest(endpoint));
 }
 
