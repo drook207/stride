@@ -18,9 +18,6 @@ ApplicationWindow {
 
     RedmineClient {
         id: redmineClient
-        baseUrl: redmineClient.baseUrl
-                 === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
-        apiKey: redmineClient.apiKey === "" ? "your-api-key" : redmineClient.apiKey
 
         onErrorOccurred: function (error) {
             messageDialog.text = "Error: " + error;
