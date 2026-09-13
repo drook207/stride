@@ -56,8 +56,6 @@ Item {
                             redmineClient.baseUrl = text + "/";
                         }
                     }
-
-                    placeholderText: qsTr("Enter your Redmine URL")
                 }
             }
 
@@ -70,7 +68,6 @@ Item {
                     text: redmineClient.apiKey
                     onTextChanged: redmineClient.apiKey = text
                     echoMode: TextInput.Password
-                    placeholderText: qsTr("Enter your API key")
                 }
             }
         }

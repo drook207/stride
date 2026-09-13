@@ -109,7 +109,6 @@ Rectangle {
 					Layout.fillWidth: true
 					Layout.preferredHeight: 40
 					font.pixelSize: 13
-					placeholderText: qsTr("Enter comment")
 				}
 				ToolButton {
 					Layout.preferredWidth: 40

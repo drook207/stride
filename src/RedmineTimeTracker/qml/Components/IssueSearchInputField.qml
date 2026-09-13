@@ -66,7 +66,6 @@ Item {
 			searchField.textChanged()
 		}
 
-		placeholderText: qsTr("Enter issue")
         enabled: !searchField.timeTracker.isTracking
 		onTextChanged: issueField.getAcceptableIssueIdFromInput()
 		onAccepted: {

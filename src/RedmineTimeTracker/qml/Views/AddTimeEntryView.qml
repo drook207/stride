@@ -76,12 +76,11 @@ Item {
 
             LabeledField {
                 Layout.fillWidth: true
-                label: qsTr("Time spent")
+                label: qsTr("Time spent (eg. 1,0)")
 
                 TextField {
                     id: timeSpentField
                     Layout.fillWidth: true
-                    placeholderText: qsTr("Enter time spent (eg. 1,0)")
                     validator: DoubleValidator {
                         bottom: 0
                         decimals: 2
@@ -102,12 +101,11 @@ Item {
 
             LabeledField {
                 Layout.fillWidth: true
-                label: qsTr("Date")
+                label: qsTr("Date (yyyy-mm-dd)")
 
                 TextField {
                     id: spentOnField
                     Layout.fillWidth: true
-                    placeholderText: qsTr("Enter date (yyyy-mm-dd)")
                     validator: RegularExpressionValidator {
                         regularExpression: /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/
                     }
@@ -126,7 +124,6 @@ Item {
                 id: commentsField
                 Layout.fillWidth: true
                 Layout.preferredHeight: 80
-                placeholderText: qsTr("Enter comments for this time entry")
                 wrapMode: TextEdit.Wrap
             }
         }

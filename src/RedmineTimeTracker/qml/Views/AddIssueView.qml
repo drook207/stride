@@ -62,20 +62,18 @@ Item {
 				TextField {
 					id: subjectField
 					Layout.fillWidth: true
-					placeholderText: qsTr("Enter issue subject")
 				}
 			}
 		}
 
 		LabeledField {
 			Layout.fillWidth: true
-			label: qsTr("Description")
+			label: qsTr("Description (optional)")
 
 			TextArea {
 				id: descriptionField
 				Layout.fillWidth: true
 				Layout.preferredHeight: 100
-				placeholderText: qsTr("Enter issue description (optional)")
 				wrapMode: TextEdit.Wrap
 			}
 		}
