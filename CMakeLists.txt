@@ -31,7 +31,17 @@ FetchContent_Declare(
   qtkeychain
   GIT_REPOSITORY https://github.com/frankosterfeld/qtkeychain.git
   GIT_TAG 0.17.0)
-FetchContent_MakeAvailable(qtkeychain)
+
+# Unlike FetchContent_MakeAvailable(), add the subdirectory with EXCLUDE_FROM_ALL so
+# QtKeychain's own install() rules (its dev headers, CMake package config, translations)
+# never register - CPack packages every install() rule in the whole build, and an end
+# user of QRedmineTimeTracker has no use for QtKeychain's SDK files, only the shared
+# library qt_generate_deploy_qml_app_script() already copies in as a runtime dependency.
+FetchContent_GetProperties(qtkeychain)
+if(NOT qtkeychain_POPULATED)
+  FetchContent_Populate(qtkeychain)
+  add_subdirectory(${qtkeychain_SOURCE_DIR} ${qtkeychain_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 add_subdirectory(src)
 add_subdirectory(tests)
