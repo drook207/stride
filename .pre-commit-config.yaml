@@ -51,10 +51,11 @@ repos:
     hooks:
       - id: markdownlint
   # Commit-msg hooks
-  - repo: https://github.com/jorisroovers/gitlint
-    rev: v0.19.1
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
     hooks:
-      - id: gitlint
+      - id: conventional-pre-commit
+        stages: [commit-msg]
 
 
   - repo: https://github.com/pocc/pre-commit-hooks
