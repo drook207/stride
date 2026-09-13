@@ -20,6 +20,9 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(qredminetesting
 redmineclienttest.h redmineclienttest.cpp
+redmineclientintegrationtest.h redmineclientintegrationtest.cpp
+mockhttpserver.h mockhttpserver.cpp
+testutils.h
 main.cpp)
 
 find_package(Qt6 REQUIRED Core Network Quick)
