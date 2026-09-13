@@ -1,80 +1,215 @@
 {
-  "version": 6,
-  "cmakeMinimumRequired": {
-    "major": 3,
-    "minor": 23,
-    "patch": 0
-  },
-  "configurePresets": [
-    {
-      "name": "base",
-      "hidden": true,
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "cacheVariables": {
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_PREFIX_PATH": "$env{QT_DIR}",
-"QT_QML_GENERATE_QMLLS_INI": "ON"
-      },
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Linux"
-      }
+    "buildPresets": [
+        {
+            "configurePreset": "linux-debug",
+            "name": "linux-debug"
+        },
+        {
+            "configurePreset": "linux-release",
+            "name": "linux-release"
+        },
+        {
+            "configurePreset": "linux-relwithdebinfo",
+            "name": "linux-relwithdebinfo"
+        },
+        {
+            "configurePreset": "windows-msvc-debug",
+            "name": "windows-msvc-debug"
+        },
+        {
+            "configurePreset": "windows-msvc-release",
+            "name": "windows-msvc-release"
+        },
+        {
+            "configurePreset": "windows-msvc-relwithdebinfo",
+            "name": "windows-msvc-relwithdebinfo"
+        },
+        {
+            "configurePreset": "windows-mingw-debug",
+            "name": "windows-mingw-debug"
+        },
+        {
+            "configurePreset": "windows-mingw-release",
+            "name": "windows-mingw-release"
+        },
+        {
+            "configurePreset": "windows-mingw-relwithdebinfo",
+            "name": "windows-mingw-relwithdebinfo"
+        }
+    ],
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 23,
+        "patch": 0
     },
-    {
-      "name": "linux-debug",
-      "displayName": "Linux Debug (Qt)",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
-      }
-    },
-    {
-      "name": "linux-release",
-      "displayName": "Linux Release (Qt)",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-    {
-      "name": "linux-relwithdebinfo",
-      "displayName": "Linux RelWithDebInfo (Qt)",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
-      }
-    }
-  ],
-  "buildPresets": [
-    {
-      "name": "linux-debug",
-      "configurePreset": "linux-debug"
-    },
-    {
-      "name": "linux-release",
-      "configurePreset": "linux-release"
-    },
-    {
-      "name": "linux-relwithdebinfo",
-      "configurePreset": "linux-relwithdebinfo"
-    }
-  ],
-  "testPresets": [
-    {
-      "name": "linux-debug",
-      "configurePreset": "linux-debug",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "linux-release",
-      "configurePreset": "linux-release",
-      "output": {
-        "outputOnFailure": true
-      }
-    }
-  ]
+    "configurePresets": [
+        {
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "CMAKE_PREFIX_PATH": "$env{QT_DIR}",
+                "QT_QML_GENERATE_QMLLS_INI": "ON"
+            },
+            "generator": "Ninja",
+            "hidden": true,
+            "name": "base"
+        },
+        {
+            "condition": {
+                "lhs": "${hostSystemName}",
+                "rhs": "Linux",
+                "type": "equals"
+            },
+            "hidden": true,
+            "inherits": "base",
+            "name": "linux-base"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            },
+            "displayName": "Linux Debug (Qt)",
+            "inherits": "linux-base",
+            "name": "linux-debug"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            },
+            "displayName": "Linux Release (Qt)",
+            "inherits": "linux-base",
+            "name": "linux-release"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            },
+            "displayName": "Linux RelWithDebInfo (Qt)",
+            "inherits": "linux-base",
+            "name": "linux-relwithdebinfo"
+        },
+        {
+            "condition": {
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows",
+                "type": "equals"
+            },
+            "hidden": true,
+            "inherits": "base",
+            "name": "windows-base"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "cl",
+                "CMAKE_C_COMPILER": "cl"
+            },
+            "description": "Run from an x64 Native Tools Command Prompt for VS (or after calling vcvarsall.bat x64) so cl.exe is on PATH",
+            "hidden": true,
+            "inherits": "windows-base",
+            "name": "windows-msvc-base"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            },
+            "displayName": "Windows MSVC Debug (Qt)",
+            "inherits": "windows-msvc-base",
+            "name": "windows-msvc-debug"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            },
+            "displayName": "Windows MSVC Release (Qt)",
+            "inherits": "windows-msvc-base",
+            "name": "windows-msvc-release"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            },
+            "displayName": "Windows MSVC RelWithDebInfo (Qt)",
+            "inherits": "windows-msvc-base",
+            "name": "windows-msvc-relwithdebinfo"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_CXX_COMPILER": "g++",
+                "CMAKE_C_COMPILER": "gcc"
+            },
+            "description": "Requires a MinGW toolchain (e.g. Qt's bundled MinGW or MSYS2) with gcc/g++ on PATH",
+            "hidden": true,
+            "inherits": "windows-base",
+            "name": "windows-mingw-base"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            },
+            "displayName": "Windows MinGW Debug (Qt)",
+            "inherits": "windows-mingw-base",
+            "name": "windows-mingw-debug"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            },
+            "displayName": "Windows MinGW Release (Qt)",
+            "inherits": "windows-mingw-base",
+            "name": "windows-mingw-release"
+        },
+        {
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            },
+            "displayName": "Windows MinGW RelWithDebInfo (Qt)",
+            "inherits": "windows-mingw-base",
+            "name": "windows-mingw-relwithdebinfo"
+        }
+    ],
+    "testPresets": [
+        {
+            "configurePreset": "linux-debug",
+            "name": "linux-debug",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "configurePreset": "linux-release",
+            "name": "linux-release",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "configurePreset": "windows-msvc-debug",
+            "name": "windows-msvc-debug",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "configurePreset": "windows-msvc-release",
+            "name": "windows-msvc-release",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "configurePreset": "windows-mingw-debug",
+            "name": "windows-mingw-debug",
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "configurePreset": "windows-mingw-release",
+            "name": "windows-mingw-release",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ],
+    "version": 6
 }
