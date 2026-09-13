@@ -134,6 +134,12 @@ public slots:
 	void getTimeEntries(int issueId);
 
 	/*!
+	 * \brief deleteTimeEntry
+	 * \param timeEntryId
+	 */
+	void deleteTimeEntry(int timeEntryId);
+
+	/*!
 	 * \brief getEnumerations
 	 */
 	void getEnumerations(EnumerationTypes enumerationType);
@@ -148,6 +154,77 @@ public slots:
 	 * \param issueId
 	 */
 	void getIssue(int issueId);
+
+	/*!
+	 * \brief getIssues List issues, optionally filtered by project or status
+	 * \param projectId Only return issues of this project when > 0
+	 * \param statusId Only return issues with this status when > 0
+	 * \param limit Maximum number of issues to return
+	 * \param offset Skip this many issues (for pagination)
+	 */
+	void getIssues(int projectId = 0, int statusId = 0, int limit = 100, int offset = 0);
+
+	/*!
+	 * \brief createIssue
+	 * \param projectId
+	 * \param subject
+	 * \param description
+	 * \param trackerId Redmine tracker id, ignored when <= 0
+	 * \param priorityId Redmine priority id, ignored when <= 0
+	 */
+	void createIssue(int projectId, const QString& subject, const QString& description = QString(), int trackerId = 0,
+		int priorityId = 0);
+
+	/*!
+	 * \brief updateIssue Partially updates an issue, empty/zero arguments are left untouched
+	 * \param issueId
+	 * \param subject
+	 * \param description
+	 * \param statusId
+	 */
+	void updateIssue(
+		int issueId, const QString& subject = QString(), const QString& description = QString(), int statusId = 0);
+
+	/*!
+	 * \brief deleteIssue
+	 * \param issueId
+	 */
+	void deleteIssue(int issueId);
+
+	/*!
+	 * \brief getProject
+	 * \param projectId
+	 */
+	void getProject(int projectId);
+
+	/*!
+	 * \brief getProjects List projects
+	 * \param limit Maximum number of projects to return
+	 * \param offset Skip this many projects (for pagination)
+	 */
+	void getProjects(int limit = 100, int offset = 0);
+
+	/*!
+	 * \brief createProject
+	 * \param name
+	 * \param identifier
+	 * \param description
+	 */
+	void createProject(const QString& name, const QString& identifier, const QString& description = QString());
+
+	/*!
+	 * \brief updateProject Partially updates a project, empty arguments are left untouched
+	 * \param projectId
+	 * \param name
+	 * \param description
+	 */
+	void updateProject(int projectId, const QString& name = QString(), const QString& description = QString());
+
+	/*!
+	 * \brief deleteProject
+	 * \param projectId
+	 */
+	void deleteProject(int projectId);
 
 	void useSSL(bool useSSL);
 signals:
@@ -185,6 +262,12 @@ signals:
 	void timeEntriesReceived(const QJsonArray& entries);
 
 	/*!
+	 * \brief timeEntryDeleted
+	 * \param timeEntryId
+	 */
+	void timeEntryDeleted(int timeEntryId);
+
+	/*!
 	 * \brief enumerationsReceived
 	 * \param entries
 	 */
@@ -209,6 +292,60 @@ signals:
 	 * \param issue The QJsonObject containing issue details
 	 */
 	void issueReceived(const QJsonObject& issue);
+
+	/*!
+	 * \brief issuesReceived
+	 * \param issues
+	 */
+	void issuesReceived(const QJsonArray& issues);
+
+	/*!
+	 * \brief issueCreated
+	 * \param issue
+	 */
+	void issueCreated(const QJsonObject& issue);
+
+	/*!
+	 * \brief issueUpdated
+	 * \param issueId
+	 */
+	void issueUpdated(int issueId);
+
+	/*!
+	 * \brief issueDeleted
+	 * \param issueId
+	 */
+	void issueDeleted(int issueId);
+
+	/*!
+	 * \brief projectReceived
+	 * \param project
+	 */
+	void projectReceived(const QJsonObject& project);
+
+	/*!
+	 * \brief projectsReceived
+	 * \param projects
+	 */
+	void projectsReceived(const QJsonArray& projects);
+
+	/*!
+	 * \brief projectCreated
+	 * \param project
+	 */
+	void projectCreated(const QJsonObject& project);
+
+	/*!
+	 * \brief projectUpdated
+	 * \param projectId
+	 */
+	void projectUpdated(int projectId);
+
+	/*!
+	 * \brief projectDeleted
+	 * \param projectId
+	 */
+	void projectDeleted(int projectId);
 
 	void connectionStateChanged();
 	void useSSLChanged();

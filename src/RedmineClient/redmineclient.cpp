@@ -197,10 +197,148 @@ void RedmineClient::getTimeEntries(int issueId)
 	mNetworkManager->get(createRequest(ApiResources::TIME_ENTRIES, query));
 }
 
+void RedmineClient::deleteTimeEntry(int timeEntryId)
+{
+	setLoading(true);
+	mNetworkManager->deleteResource(createRequest(ApiResources::TIME_ENTRY.arg(timeEntryId)));
+}
+
 void RedmineClient::getIssue(int issueId)
 {
 	setLoading(true);
 	mNetworkManager->get(createRequest(ApiResources::ISSUE.arg(QString::number(issueId))));
+}
+
+void RedmineClient::getIssues(int projectId, int statusId, int limit, int offset)
+{
+	setLoading(true);
+
+	QUrlQuery query;
+	if (projectId > 0) {
+		query.addQueryItem("project_id", QString::number(projectId));
+	}
+	if (statusId > 0) {
+		query.addQueryItem("status_id", QString::number(statusId));
+	}
+	query.addQueryItem("limit", QString::number(limit));
+	query.addQueryItem("offset", QString::number(offset));
+
+	mNetworkManager->get(createRequest(ApiResources::ISSUES, query));
+}
+
+void RedmineClient::createIssue(
+	int projectId, const QString& subject, const QString& description, int trackerId, int priorityId)
+{
+	setLoading(true);
+
+	QJsonObject issue;
+	issue["project_id"] = projectId;
+	issue["subject"] = subject;
+	if (!description.isEmpty()) {
+		issue["description"] = description;
+	}
+	if (trackerId > 0) {
+		issue["tracker_id"] = trackerId;
+	}
+	if (priorityId > 0) {
+		issue["priority_id"] = priorityId;
+	}
+
+	QJsonObject issueData;
+	issueData["issue"] = issue;
+
+	QJsonDocument doc(issueData);
+	mNetworkManager->post(createRequest(ApiResources::ISSUES), doc.toJson());
+}
+
+void RedmineClient::updateIssue(int issueId, const QString& subject, const QString& description, int statusId)
+{
+	setLoading(true);
+
+	QJsonObject issue;
+	if (!subject.isEmpty()) {
+		issue["subject"] = subject;
+	}
+	if (!description.isEmpty()) {
+		issue["description"] = description;
+	}
+	if (statusId > 0) {
+		issue["status_id"] = statusId;
+	}
+
+	QJsonObject issueData;
+	issueData["issue"] = issue;
+
+	QJsonDocument doc(issueData);
+	QString endpoint = ApiResources::ISSUE.arg(issueId);
+	mNetworkManager->put(createRequest(endpoint), doc.toJson());
+}
+
+void RedmineClient::deleteIssue(int issueId)
+{
+	setLoading(true);
+	mNetworkManager->deleteResource(createRequest(ApiResources::ISSUE.arg(issueId)));
+}
+
+void RedmineClient::getProject(int projectId)
+{
+	setLoading(true);
+	mNetworkManager->get(createRequest(ApiResources::PROJECT.arg(projectId)));
+}
+
+void RedmineClient::getProjects(int limit, int offset)
+{
+	setLoading(true);
+
+	QUrlQuery query;
+	query.addQueryItem("limit", QString::number(limit));
+	query.addQueryItem("offset", QString::number(offset));
+
+	mNetworkManager->get(createRequest(ApiResources::PROJECTS, query));
+}
+
+void RedmineClient::createProject(const QString& name, const QString& identifier, const QString& description)
+{
+	setLoading(true);
+
+	QJsonObject project;
+	project["name"] = name;
+	project["identifier"] = identifier;
+	if (!description.isEmpty()) {
+		project["description"] = description;
+	}
+
+	QJsonObject projectData;
+	projectData["project"] = project;
+
+	QJsonDocument doc(projectData);
+	mNetworkManager->post(createRequest(ApiResources::PROJECTS), doc.toJson());
+}
+
+void RedmineClient::updateProject(int projectId, const QString& name, const QString& description)
+{
+	setLoading(true);
+
+	QJsonObject project;
+	if (!name.isEmpty()) {
+		project["name"] = name;
+	}
+	if (!description.isEmpty()) {
+		project["description"] = description;
+	}
+
+	QJsonObject projectData;
+	projectData["project"] = project;
+
+	QJsonDocument doc(projectData);
+	QString endpoint = ApiResources::PROJECT.arg(projectId);
+	mNetworkManager->put(createRequest(endpoint), doc.toJson());
+}
+
+void RedmineClient::deleteProject(int projectId)
+{
+	setLoading(true);
+	mNetworkManager->deleteResource(createRequest(ApiResources::PROJECT.arg(projectId)));
 }
 
 void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
@@ -267,8 +405,8 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	QJsonDocument doc = QJsonDocument::fromJson(data);
 	QJsonObject response = doc.object();
 
-	QString path { };
-	int id { };
+	QString path {};
+	int id {};
 	switch (reply->operation()) {
 		case QNetworkAccessManager::HeadOperation:
 			break;
@@ -291,21 +429,51 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			if (response.contains("issue")) {
 				emit issueReceived(response["issue"].toObject());
 			}
+			if (response.contains("issues")) {
+				emit issuesReceived(response["issues"].toArray());
+			}
+			if (response.contains("project")) {
+				emit projectReceived(response["project"].toObject());
+			}
+			if (response.contains("projects")) {
+				emit projectsReceived(response["projects"].toArray());
+			}
 			break;
 		case QNetworkAccessManager::PutOperation:
-			path = reply->url().path();
 			// TODO Add logic to ensure that the recepted id is the correct one
 			// TODO Make the split more obvious
+			path = reply->url().path();
 			id = path.split('/').at(2).split('.').at(0).toInt();
-			emit timeEntryUpdated(id);
+			if (path.contains("/time_entries/")) {
+				emit timeEntryUpdated(id);
+			} else if (path.contains("/issues/")) {
+				emit issueUpdated(id);
+			} else if (path.contains("/projects/")) {
+				emit projectUpdated(id);
+			}
 			break;
 
 		case QNetworkAccessManager::PostOperation:
 			if (response.contains("time_entry")) {
 				emit timeEntryCreated(response["time_entry"].toObject());
 			}
+			if (response.contains("issue")) {
+				emit issueCreated(response["issue"].toObject());
+			}
+			if (response.contains("project")) {
+				emit projectCreated(response["project"].toObject());
+			}
 			break;
 		case QNetworkAccessManager::DeleteOperation:
+			path = reply->url().path();
+			id = path.split('/').at(2).split('.').at(0).toInt();
+			if (path.contains("/time_entries/")) {
+				emit timeEntryDeleted(id);
+			} else if (path.contains("/issues/")) {
+				emit issueDeleted(id);
+			} else if (path.contains("/projects/")) {
+				emit projectDeleted(id);
+			}
 			break;
 		case QNetworkAccessManager::CustomOperation:
 			break;
