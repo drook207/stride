@@ -14,10 +14,12 @@ qt_add_library(qredmineutils SHARED
         qsettingshelper.h
         stringhelper.h
         logging.cpp
-        logging.h)
+        logging.h
+        securestorage.cpp
+        securestorage.h)
 add_library(QRedmine::Utils ALIAS qredmineutils)
 
 target_include_directories(qredmineutils INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(qredmineutils PRIVATE Qt${QT_VERSION_MAJOR}::Core)
+target_link_libraries(qredmineutils PRIVATE Qt${QT_VERSION_MAJOR}::Core qt6keychain)
 
 target_compile_definitions(qredmineutils PRIVATE UTILS_LIBRARY)

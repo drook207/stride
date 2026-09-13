@@ -1,4 +1,5 @@
 #include "redmineclient.h"
+#include <QCoreApplication>
 #include <QLoggingCategory>
 #include <QMetaEnum>
 #include <QStringLiteral>
@@ -6,10 +7,26 @@
 #include <QtLogging>
 
 #include "qsettingshelper.h"
+#include "securestorage.h"
 
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
 
 namespace QRedmineClient {
+
+// Key the API key is stored under within keychainService(), and the legacy QSettings key it used to
+// be (insecurely) persisted under before it was migrated to the OS-native secure storage.
+static const QString API_KEY_KEYCHAIN_KEY = QStringLiteral("apiKey");
+static const QString LEGACY_API_KEY_SETTING = QStringLiteral("client/apiKey");
+
+// Service identifier the API key is stored under in the OS-native secure storage (see securestorage.h).
+// Derived from the application name rather than a fixed literal so that, e.g., the test binary
+// (which sets its own QCoreApplication::applicationName(), see tests/main.cpp) never reads from or
+// writes to the same keychain entry as the real application.
+static QString keychainService()
+{
+	const QString appName = QCoreApplication::applicationName();
+	return appName.isEmpty() ? QStringLiteral("QRedmineTimeTracker") : appName;
+}
 
 const QList<QNetworkReply::NetworkError> RedmineClient::REASONS_FOR_CONNECTION_LOSS = {
 	QNetworkReply::HostNotFoundError, QNetworkReply::TimeoutError, QNetworkReply::OperationCanceledError,
@@ -38,12 +55,29 @@ RedmineClient::RedmineClient(QObject* parent)
 {
 	connect(mNetworkManager, &QNetworkAccessManager::finished, this, &RedmineClient::handleNetworkReply);
 	auto url = Utils::GetSetting("client/baseUrl").toString();
-	auto key = Utils::GetSetting("client/apiKey").toString();
 	if (!url.isEmpty()) {
 		setBaseUrl(url);
 	}
-	if (!key.isEmpty()) {
-		setApiKey(key);
+
+	// Migrate a legacy plaintext API key out of QSettings into the OS-native secure storage, if one
+	// is still present from before this migration existed. setApiKey() already takes care of writing
+	// the new value to the keychain and updating mApiKey/emitting apiKeyChanged synchronously.
+	auto legacyKey = Utils::GetSetting(LEGACY_API_KEY_SETTING).toString();
+	if (!legacyKey.isEmpty()) {
+		setApiKey(legacyKey);
+		Utils::RemoveSetting(LEGACY_API_KEY_SETTING);
+	} else {
+		// Nothing to migrate, load the API key from the keychain asynchronously instead. Applying it
+		// here must not trigger another write back to the keychain.
+		Utils::ReadSecret(
+			keychainService(), API_KEY_KEYCHAIN_KEY,
+			[this](const QString& key) {
+				if (mApiKey != key) {
+					mApiKey = key;
+					emit apiKeyChanged();
+				}
+			},
+			{}, {}, this);
 	}
 
 	setupConnectionCheckTimer();
@@ -91,8 +125,7 @@ void RedmineClient::setApiKey(const QString& key)
 {
 	if (mApiKey != key) {
 		mApiKey = key;
-		Utils::SaveSetting("client/apiKey", mApiKey);
-		Utils::SaveSetting("client/apiKey", mApiKey);
+		Utils::WriteSecret(keychainService(), API_KEY_KEYCHAIN_KEY, mApiKey);
 		emit apiKeyChanged();
 	}
 }
