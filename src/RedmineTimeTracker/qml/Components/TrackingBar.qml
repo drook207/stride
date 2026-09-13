@@ -15,7 +15,7 @@ Rectangle {
 
 	property int selectedActivityId: 0
 
-	implicitHeight: 70
+	implicitHeight: 84
 	color: Material.dialogColor
 
 	Timer {
@@ -33,6 +33,8 @@ Rectangle {
 			fill: parent
 			leftMargin: 15
 			rightMargin: 15
+			topMargin: 10
+			bottomMargin: 10
 		}
 		spacing: 15
 
@@ -60,10 +62,11 @@ Rectangle {
 		LabeledField {
 			TextField {
 				Layout.preferredWidth: 90
+				Layout.preferredHeight: 40
 				text: docroot.timeTracker.elapsedTime
 				readOnly: true
 				color: Material.foreground
-				font.pixelSize: 16
+				font.pixelSize: 15
 				font.bold: true
 				horizontalAlignment: Text.AlignHCenter
 			}
@@ -87,6 +90,8 @@ Rectangle {
 					onTextChanged: inputValidatorTimer.restart()
 				}
 				ToolButton {
+					Layout.preferredWidth: 40
+					Layout.preferredHeight: 40
 					icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/xmark.svg"
 					onClicked: issueField.value = -1
 				}
@@ -102,9 +107,13 @@ Rectangle {
 				TextField {
 					id: commentsField
 					Layout.fillWidth: true
+					Layout.preferredHeight: 40
+					font.pixelSize: 13
 					placeholderText: qsTr("Enter comment")
 				}
 				ToolButton {
+					Layout.preferredWidth: 40
+					Layout.preferredHeight: 40
 					icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/xmark.svg"
 					onClicked: commentsField.text = ""
 				}
@@ -116,6 +125,8 @@ Rectangle {
 			ComboBox {
 				id: activityCombo
 				Layout.preferredWidth: 140
+				Layout.preferredHeight: 40
+				font.pixelSize: 13
 				model: docroot.activitiesModel.timeEntryActivities
 				textRole: "name"
 				valueRole: "id"
@@ -136,6 +147,8 @@ Rectangle {
 			ComboBox {
 				id: specialCombo
 				Layout.preferredWidth: 120
+				Layout.preferredHeight: 40
+				font.pixelSize: 13
 				model: []
 				background: Item {}
 				indicator: Image {

@@ -1,7 +1,6 @@
 import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Effects
 import QRedmine.TimeTracker
 
 Item {
@@ -43,6 +42,9 @@ Item {
     TextField {
         id: issueField
 
+        anchors.fill: parent
+        font.pixelSize: 13
+
 		function getAcceptableIssueIdFromInput() {
 			filteredIssuesModel.setFilterWildcard(issueField.text)
 			searchDropDown.visible = issueField.text.length > 0
@@ -64,7 +66,6 @@ Item {
 			searchField.textChanged()
 		}
 
-        width: parent.width
 		placeholderText: qsTr("Enter issue")
         enabled: !searchField.timeTracker.isTracking
 		onTextChanged: issueField.getAcceptableIssueIdFromInput()
