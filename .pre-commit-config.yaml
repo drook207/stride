@@ -50,6 +50,7 @@ repos:
     rev: v0.39.0
     hooks:
       - id: markdownlint
+        exclude: ^\.claude/agents/
   # Commit-msg hooks
   - repo: https://github.com/compilerla/conventional-pre-commit
     rev: v4.4.0
