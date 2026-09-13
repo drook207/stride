@@ -17,7 +17,7 @@ Rectangle {
 
 	width: expanded ? 220 : 0
 	clip: true
-	color: Material.dialogColor
+	color: "transparent"
 
 	Behavior on width {
 		NumberAnimation {
