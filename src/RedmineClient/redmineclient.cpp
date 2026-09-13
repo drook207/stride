@@ -225,9 +225,9 @@ void RedmineClient::createTimeEntry(
 	timeEntry["spent_on"] = spentOn;
 	timeEntry["hours"] = hours;
 	timeEntry["comments"] = comments;
-	// FIXME Currently not supported
-	// TODO Add fields to UI
-	// timeEntry["activity_id"] = activityId;
+	if (activityId > 0) {
+		timeEntry["activity_id"] = activityId;
+	}
 
 	// FIXME Currently not supported
 	// TODO Add fields to UI
