@@ -88,6 +88,12 @@ Time entries are stored in SQLite with the following structure:
 - `created_at`: Local creation timestamp
 - `updated_at`: Last modification timestamp
 
+## Test Environment
+
+A disposable local Redmine instance (with demo projects/issues/users/time
+entries) for manual testing is available via Docker - see
+[docker/README.md](docker/README.md).
+
 ## Contributing
 
 1. Fork the repository
