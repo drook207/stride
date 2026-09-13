@@ -1,6 +1,14 @@
 # Redmine Time Tracker
 
-A desktop application built with Qt 6 for tracking time spent on Redmine issues, for Linux and Windows. Features automatic time tracking, offline support, and seamless integration with Redmine's REST API.
+A desktop application built with Qt 6 for tracking time spent on Redmine issues, for Linux and Windows, with a dedicated portrait UI for Android and iOS. Features automatic time tracking, offline support, and seamless integration with Redmine's REST API.
+
+## Screenshots
+
+| Recent entries | Add time entry | Mobile |
+| --- | --- | --- |
+| ![Recent entries](docs/screenshots/desktop-recent-entries.png) | ![Add time entry](docs/screenshots/desktop-add-time-entry.png) | ![Mobile recent entries](docs/screenshots/mobile-recent-entries.png) |
+
+See the [User Guide](docs/USER_GUIDE.md) for a full walkthrough with screenshots of every view, on both desktop and mobile.
 
 ## Features
 
