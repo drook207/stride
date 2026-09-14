@@ -2,9 +2,11 @@
 #include <QDirIterator>
 #include <QGuiApplication>
 #include <QIcon>
+#include <QLocale>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QSortFilterProxyModel>
+#include <QTranslator>
 
 int main(int argc, char* argv[])
 {
@@ -16,6 +18,13 @@ int main(int argc, char* argv[])
 	app.setOrganizationDomain("yourorg.com");
 	app.setApplicationName("Stride");
 	app.setApplicationVersion("0.0.1");
+
+	// Load the UI translation matching the system locale (see i18n/README.md). Falls back to the
+	// English source strings when no matching catalog is found, e.g. for unsupported languages.
+	QTranslator translator;
+	if (translator.load(QLocale::system(), "QRedmineTimeTracker", "_", ":/i18n")) {
+		app.installTranslator(&translator);
+	}
 
 	// Create QML engine and load main QML file
 	QQmlApplicationEngine engine;

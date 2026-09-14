@@ -14,7 +14,8 @@ find_package(
  Qml
  Quick
  Gui
- Sql)
+ Sql
+ LinguistTools)
 
 if(QT_KNOWN_POLICY_QTP0001)
   qt_policy(SET QTP0001 NEW)
@@ -89,6 +90,20 @@ qt_add_qml_module(
   QML_FILES qml/Components/IssueSearchInputField.qml
   SOURCES issueinputvalidator.h issueinputvalidator.cpp
  )
+
+# Translation catalogs (see i18n/README.md). "update_translations" (not built by default) runs
+# lupdate to refresh the .ts files from qsTr() call sites; every normal build runs lrelease to
+# compile them to .qm and embeds them into the binary under the :/i18n/ resource prefix.
+# MERGE_QT_TRANSLATIONS folds in Qt's own upstream catalogs (qtbase, qtdeclarative, ...) for each
+# language, so Qt-provided strings (e.g. the Yes/No dialog buttons) are localized too.
+qt_add_translations(
+ QRedmineTimeTracker
+ TS_FILES
+ i18n/QRedmineTimeTracker_en.ts
+ i18n/QRedmineTimeTracker_de.ts
+ LUPDATE_OPTIONS
+ -no-obsolete
+ MERGE_QT_TRANSLATIONS)
 
 if(ANDROID)
   if(QT_KNOWN_POLICY_QTP0002)
