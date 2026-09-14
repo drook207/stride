@@ -4,15 +4,30 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QRedmine.TimeTracker
 
+/*!
+ * \brief Desktop-only collapsible navigation sidebar (replaced on mobile by MobileTabBar).
+ *
+ * "Settings" is rendered as a separate, always-present item below the main nav list rather than
+ * a regular Repeater entry, but it still lives at componentsToLoad[buttonTitles.length] - i.e.
+ * callers pass one more entry in componentsToLoad than in buttonTitles/navIcons, with that extra
+ * trailing entry being the Settings view. See DesktopShell for how these three arrays are built.
+ */
 Rectangle {
 	id: sidebar
 
+	//! StackView whose current item this sidebar swaps via select().
 	required property StackView view
+	//! Component per nav item, index-aligned with buttonTitles/navIcons - plus one extra trailing
+	//! entry (at index buttonTitles.length) for the Settings view, see the type-level comment.
 	required property var componentsToLoad
+	//! Label per main nav item (Settings excluded - its label is hardcoded below), index-aligned
+	//! with navIcons and with componentsToLoad's first buttonTitles.length entries.
 	required property var buttonTitles
 	required property TimeTracker timeTracker
 
 	property int currentIndex: 0
+	//! Whether the sidebar is showing (width 220) or fully collapsed (width 0). Toggled by
+	//! Header's hamburger button via DesktopShell.
 	property bool expanded: true
 
 	width: expanded ? 220 : 0
@@ -25,11 +40,15 @@ Rectangle {
 		}
 	}
 
+	//! Selects the item at `index` in the StackView (updates the highlighted item and swaps its
+	//! current item). Settings's onClicked handler below calls this with buttonTitles.length.
 	function select(index) {
 		sidebar.currentIndex = index
 		sidebar.view.replaceCurrentItem(sidebar.componentsToLoad[index])
 	}
 
+	//! Icon filename per main nav item (under Assets/Icons/solid/), index-aligned with
+	//! componentsToLoad and buttonTitles. Must be kept the same length as those two.
 	readonly property var navIcons: ["clock-rotate-left.svg", "circle-plus.svg", "magnifying-glass.svg", "circle-plus.svg"]
 
 	readonly property color activePillColor: "#E8E1F5"
