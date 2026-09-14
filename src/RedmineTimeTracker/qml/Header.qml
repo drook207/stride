@@ -4,11 +4,20 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QRedmine.Client
 
+/*!
+ * \brief Desktop top bar: hamburger menu button, app title, and a Redmine connection-state pill.
+ *
+ * Purely presentational - it doesn't own the sidebar's expanded state itself, it only signals the
+ * request via menuToggled and lets DesktopShell decide what to do with it.
+ */
 Rectangle {
 	id: header
 
+	//! Mirrors RedmineClient::ConnectionState (ONLINE/TEMPORARY_OFFLINE/OFFLINE); drives both the
+	//! pill's dot color and its label text.
 	required property int connectionState
 
+	//! Emitted when the hamburger button is clicked; DesktopShell toggles the sidebar in response.
 	signal menuToggled
 
 	height: 40
