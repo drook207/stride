@@ -38,6 +38,11 @@ See the [User Guide](docs/USER_GUIDE.md) for a full walkthrough with screenshots
 - Persistent history of time entries
 - Sync status tracking
 
+### Localization
+
+- Available in English and German, selected automatically from the system locale
+- More languages can be added via the Qt Linguist `.ts` files in [src/RedmineTimeTracker/i18n](src/RedmineTimeTracker/i18n) - see that directory's README for the workflow
+
 ## Requirements
 
 - Qt 6.8 or higher
