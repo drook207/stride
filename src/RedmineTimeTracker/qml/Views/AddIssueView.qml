@@ -5,6 +5,10 @@ import QtQuick.Layouts
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief "Add Issue" view: creates a new Redmine issue from a project ID, subject, and optional
+ * description.
+ */
 Item {
 	id: docroot
 

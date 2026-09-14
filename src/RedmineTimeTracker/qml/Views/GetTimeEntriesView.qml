@@ -5,6 +5,11 @@ import QtQuick.Layouts
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief "Search Issue" view: fetches and lists every time entry already logged against a given
+ * issue, straight from the Redmine REST API (not the local cache) - useful to check what's
+ * already been recorded before adding more.
+ */
 Item {
     id: docroot
 

@@ -5,11 +5,16 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import QRedmine.TimeTracker
 
+/*!
+ * \brief Default/home view: lists locally tracked time entries (TimeTracker's local SQLite-backed
+ * recentEntries model), newest first.
+ */
 Item {
 	id: docroot
 
 	required property TimeTracker timeTracker
 
+	//! Formats a decimal hour count (e.g. 1.5) as "HH:MM:SS" (e.g. "01:30:00").
 	function formatDuration(hours) {
 		const totalSeconds = Math.round(hours * 3600)
 		const h = Math.floor(totalSeconds / 3600)

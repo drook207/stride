@@ -5,6 +5,15 @@ import QtQuick.Controls.Material
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief Connection settings: Redmine URL, API key, and SSL toggle.
+ *
+ * Note: the fields below bind to the bare id `redmineClient`, not to the `client` property
+ * declared here - that id is declared in Main.qml and resolves through the ambient QML context
+ * chain (Main.qml -> [Desktop|Mobile]Shell -> StackView -> this view), which happens to work but
+ * is fragile: it would silently break if this view were ever instantiated outside that chain. The
+ * `client` property is unused; prefer `docroot.client` for any new bindings here.
+ */
 Item {
     id: docroot
     required property TimeTracker timeTracker

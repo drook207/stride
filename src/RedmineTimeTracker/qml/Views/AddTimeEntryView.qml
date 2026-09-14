@@ -6,6 +6,15 @@ import QtQuick.Layouts
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief "Add Entry" view: manually logs a time entry without using the live start/stop tracker -
+ * useful for backfilling work done earlier.
+ *
+ * Uses its own AddDialog confirmation step, which is why this flow has a separate (near-
+ * identical) dialog from the live TrackingBar/MobileTrackingBar's SubmitDialog: AddDialog takes
+ * hours/spentOn as plain properties set by this view, while SubmitDialog reads them live from
+ * TimeTracker's running timer.
+ */
 Item {
     id: docroot
     property TimeTracker timeTracker: undefined
@@ -14,6 +23,9 @@ Item {
         client: docroot.client
         timeTracker: docroot.timeTracker
     }
+    //! Copies the current field values into addDialog. Note: timeSpentField is always parsed with
+    //! the "de_DE" locale (decimal comma, e.g. "1,5") regardless of the user's actual system
+    //! locale - matches the field's "eg. 1,0" placeholder, but means it won't accept "1.5".
     function saveInput() {
         docroot.addDialog.spentOn = spentOnField.text
         docroot.addDialog.issueId = issueField.value
