@@ -5,6 +5,14 @@ import QtQuick.Layouts
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief Desktop bottom control bar for live time tracking: play/pause, elapsed time, issue
+ * search, comment, activity, and submit, all shown at once in a single wide row.
+ *
+ * Functionally equivalent to MobileTrackingBar, which instead collapses everything but
+ * play/pause and the elapsed time by default - there's no room for a single-row layout like this
+ * one on a phone screen.
+ */
 Rectangle {
 	id: docroot
 
@@ -141,6 +149,8 @@ Rectangle {
 			}
 		}
 
+		//! Known non-functional placeholder: empty model, nothing reads its selection. Not
+		//! rendered by MobileTrackingBar, which otherwise mirrors this bar's fields.
 		LabeledField {
 			label: qsTr("Special")
 			ComboBox {

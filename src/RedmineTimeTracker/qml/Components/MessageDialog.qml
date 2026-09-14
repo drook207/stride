@@ -1,8 +1,15 @@
 import QtQuick
 import QtQuick.Controls
 
+/*!
+ * \brief Generic single-button (OK) popup for showing a message or error to the user.
+ *
+ * Callers just set `text` and call open() - e.g. Main.qml uses this for RedmineClient's
+ * errorOccurred/timeEntryCreated notifications, and AddIssueView for issueCreated.
+ */
 Dialog {
 	id: messageDialog
+	//! The message to display; set this then call open().
 	property alias text: messageLabel.text
 
 	parent: Overlay.overlay

@@ -4,6 +4,14 @@ import QtQuick.Controls
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief Confirmation dialog for the live tracking submit flow (TrackingBar/MobileTrackingBar).
+ *
+ * The caller sets issueId/comment/activityId before calling open(); on accept, this stops the
+ * running tracker, reads the elapsed time from it directly, adds the entry to the local history,
+ * and submits it to Redmine. Contrast with AddDialog, which takes hours/spentOn as plain
+ * properties instead since its flow isn't tied to a running tracked session.
+ */
 Dialog {
 	id: docroot
 	width: parent.width * 0.8

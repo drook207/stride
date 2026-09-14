@@ -4,6 +4,14 @@ import QtQuick.Controls
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief Confirmation dialog for AddTimeEntryView's manual "Add" flow.
+ *
+ * The caller sets issueId/comment/spentOn/hours before calling open(); on accept, the entry is
+ * added to the local history and submitted to Redmine. Deliberately similar to SubmitDialog (same
+ * confirmation UX), but takes its values as plain properties rather than reading them live from
+ * TimeTracker, since this flow isn't tied to a running tracked session.
+ */
 Dialog {
 	id: docroot
 	parent: Overlay.overlay
