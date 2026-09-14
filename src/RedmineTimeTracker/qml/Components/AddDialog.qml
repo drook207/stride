@@ -10,7 +10,7 @@ Dialog {
 	width: parent.width * 0.8
 	height: content.implicitHeight + 200
 
-	title: "Add Time Entry"
+	title: qsTr("Add Time Entry")
 	standardButtons: Dialog.Yes | Dialog.No
 	x: (parent.width - width) / 2
 	y: (parent.height - height) / 2
@@ -53,11 +53,11 @@ Dialog {
 		spacing: 10
 
 		Label {
-			text: "Would you like to submit this time entry?"
+			text: qsTr("Would you like to submit this time entry?")
 		}
 
 		Label {
-			text: "Total time: " + docroot.hours + " spent on: " + docroot.spentOn
+			text: qsTr("Total time: %1 spent on: %2").arg(docroot.hours).arg(docroot.spentOn)
 			font.bold: true
 		}
 	}

@@ -23,12 +23,12 @@ ApplicationWindow {
         id: redmineClient
 
         onErrorOccurred: function (error) {
-            messageDialog.text = "Error: " + error;
+            messageDialog.text = qsTr("Error: %1").arg(error);
             messageDialog.open();
         }
 
         onTimeEntryCreated: function (timeEntry) {
-            messageDialog.text = "Time entry created successfully";
+            messageDialog.text = qsTr("Time entry created successfully");
             messageDialog.open();
         }
     }
