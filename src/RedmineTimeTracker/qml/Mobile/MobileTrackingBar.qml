@@ -5,6 +5,14 @@ import QtQuick.Layouts
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief Collapsible time-tracking control bar for the mobile UI.
+ *
+ * Collapsed, it shows just play/pause and the elapsed time so it stays out of the way; expanded,
+ * it reveals the issue/comment/activity fields and the submit button. Functionally equivalent to
+ * the desktop TrackingBar, which instead shows everything at once in a single wide row - there
+ * isn't room for that on a phone screen.
+ */
 Rectangle {
     id: docroot
 
@@ -14,9 +22,12 @@ Rectangle {
     required property var activitiesModel
 
     property int selectedActivityId: 0
+    //! Whether the issue/comment/activity fields are visible. Toggled by the chevron button.
     property bool expanded: false
 
     color: Material.dialogColor
+    //! 296 is tuned to fit the expanded content (issue/comment/activity rows plus their labels
+    //! and spacing) without clipping the last row - check it still fits before shrinking this.
     implicitHeight: expanded ? 296 : 72
 
     Behavior on implicitHeight {

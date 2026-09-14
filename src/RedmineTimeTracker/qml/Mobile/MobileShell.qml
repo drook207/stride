@@ -4,6 +4,14 @@ import QtQuick.Controls.Material
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief Root layout for the mobile (Android/iOS) UI: MobileHeader, a StackView holding the
+ * currently selected view, a collapsible MobileTrackingBar, and a bottom MobileTabBar.
+ *
+ * Instantiated by Main.qml's Loader when isMobile is true. Mirrors DesktopShell's role and
+ * required properties, but replaces the permanent Sidebar with a bottom tab bar and the always-
+ * expanded TrackingBar with a collapsible panel, both better suited to a narrow portrait screen.
+ */
 Item {
     id: docroot
 

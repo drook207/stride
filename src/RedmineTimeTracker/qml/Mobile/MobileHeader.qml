@@ -3,9 +3,17 @@ import QtQuick
 import QtQuick.Controls
 import QRedmine.Client
 
+/*!
+ * \brief Compact top bar for the mobile UI: app title and a small connection-state dot.
+ *
+ * Unlike the desktop Header, there is no hamburger button - mobile navigation is handled by
+ * MobileTabBar at the bottom of the screen instead of a collapsible sidebar.
+ */
 Rectangle {
     id: header
 
+    //! Mirrors RedmineClient::ConnectionState (ONLINE/TEMPORARY_OFFLINE/OFFLINE); drives the dot's
+    //! color only (no text label, unlike the desktop Header's pill - there isn't room for one here).
     required property int connectionState
 
     height: 52
