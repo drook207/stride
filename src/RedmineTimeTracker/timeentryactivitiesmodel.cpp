@@ -1,5 +1,4 @@
 #include "timeentryactivitiesmodel.h"
-#include "database.h"
 #include <QJsonObject>
 
 namespace QRedmineClient {
@@ -29,7 +28,6 @@ void TimeEntryActivitiesModel::addTimeEntryActivities(const QJsonArray& activiti
 		}
 
 		setTimeEntryActivities(timeEntryActivitiesList);
-		Database::addTimeEntryActivities(activities);
 	}
 }
 
