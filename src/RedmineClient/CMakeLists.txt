@@ -71,7 +71,7 @@ if(IOS)
 endif()
 target_include_directories(qredmineclient INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(qredmineclient PRIVATE Qt6::Core Qt6::Network QRedmine::Utils)
-target_compile_definitions(qredmineclient PUBLIC QT_REDMINECLIENT_BUILD)
+target_compile_definitions(qredmineclient PRIVATE QT_REDMINECLIENT_BUILD)
 install(
  TARGETS qredmineclient
  BUNDLE DESTINATION .
