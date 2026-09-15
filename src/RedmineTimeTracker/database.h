@@ -9,6 +9,8 @@
 namespace QRedmineClient {
 
 namespace SqlQueries {
+	STATIC_CONST_QSTRING(ENABLE_WAL_MODE, "PRAGMA journal_mode=WAL");
+
 	STATIC_CONST_QSTRING(CREATE_TIME_ENTRY_TABLE,
 		"CREATE TABLE IF NOT EXISTS time_entries ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -21,6 +23,11 @@ namespace SqlQueries {
 		"created_at DATETIME NOT NULL,"
 		"updated_at DATETIME NOT NULL"
 		")");
+	STATIC_CONST_QSTRING(CREATE_TIME_ENTRIES_CREATED_AT_INDEX,
+		"CREATE INDEX IF NOT EXISTS idx_time_entries_created_at ON time_entries(created_at)");
+	STATIC_CONST_QSTRING(CREATE_TIME_ENTRIES_SYNC_STATUS_INDEX,
+		"CREATE INDEX IF NOT EXISTS idx_time_entries_sync_status ON time_entries(sync_status)");
+
 	STATIC_CONST_QSTRING(CREATE_TIME_ENTRY_ACTIVITIES_TABLE,
 		"CREATE TABLE IF NOT EXISTS enum_time_entry_activities ("
 		"enum_id INTEGER NOT NULL,"
@@ -65,7 +72,8 @@ namespace SqlQueries {
 		"id, subject, project_id, status_id, description, created_on, updated_on) VALUES "
 		"(:id,:subject, :project_id,:status_id,:description,:created_on,:updated_on)");
 
-	STATIC_CONST_QSTRING(GET_ISSUES, "SELECT * FROM issues");
+	STATIC_CONST_QSTRING(GET_ISSUES,
+		"SELECT id, subject, project_id, status_id, description, created_on, updated_on FROM issues");
 }
 
 class Database {

@@ -10,9 +10,10 @@ void IssueModel::updateIssueList()
 	QSqlQuery query = Database::getIssues();
 
 	while (query.next()) {
-		Issue issue = { query.value(0).toInt(), query.value(1).toString(), query.value(2).toInt(),
-			query.value(3).toInt(), query.value(4).toString(), query.value(5).toDateTime(),
-			query.value(6).toDateTime() };
+		Issue issue = { query.value("id").toInt(), query.value("subject").toString(),
+			query.value("project_id").toInt(), query.value("status_id").toInt(),
+			query.value("description").toString(), query.value("created_on").toDateTime(),
+			query.value("updated_on").toDateTime() };
 		mIssues.append(issue);
 	}
 

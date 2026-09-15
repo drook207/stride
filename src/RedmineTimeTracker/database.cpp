@@ -51,6 +51,14 @@ bool Database::initialize()
 
 	QSqlQuery query;
 
+	if (!evaluateQueryPrepare(SqlQueries::ENABLE_WAL_MODE, query)) {
+		return false;
+	}
+
+	if (!evaluateQueryExec(query)) {
+		return false;
+	}
+
 	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRY_ACTIVITIES_TABLE, query)) {
 		return false;
 	}
@@ -60,6 +68,22 @@ bool Database::initialize()
 	}
 
 	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRY_TABLE, query)) {
+		return false;
+	}
+
+	if (!evaluateQueryExec(query)) {
+		return false;
+	}
+
+	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRIES_CREATED_AT_INDEX, query)) {
+		return false;
+	}
+
+	if (!evaluateQueryExec(query)) {
+		return false;
+	}
+
+	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRIES_SYNC_STATUS_INDEX, query)) {
 		return false;
 	}
 
@@ -203,7 +227,7 @@ bool Database::evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& qu
 bool Database::evaluateQueryExec(QSqlQuery& query)
 {
 	if (!query.exec()) {
-		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("SQL Query prepare <%0> failed with: <%1>")
+		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("SQL Query exec <%0> failed with: <%1>")
 												 .arg(query.lastQuery(), query.lastError().text()));
 		return false;
 	}
