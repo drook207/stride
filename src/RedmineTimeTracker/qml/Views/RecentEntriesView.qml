@@ -2,102 +2,86 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
-import QtQuick.Effects
 import QRedmine.TimeTracker
 
+/*!
+ * \brief Default/home view: lists locally tracked time entries (TimeTracker's local SQLite-backed
+ * recentEntries model), newest first.
+ */
 Item {
 	id: docroot
 
 	required property TimeTracker timeTracker
 
-	function formatDuration(hours) {
-		const totalSeconds = Math.round(hours * 3600)
-		const h = Math.floor(totalSeconds / 3600)
-		const m = Math.floor((totalSeconds % 3600) / 60)
-		const s = totalSeconds % 60
-		function pad(value) {
-			return value < 10 ? "0" + value : "" + value
+	ColumnLayout {
+		anchors {
+			fill: parent
+			margins: Metrics.pageMargin
 		}
-		return pad(h) + ":" + pad(m) + ":" + pad(s)
-	}
+		spacing: Metrics.sectionSpacing
 
-	ListView {
-		id: recentEntries
-		anchors.fill: parent
-		model: docroot.timeTracker.recentEntries
-		clip: true
+		PageTitle {
+			Layout.fillWidth: true
+			text: qsTr("Recent Entries")
+		}
 
-		delegate: ItemDelegate {
-			required property var modelData
+		Card {
+			Layout.fillWidth: true
+			Layout.fillHeight: true
+			padding: 8
 
-			width: ListView.view.width
-			height: rowLayout.implicitHeight + 20
+			ListView {
+				id: recentEntries
+				Layout.fillWidth: true
+				Layout.fillHeight: true
+				visible: count > 0
+				model: docroot.timeTracker.recentEntries
+				clip: true
 
-			contentItem: RowLayout {
-				id: rowLayout
-				anchors.verticalCenter: parent.verticalCenter
-				spacing: 15
+				delegate: TimeEntryDelegate {
+					required property var modelData
+					required property int index
 
-				Image {
-					id: personIcon
-					source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/user.svg"
-					sourceSize.width: 24
-					sourceSize.height: 24
-					visible: false
+					issueId: modelData.issue_id
+					hours: modelData.hours
+					comment: modelData.comments || ""
+					spentOn: modelData.spent_on
+					showDivider: index < ListView.view.count - 1
 				}
 
-				MultiEffect {
-					source: personIcon
-					Layout.preferredWidth: personIcon.width
-					Layout.preferredHeight: personIcon.height
-					colorization: 1.0
-					colorizationColor: Material.foreground
+				ScrollBar.vertical: ScrollBar {}
+			}
+
+			// Empty state
+			ColumnLayout {
+				Layout.fillWidth: true
+				Layout.fillHeight: true
+				Layout.margins: 12
+				visible: recentEntries.count === 0
+				spacing: 6
+
+				Item {
+					Layout.fillHeight: true
 				}
-
-				ColumnLayout {
-					Layout.fillWidth: true
-					spacing: 2
-
-					Label {
-						text: docroot.formatDuration(modelData.hours)
-						color: Material.hintTextColor
-						font.pixelSize: 12
-					}
-
-					Label {
-						text: "#" + modelData.issue_id
-						font.bold: true
-						font.pixelSize: 16
-					}
-
-					Label {
-						text: modelData.comments
-						visible: modelData.comments !== ""
-						color: Material.secondaryTextColor
-						wrapMode: Text.WordWrap
-						Layout.fillWidth: true
-					}
-				}
-
 				Label {
-					text: Qt.formatDate(modelData.spent_on, "dd.MM.yy")
-					color: Material.hintTextColor
-					font.pixelSize: 12
-					Layout.alignment: Qt.AlignTop
+					Layout.fillWidth: true
+					text: qsTr("No time entries yet")
+					color: Material.foreground
+					font.pixelSize: 15
+					font.weight: Font.DemiBold
+					horizontalAlignment: Text.AlignHCenter
 				}
-			}
-
-			Rectangle {
-				anchors {
-					left: parent.left
-					right: parent.right
-					bottom: parent.bottom
+				Label {
+					Layout.fillWidth: true
+					text: qsTr("Track time with the bar below or add an entry manually.")
+					color: Material.secondaryTextColor
+					horizontalAlignment: Text.AlignHCenter
+					wrapMode: Text.WordWrap
 				}
-				height: 1
-				color: Material.dividerColor
+				Item {
+					Layout.fillHeight: true
+				}
 			}
 		}
-
-		ScrollBar.vertical: ScrollBar {}
 	}
 }

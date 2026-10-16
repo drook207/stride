@@ -6,6 +6,13 @@ import QtQuick.Window
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief Application entry point and root window.
+ *
+ * Owns the backend instances shared by the whole UI (RedmineClient, TimeTracker, the time entry
+ * activities model) and their wiring, then delegates the actual visual layout to either
+ * DesktopShell or MobileShell via a Loader, picked once at startup based on isMobile.
+ */
 ApplicationWindow {
     id: window
     visible: true
@@ -17,6 +24,9 @@ ApplicationWindow {
     Material.theme: Material.Dark
     Material.accent: "#9F8FEF"
 
+    //! Chooses the UI shell (Desktop/Mobile) once at startup. Deliberately platform-based rather
+    //! than screen-size/aspect-ratio-based, since a resized desktop window should keep the desktop
+    //! layout rather than flip to the mobile one.
     readonly property bool isMobile: Qt.platform.os === "android" || Qt.platform.os === "ios"
 
     RedmineClient {

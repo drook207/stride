@@ -6,7 +6,8 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QSortFilterProxyModel>
-#include <QTranslator>
+
+#include "languagemanager.h"
 
 int main(int argc, char* argv[])
 {
@@ -19,15 +20,19 @@ int main(int argc, char* argv[])
 	app.setApplicationName("Stride");
 	app.setApplicationVersion("0.0.1");
 
-	// Load the UI translation matching the system locale (see i18n/README.md). Falls back to the
-	// English source strings when no matching catalog is found, e.g. for unsupported languages.
-	QTranslator translator;
-	if (translator.load(QLocale::system(), "QRedmineTimeTracker", "_", ":/i18n")) {
-		app.installTranslator(&translator);
-	}
+	// Window/taskbar icon, embedded via the QML module's RESOURCES. Most Wayland compositors ignore it
+	// and look the icon up from the desktop entry matching the app ID instead, so the desktop file
+	// name must match the entry the installer creates (see packaging/ifw/installscript.qs).
+	app.setWindowIcon(QIcon(":/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/app-icon.svg"));
+	app.setDesktopFileName("qredminetimetracker");
 
 	// Create QML engine and load main QML file
 	QQmlApplicationEngine engine;
+
+	// Installs the translators for the language selected in the settings (or the system locale),
+	// before any QML is loaded. Exposed to QML as the LanguageManager singleton; parented to the
+	// engine so it outlives every QML object that may still reference it during teardown.
+	new QRedmineClient::LanguageManager(&engine, &engine);
 
 	// Load main QML file
 

@@ -1,11 +1,14 @@
 #include "redmineclientintegrationtest.h"
 #include "testutils.h"
 
+#include <QCoreApplication>
 #include <QHostAddress>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QSettings>
 #include <QTcpServer>
+#include <QTranslator>
 #include <gtest/gtest.h>
 
 using QRedmineClient::RedmineClient;
@@ -362,6 +365,44 @@ TEST_F(RedmineClientIntegrationTest, ServerErrorResponseEmitsErrorOccurred)
 
 	EXPECT_FALSE(errorMessage.isEmpty());
 	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, ValidationErrorResponsePassesRedmineErrorsThrough)
+{
+	server->enqueueResponse(MockHttpResponse {
+		422, "Unprocessable Entity", R"({"errors":["Subject cannot be blank","Tracker is invalid"]})" });
+
+	QString errorMessage;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString& error) { errorMessage = error; });
+
+	client->createIssue(1, QString());
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::errorOccurred));
+
+	EXPECT_EQ(errorMessage.toStdString(),
+		"The Redmine server rejected the request: Subject cannot be blank, Tracker is invalid");
+}
+
+TEST_F(RedmineClientIntegrationTest, ErrorMessageIsTranslatedWithEmbeddedGermanCatalog)
+{
+	// Loads the catalog the same way RedmineClient::installTranslations() does, but keeps the
+	// translator local so it can be removed again and doesn't leak into other tests.
+	QTranslator translator;
+	ASSERT_TRUE(translator.load(
+		QLocale(QLocale::German), QStringLiteral("QRedmineClient"), QStringLiteral("_"), QStringLiteral(":/i18n")));
+	QCoreApplication::installTranslator(&translator);
+
+	server->enqueueResponse(MockHttpResponse { 401, "Unauthorized", "" });
+
+	QString errorMessage;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString& error) { errorMessage = error; });
+
+	client->getIssue(1);
+	const bool errorEmitted = waitForSignal(client.get(), &RedmineClient::errorOccurred);
+	QCoreApplication::removeTranslator(&translator);
+	ASSERT_TRUE(errorEmitted);
+
+	EXPECT_EQ(errorMessage,
+		QStringLiteral("Anmeldung fehlgeschlagen. Bitte prüfen Sie Ihren API-Schlüssel in den Einstellungen."));
 }
 
 TEST_F(RedmineClientIntegrationTest, ConnectionStateBecomesTemporaryOfflineAfterAuthErrorOnceOnline)

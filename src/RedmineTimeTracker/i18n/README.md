@@ -2,9 +2,19 @@
 
 UI strings are marked with `qsTr()` in QML and extracted into Qt Linguist
 `.ts` files, one per language, compiled to `.qm` at build time and embedded
-into the binary under the `:/i18n/` resource prefix. `main.cpp` installs a
-`QTranslator` matching `QLocale::system()` at startup, falling back to the
-English source strings when no matching catalog is found.
+into the binary under the `:/i18n/` resource prefix. `LanguageManager`
+(created in `main.cpp`) installs the `QTranslator` for the language chosen
+under *Settings > Appearance > Language*, persisted as `ui/language` in
+QSettings, or for `QLocale::system()` when "System default" is selected. It
+falls back to the English source strings when no matching catalog is found.
+Changing the language retranslates the running UI immediately. The language
+list is built from the embedded catalogs, so a newly added language shows up
+there automatically.
+
+The `QRedmine::Client` library ships a separate catalog for its own
+user-facing strings (e.g. network error messages) in
+[src/RedmineClient/i18n](../../RedmineClient/i18n), which `LanguageManager`
+installs via `RedmineClient::installTranslations()`.
 
 Building translations requires the `LinguistTools` component of Qt (the
 `lupdate`/`lrelease` tools) - on most Linux distributions this is a separate

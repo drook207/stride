@@ -14,43 +14,43 @@ See the [User Guide](docs/USER_GUIDE.md) for a full walkthrough with screenshots
 
 ### Time Tracking
 
-- Start/Stop/Pause functionality
-- Real-time elapsed time display
-- Automatic time calculation
-- Pause and resume capabilities
-- Visual tracking status indicators
+* Start/Stop/Pause functionality
+* Real-time elapsed time display
+* Automatic time calculation
+* Pause and resume capabilities
+* Visual tracking status indicators
 
 ### Redmine Integration
 
-- Full issue and project management (create, update, list, delete)
-- Automatic synchronization with Redmine
-- Create, update, and delete time entries directly from the app
-- View and manage existing time entries
-- API key stored in the OS-native secure storage (Windows Credential Manager, Linux Secret Service/KWallet) - never in plain text
-- Automatic Redmine REST API version detection, so newer features can be gated on server capability
-- Error handling, connection-state indicator, and retry mechanisms
+* Full issue and project management (create, update, list, delete)
+* Automatic synchronization with Redmine
+* Create, update, and delete time entries directly from the app
+* View and manage existing time entries
+* API key stored in the OS-native secure storage (Windows Credential Manager, Linux Secret Service/KWallet) - never in plain text
+* Automatic Redmine REST API version detection, so newer features can be gated on server capability
+* Error handling, connection-state indicator, and retry mechanisms
 
 ### Offline Support
 
-- SQLite database for local storage
-- Automatic sync when online
-- Track time without internet connection
-- Persistent history of time entries
-- Sync status tracking
+* SQLite database for local storage
+* Automatic sync when online
+* Track time without internet connection
+* Persistent history of time entries
+* Sync status tracking
 
 ### Localization
 
-- Available in English and German, selected automatically from the system locale
-- More languages can be added via the Qt Linguist `.ts` files in [src/RedmineTimeTracker/i18n](src/RedmineTimeTracker/i18n) - see that directory's README for the workflow
+* Available in English and German, selected automatically from the system locale
+* More languages can be added via the Qt Linguist `.ts` files in [src/RedmineTimeTracker/i18n](src/RedmineTimeTracker/i18n) - see that directory's README for the workflow
 
 ## Requirements
 
-- Qt 6.8 or higher
-- CMake 3.16 or higher (3.23+ to use the provided CMake Presets)
-- C++17 compatible compiler
-- SQLite
-- Linux, or Windows with MSVC or MinGW
-- Internet access on first configure - GoogleTest and [QtKeychain](https://github.com/frankosterfeld/qtkeychain) are fetched automatically via CMake `FetchContent`
+* Qt 6.8 or higher
+* CMake 3.16 or higher (3.23+ to use the provided CMake Presets)
+* C++17 compatible compiler
+* SQLite
+* Linux, or Windows with MSVC or MinGW
+* Internet access on first configure - GoogleTest and [QtKeychain](https://github.com/frankosterfeld/qtkeychain) are fetched automatically via CMake `FetchContent`
 
 ## Building
 
@@ -108,15 +108,15 @@ For manual testing against a real server, a disposable local Redmine instance
 
 Time entries are stored in SQLite with the following structure:
 
-- `id`: Primary key
-- `issue_id`: Redmine issue identifier
-- `hours`: Time spent in decimal hours
-- `comments`: Work description
-- `spent_on`: Date/time of work
-- `sync_status`: Synchronization state
-- `redmine_id`: ID from Redmine after sync
-- `created_at`: Local creation timestamp
-- `updated_at`: Last modification timestamp
+* `id`: Primary key
+* `issue_id`: Redmine issue identifier
+* `hours`: Time spent in decimal hours
+* `comments`: Work description
+* `spent_on`: Date/time of work
+* `sync_status`: Synchronization state
+* `redmine_id`: ID from Redmine after sync
+* `created_at`: Local creation timestamp
+* `updated_at`: Last modification timestamp
 
 ## Contributing
 
