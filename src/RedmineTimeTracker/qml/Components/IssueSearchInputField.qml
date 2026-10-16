@@ -1,20 +1,38 @@
 import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Effects
-import drook207.timeTracker
+import QRedmine.TimeTracker
 
+/*!
+ * \brief Issue-number input field with live autocomplete against the locally cached issue list.
+ *
+ * Used wherever the user needs to pick an existing issue: TrackingBar, MobileTrackingBar,
+ * AddTimeEntryView, and GetTimeEntriesView. Text can be typed as a bare id ("42") or picked from
+ * the dropdown ("42: Some subject"); either way, `value` ends up holding the parsed numeric id.
+ */
 Item {
     id: searchField
 
+    required property TimeTracker timeTracker
+
+    //! The parsed issue id, or -1 if the current text doesn't resolve to one. This is what
+    //! callers should read/bind to, not the raw displayed text.
     property int value: -1
 
+    //! True once the current text parses to a non-negative id per the IssueInputValidator and
+    //! the "<id>[:...]" regex below - independent of whether that id is actually known locally.
 	readonly property bool acceptableInput: issueField.acceptableInput && searchField.value >= 0
 
+    //! True if `value` refers to an issue already present in the local issue cache (i.e. one the
+    //! app has previously fetched via RedmineClient::getIssue). Callers use this to gate actions
+    //! that need issue details (e.g. starting time tracking) on the issue actually being known.
     readonly property bool knownIssue: issueModel.hasIssue(value)
 
+    //! Emitted when Enter/Return is pressed in the field (mirrors TextField.accepted).
     signal accepted
 
+    //! Emitted after `value` has been re-derived from the current text (mirrors TextField's own
+    //! textChanged, but fires after value/acceptableInput/knownIssue are already up to date).
     signal textChanged
 
     Item {
@@ -24,7 +42,7 @@ Item {
         }
 
         Connections {
-            target: timeTrackerInstance
+            target: searchField.timeTracker
 			function onIssueAddedOrUpdated() {
                 issueModel.updateIssueList()
             }
@@ -41,6 +59,12 @@ Item {
     TextField {
         id: issueField
 
+        anchors.fill: parent
+        font.pixelSize: 13
+
+		//! Re-filters the suggestion dropdown from the current text and re-derives
+		//! searchField.value: extracts the leading digits (before an optional ":") if the text is
+		//! acceptable input, otherwise resets value to -1. Called on every keystroke.
 		function getAcceptableIssueIdFromInput() {
 			filteredIssuesModel.setFilterWildcard(issueField.text)
 			searchDropDown.visible = issueField.text.length > 0
@@ -62,9 +86,7 @@ Item {
 			searchField.textChanged()
 		}
 
-        width: parent.width
-		placeholderText: qsTr("Enter issue")
-        enabled: !docroot.timeTracker.isTracking
+        enabled: !searchField.timeTracker.isTracking
 		onTextChanged: issueField.getAcceptableIssueIdFromInput()
 		onAccepted: {
 			searchField.accepted()

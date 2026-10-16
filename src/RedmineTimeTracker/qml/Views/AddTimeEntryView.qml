@@ -1,25 +1,57 @@
 import QtQuick
 import QtQml
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
-import drook207.timeTracker
-import drook207.redmineClient
+import QRedmine.TimeTracker
+import QRedmine.Client
 
-GroupBox {
+/*!
+ * \brief "Add Entry" view: manually logs a time entry without using the live start/stop tracker -
+ * useful for backfilling work done earlier.
+ *
+ * Uses its own AddDialog confirmation step, which is why this flow has a separate (near-
+ * identical) dialog from the live TrackingBar/MobileTrackingBar's SubmitDialog: AddDialog takes
+ * hours/spentOn as plain properties set by this view, while SubmitDialog reads them live from
+ * TimeTracker's running timer.
+ */
+Item {
     id: docroot
-    title: qsTr("Add Time Entry")
     property TimeTracker timeTracker: undefined
     property RedmineClient client: undefined
+    //! TimeEntryActivitiesModel providing the activities for the Activity combo box.
+    property var activitiesModel: undefined
     property AddDialog addDialog: AddDialog {
         client: docroot.client
         timeTracker: docroot.timeTracker
     }
+    //! Copies the current field values into addDialog. Note: timeSpentField is always parsed with
+    //! the "de_DE" locale (decimal comma, e.g. "1,5") regardless of the user's actual system
+    //! locale - matches the field's "eg. 1,0" placeholder, but means it won't accept "1.5".
     function saveInput() {
-        docroot.addDialog.spentOn = spentOnField.text
+        docroot.addDialog.spentOn = spentOnField.isoDate
         docroot.addDialog.issueId = issueField.value
         var german = Qt.locale("de_DE")
         const number = Number.fromLocaleString(german, timeSpentField.text)
         docroot.addDialog.hours = number
+    }
+
+    //! Fills timeSpentField from the From/To range once both are set. An end before the start is
+    //! taken as spanning midnight (e.g. 22:00-01:00 = 3 hours). Redmine only stores the hours, so
+    //! the range itself isn't submitted.
+    function applyTimeRange() {
+        if (!fromField.hasTime || !toField.hasTime) {
+            return
+        }
+        let minutes = toField.totalMinutes - fromField.totalMinutes
+        if (minutes < 0) {
+            minutes += 24 * 60
+        }
+        if (minutes === 0) {
+            return
+        }
+        // Same "de_DE" decimal comma format saveInput() parses, see there.
+        timeSpentField.text = (minutes / 60).toLocaleString(Qt.locale("de_DE"), 'f', 2)
     }
 
     Timer {
@@ -31,83 +63,171 @@ GroupBox {
         }
     }
 
-    ColumnLayout {
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: parent.top
-        }
+    FormPage {
+        anchors.fill: parent
+        title: qsTr("Add Time Entry")
 
-        spacing: 5
-        GridLayout {
-            columns: 1
-            rows: 3
+        Card {
             Layout.fillWidth: true
-            rowSpacing: 10
-            columnSpacing: 10
 
-            IssueSearchInputField {
-                id: issueField
+            LabeledField {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 60
+                label: qsTr("Issue")
 
-                onAccepted: {
-					if (acceptableInput) {
-                        docroot.addDialog.issueId = issueField.value
+                IssueSearchInputField {
+                    id: issueField
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Metrics.controlHeight
+                    timeTracker: docroot.timeTracker
+
+                    onAccepted: {
+                        if (acceptableInput) {
+                            docroot.addDialog.issueId = issueField.value
+                        }
+                    }
+
+                    onTextChanged: {
+                        inputValidatorTimer.restart()
+                    }
+                }
+            }
+
+            // Optional helper: picking a time range fills in "Time spent".
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+
+                LabeledField {
+                    Layout.fillWidth: true
+                    label: qsTr("From")
+
+                    TimePickerField {
+                        id: fromField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        onTimePicked: docroot.applyTimeRange()
                     }
                 }
 
-                onTextChanged: {
-                    inputValidatorTimer.restart()
-                }
-            }
+                LabeledField {
+                    Layout.fillWidth: true
+                    label: qsTr("To")
 
-            TextField {
-                id: timeSpentField
-                Layout.fillWidth: true
-                placeholderText: qsTr("Enter time spent (eg. 1,0)")
-                validator: DoubleValidator {
-                    bottom: 0
-                    decimals: 2
-                    notation: DoubleValidator.StandardNotation
-                }
-                onAccepted: {
-                    if (acceptableInput) {
-                        var german = Qt.locale("de_DE")
-						const number = Number.fromLocaleString(german, text)
-                        docroot.addDialog.hours = number
+                    TimePickerField {
+                        id: toField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        // Suggest one hour after the start time.
+                        initialMinutes: fromField.hasTime ? fromField.totalMinutes + 60 : -1
+                        onTimePicked: docroot.applyTimeRange()
                     }
                 }
-                onTextChanged: {
-                    inputValidatorTimer.restart()
-                }
             }
 
-            TextField {
-                id: spentOnField
+            RowLayout {
                 Layout.fillWidth: true
-                placeholderText: qsTr("Enter date (yyyy-mm-dd)")
-                validator: RegularExpressionValidator {
-                    regularExpression: /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/
+                spacing: 12
+
+                LabeledField {
+                    Layout.fillWidth: true
+                    label: qsTr("Time spent (eg. 1,0)")
+
+                    TextField {
+                        id: timeSpentField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        validator: DoubleValidator {
+                            bottom: 0
+                            decimals: 2
+                            notation: DoubleValidator.StandardNotation
+                        }
+                        onAccepted: {
+                            if (acceptableInput) {
+                                var german = Qt.locale("de_DE")
+                                const number = Number.fromLocaleString(german, text)
+                                docroot.addDialog.hours = number
+                            }
+                        }
+                        onTextChanged: {
+                            inputValidatorTimer.restart()
+                        }
+                    }
                 }
-                onAcceptableInputChanged: {
-                    docroot.addDialog.spentOn = spentOnField.text
+
+                LabeledField {
+                    Layout.fillWidth: true
+                    label: qsTr("Date")
+
+                    DatePickerField {
+                        id: spentOnField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        // Today until another date is picked, so addDialog always gets a date.
+                        Component.onCompleted: docroot.addDialog.spentOn = spentOnField.isoDate
+                        onIsoDateChanged: docroot.addDialog.spentOn = spentOnField.isoDate
+                    }
                 }
             }
-        }
-        TextArea {
-            id: commentsField
-            Layout.fillWidth: true
-            Layout.preferredHeight: 80
-            placeholderText: qsTr("Enter comments for this time entry")
-            wrapMode: TextEdit.Wrap
-        }
 
-        Button {
-            text: qsTr("Add")
-            onClicked: {
-                docroot.addDialog.comment = commentsField.text
-                docroot.addDialog.open()
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 12
+
+                LabeledField {
+                    Layout.fillWidth: true
+                    label: qsTr("Activity")
+
+                    ComboBox {
+                        id: activityCombo
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        topInset: 0
+                        bottomInset: 0
+                        model: docroot.activitiesModel ? docroot.activitiesModel.timeEntryActivities : []
+                        textRole: "name"
+                        valueRole: "id"
+                        // Submit the activity that is shown, including the preselected first one;
+                        // 0 (Redmine's default activity) while none are loaded yet.
+                        onCurrentValueChanged: docroot.addDialog.activityId = currentValue !== undefined ? currentValue : 0
+                    }
+                }
+
+                //! Known non-functional placeholder, mirroring the TrackingBar's: empty model,
+                //! nothing reads its selection.
+                LabeledField {
+                    Layout.fillWidth: true
+                    label: qsTr("Special")
+
+                    ComboBox {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        topInset: 0
+                        bottomInset: 0
+                        model: []
+                    }
+                }
+            }
+
+            LabeledField {
+                Layout.fillWidth: true
+                label: qsTr("Comments")
+
+                TextArea {
+                    id: commentsField
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Metrics.textAreaHeight
+                    wrapMode: TextEdit.Wrap
+                }
+            }
+
+            PrimaryButton {
+                Layout.alignment: Qt.AlignRight
+                Layout.topMargin: 4
+                text: qsTr("Add")
+                onClicked: {
+                    docroot.addDialog.comment = commentsField.text
+                    docroot.addDialog.open()
+                }
             }
         }
     }

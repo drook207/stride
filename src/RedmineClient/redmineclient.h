@@ -4,6 +4,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
@@ -36,13 +37,17 @@ namespace ApiResources {
 class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_OBJECT
 	QML_ELEMENT
-	Q_PLUGIN_METADATA(IID "drook207.redmineClient")
 	Q_DISABLE_COPY_MOVE(RedmineClient)
 	Q_PROPERTY(QString baseUrl READ baseUrl WRITE setBaseUrl NOTIFY baseUrlChanged)
 	Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
 	Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
 	Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged FINAL)
+	Q_PROPERTY(bool useSSL READ useSSL WRITE useSSL NOTIFY useSSLChanged FINAL)
+	Q_PROPERTY(int apiVersion READ apiVersion NOTIFY apiVersionChanged FINAL)
 public:
+	// Redmine's REST API version, not its own value until a response from the server has been seen
+	static constexpr int UNKNOWN_API_VERSION = -1;
+
 	enum EnumerationTypes {
 		TIME_ENTRY_ACTIVITIES,
 		ISSUE_PRIORITIES,
@@ -59,6 +64,18 @@ public:
 	Q_ENUM(ConnectionState)
 
 	static const QList<QNetworkReply::NetworkError> REASONS_FOR_CONNECTION_LOSS;
+
+	/*!
+	 * \brief installTranslations Loads this library's translation catalog (embedded under
+	 * :/i18n/QRedmineClient_<lang>.qm, see i18n/README.md) matching \a locale and installs it on the
+	 * running QCoreApplication, so that user-facing strings such as the errorOccurred() messages are
+	 * localized. Must be called after the QCoreApplication has been created. Calling it again (e.g.
+	 * to switch the language at runtime) replaces the catalog installed by the previous call.
+	 * \param locale Locale to load the catalog for, the system locale by default
+	 * \return true if a matching catalog was found and installed, false otherwise (strings then
+	 * fall back to their English source text)
+	 */
+	static bool installTranslations(const QLocale& locale = QLocale::system());
 
 	/*!
 	 * \brief RedmineClient
@@ -100,7 +117,31 @@ public:
 
 	RedmineClient::ConnectionState connectionState() const;
 
+	bool useSSL() const { return mUseSSL; }
+
+	/*!
+	 * \brief apiVersion The Redmine REST API version last reported by the server via the
+	 * "X-Redmine-API-Version" response header, or UNKNOWN_API_VERSION when not known yet.
+	 * This is Redmine's API feature-level version, not the Redmine application version.
+	 * \return
+	 */
+	int apiVersion() const;
+
+	/*!
+	 * \brief hasApiVersion Whether the server's API version is known to be at least minVersion.
+	 * Use this to guard calls to endpoints/parameters that were only added in later API versions.
+	 * Returns false while the API version is still unknown.
+	 * \param minVersion
+	 * \return
+	 */
+	Q_INVOKABLE bool hasApiVersion(int minVersion) const;
+
 public slots:
+	/*!
+	 * \brief detectApiVersion Issues a lightweight request so the server's API version can be
+	 * read from the response headers. apiVersionChanged is emitted once it becomes known.
+	 */
+	void detectApiVersion();
 
 	// Create a new time entry
 	/*!
@@ -132,6 +173,12 @@ public slots:
 	void getTimeEntries(int issueId);
 
 	/*!
+	 * \brief deleteTimeEntry
+	 * \param timeEntryId
+	 */
+	void deleteTimeEntry(int timeEntryId);
+
+	/*!
 	 * \brief getEnumerations
 	 */
 	void getEnumerations(EnumerationTypes enumerationType);
@@ -147,6 +194,78 @@ public slots:
 	 */
 	void getIssue(int issueId);
 
+	/*!
+	 * \brief getIssues List issues, optionally filtered by project or status
+	 * \param projectId Only return issues of this project when > 0
+	 * \param statusId Only return issues with this status when > 0
+	 * \param limit Maximum number of issues to return
+	 * \param offset Skip this many issues (for pagination)
+	 */
+	void getIssues(int projectId = 0, int statusId = 0, int limit = 100, int offset = 0);
+
+	/*!
+	 * \brief createIssue
+	 * \param projectId
+	 * \param subject
+	 * \param description
+	 * \param trackerId Redmine tracker id, ignored when <= 0
+	 * \param priorityId Redmine priority id, ignored when <= 0
+	 */
+	void createIssue(int projectId, const QString& subject, const QString& description = QString(), int trackerId = 0,
+		int priorityId = 0);
+
+	/*!
+	 * \brief updateIssue Partially updates an issue, empty/zero arguments are left untouched
+	 * \param issueId
+	 * \param subject
+	 * \param description
+	 * \param statusId
+	 */
+	void updateIssue(
+		int issueId, const QString& subject = QString(), const QString& description = QString(), int statusId = 0);
+
+	/*!
+	 * \brief deleteIssue
+	 * \param issueId
+	 */
+	void deleteIssue(int issueId);
+
+	/*!
+	 * \brief getProject
+	 * \param projectId
+	 */
+	void getProject(int projectId);
+
+	/*!
+	 * \brief getProjects List projects
+	 * \param limit Maximum number of projects to return
+	 * \param offset Skip this many projects (for pagination)
+	 */
+	void getProjects(int limit = 100, int offset = 0);
+
+	/*!
+	 * \brief createProject
+	 * \param name
+	 * \param identifier
+	 * \param description
+	 */
+	void createProject(const QString& name, const QString& identifier, const QString& description = QString());
+
+	/*!
+	 * \brief updateProject Partially updates a project, empty arguments are left untouched
+	 * \param projectId
+	 * \param name
+	 * \param description
+	 */
+	void updateProject(int projectId, const QString& name = QString(), const QString& description = QString());
+
+	/*!
+	 * \brief deleteProject
+	 * \param projectId
+	 */
+	void deleteProject(int projectId);
+
+	void useSSL(bool useSSL);
 signals:
 	/*!
 	 * \brief baseUrlChanged
@@ -182,6 +301,12 @@ signals:
 	void timeEntriesReceived(const QJsonArray& entries);
 
 	/*!
+	 * \brief timeEntryDeleted
+	 * \param timeEntryId
+	 */
+	void timeEntryDeleted(int timeEntryId);
+
+	/*!
 	 * \brief enumerationsReceived
 	 * \param entries
 	 */
@@ -196,8 +321,9 @@ signals:
 	void customFieldsReceived(const QJsonArray& customFields);
 
 	/*!
-	 * \brief errorOccurred
-	 * \param error
+	 * \brief errorOccurred Emitted when a request fails (except for 404 Not Found)
+	 * \param error Human-readable, translated description of the failure, suitable for showing to
+	 * the user (see installTranslations())
 	 */
 	void errorOccurred(const QString& error);
 
@@ -207,7 +333,67 @@ signals:
 	 */
 	void issueReceived(const QJsonObject& issue);
 
+	/*!
+	 * \brief issuesReceived
+	 * \param issues
+	 */
+	void issuesReceived(const QJsonArray& issues);
+
+	/*!
+	 * \brief issueCreated
+	 * \param issue
+	 */
+	void issueCreated(const QJsonObject& issue);
+
+	/*!
+	 * \brief issueUpdated
+	 * \param issueId
+	 */
+	void issueUpdated(int issueId);
+
+	/*!
+	 * \brief issueDeleted
+	 * \param issueId
+	 */
+	void issueDeleted(int issueId);
+
+	/*!
+	 * \brief projectReceived
+	 * \param project
+	 */
+	void projectReceived(const QJsonObject& project);
+
+	/*!
+	 * \brief projectsReceived
+	 * \param projects
+	 */
+	void projectsReceived(const QJsonArray& projects);
+
+	/*!
+	 * \brief projectCreated
+	 * \param project
+	 */
+	void projectCreated(const QJsonObject& project);
+
+	/*!
+	 * \brief projectUpdated
+	 * \param projectId
+	 */
+	void projectUpdated(int projectId);
+
+	/*!
+	 * \brief projectDeleted
+	 * \param projectId
+	 */
+	void projectDeleted(int projectId);
+
 	void connectionStateChanged();
+	void useSSLChanged();
+
+	/*!
+	 * \brief apiVersionChanged Emitted once the server's API version becomes known or changes
+	 */
+	void apiVersionChanged();
 
 private slots:
 	/*!
@@ -240,10 +426,28 @@ private:
 	 * \return
 	 */
 	QNetworkRequest createRequest(const QString& endpoint, const QUrlQuery& query = QUrlQuery());
+
+	/*!
+	 * \brief userErrorMessage Builds the translated, user-facing message emitted via errorOccurred()
+	 * \param reply The failed reply
+	 * \param response The parsed JSON body of the reply; Redmine reports validation failures (422)
+	 * as an "errors" string array in it
+	 * \return
+	 */
+	QString userErrorMessage(QNetworkReply* reply, const QJsonObject& response) const;
+
+	/*!
+	 * \brief updateApiVersionFromReply Reads the "X-Redmine-API-Version" header, if present,
+	 * and emits apiVersionChanged when it differs from the previously known value.
+	 * \param reply
+	 */
+	void updateApiVersionFromReply(QNetworkReply* reply);
+
 	QString mBaseUrl;
 	QString mApiKey;
 	bool mLoading;
 	QNetworkAccessManager* mNetworkManager;
+	bool mUseSSL { true };
+	int mApiVersion { UNKNOWN_API_VERSION };
 };
 }
-Q_DECLARE_METATYPE(QRedmineClient::RedmineClient)

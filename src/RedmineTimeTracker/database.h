@@ -28,13 +28,6 @@ namespace SqlQueries {
 	STATIC_CONST_QSTRING(CREATE_TIME_ENTRIES_SYNC_STATUS_INDEX,
 		"CREATE INDEX IF NOT EXISTS idx_time_entries_sync_status ON time_entries(sync_status)");
 
-	STATIC_CONST_QSTRING(CREATE_TIME_ENTRY_ACTIVITIES_TABLE,
-		"CREATE TABLE IF NOT EXISTS enum_time_entry_activities ("
-		"enum_id INTEGER NOT NULL,"
-		"is_default BOOLEAN NOT NULL,"
-		"name TEXT NOT NULL"
-		")");
-
 	STATIC_CONST_QSTRING(ADD_TIME_ENTRY,
 		"INSERT INTO time_entries "
 		"(issue_id, hours, comments, spent_on, created_at, updated_at) "
@@ -44,11 +37,6 @@ namespace SqlQueries {
 		"UPDATE time_entries "
 		"SET sync_status = 1, redmine_id = ?, updated_at = ? "
 		"WHERE id = ?");
-
-	STATIC_CONST_QSTRING(ADD_TIME_ENTRY_ACTIVITIE,
-		"INSERT INTO enum_time_entry_activities "
-		"(enum_id, is_default, name) "
-		"VALUES (?, ?, ?)");
 
 	STATIC_CONST_QSTRING(GET_UNSYNCED_ENTRIES, "SELECT * FROM time_entries WHERE sync_status = 0");
 
@@ -72,8 +60,8 @@ namespace SqlQueries {
 		"id, subject, project_id, status_id, description, created_on, updated_on) VALUES "
 		"(:id,:subject, :project_id,:status_id,:description,:created_on,:updated_on)");
 
-	STATIC_CONST_QSTRING(GET_ISSUES,
-		"SELECT id, subject, project_id, status_id, description, created_on, updated_on FROM issues");
+	STATIC_CONST_QSTRING(
+		GET_ISSUES, "SELECT id, subject, project_id, status_id, description, created_on, updated_on FROM issues");
 }
 
 class Database {
@@ -96,7 +84,6 @@ public:
 
 public slots:
 	static bool updateSyncStatus(int id, int redmineId);
-	static bool addTimeEntryActivities(const QJsonArray& activities);
 
 private:
 	static bool evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& query);

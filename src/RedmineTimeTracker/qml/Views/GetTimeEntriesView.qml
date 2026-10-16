@@ -1,84 +1,109 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
-import drook207.timeTracker
-import drook207.redmineClient
+import QRedmine.TimeTracker
+import QRedmine.Client
 
-GroupBox {
+/*!
+ * \brief "Search Issue" view: fetches and lists every time entry already logged against a given
+ * issue, straight from the Redmine REST API (not the local cache) - useful to check what's
+ * already been recorded before adding more.
+ */
+Item {
     id: docroot
-	title: qsTr("Entries from Id")
 
     required property TimeTracker timeTracker
     required property RedmineClient client
 
     ColumnLayout {
-        anchors.fill: parent
-        spacing: 10
-        GridLayout {
-            columns: 1
-            rows: 3
-            Layout.fillWidth: true
-            rowSpacing: 10
-            columnSpacing: 10
-
-            IssueSearchInputField {
-                id: issueField
-                Layout.fillWidth: true
-                Layout.preferredHeight: 60
-                enabled: !docroot.timeTracker.isTracking
-            }
-
-            Button {
-				text: qsTr("Get")
-                onClicked: docroot.client.getTimeEntries(issueField.value)
-            }
+        anchors {
+            fill: parent
+            margins: Metrics.pageMargin
         }
-        GroupBox {
-			title: qsTr("Time Entries")
+        spacing: Metrics.sectionSpacing
+
+        PageTitle {
+            Layout.fillWidth: true
+            text: qsTr("Search Issue")
+        }
+
+        // One card for the search row and its results, like RecentEntriesView's list card.
+        Card {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            ListView {
-                id: entriesList
-                anchors.fill: parent
-                model: docroot.timeTracker.entriesFromId
-                clip: true
+            padding: 12
 
-                delegate: ItemDelegate {
-                    width: parent.width
-                    contentItem: ColumnLayout {
-                        spacing: 5
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.margins: 8
+                spacing: 12
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Label {
-								text: qsTr("Id: %0").arg(modelData.id)
-                                font.bold: true
-                            }
-                            Label {
-								text: qsTr("Issue #%0").arg(modelData.issue.id)
-                                font.bold: true
-                            }
-                            Label {
-								text: qsTr("%0 hours").arg(modelData.hours.toFixed(2))
-                                Layout.leftMargin: 10
-                            }
-                            Label {
-								text: Qt.formatDateTime(modelData.spent_on, "yyyy-MM-dd hh:mm")
-                                Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignRight
-                            }
-                        }
+                LabeledField {
+                    Layout.fillWidth: true
+                    Layout.maximumWidth: 400
+                    label: qsTr("Issue")
 
-                        Label {
-                            text: modelData.comments
-                            visible: modelData.comments !== ""
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
-                        }
+                    IssueSearchInputField {
+                        id: issueField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        timeTracker: docroot.timeTracker
+                        enabled: !docroot.timeTracker.isTracking
                     }
                 }
 
+                PrimaryButton {
+                    Layout.alignment: Qt.AlignBottom
+                    text: qsTr("Get")
+                    enabled: issueField.acceptableInput
+                    onClicked: docroot.client.getTimeEntries(issueField.value)
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Material.dividerColor
+            }
+
+            ListView {
+                id: entriesList
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: count > 0
+                model: docroot.timeTracker.entriesFromId
+                clip: true
+
+                delegate: TimeEntryDelegate {
+                    required property var modelData
+                    required property int index
+
+                    entryId: modelData.id
+                    issueId: modelData.issue.id
+                    hours: modelData.hours
+                    comment: modelData.comments || ""
+                    spentOn: modelData.spent_on
+                    showDivider: index < ListView.view.count - 1
+                }
+
                 ScrollBar.vertical: ScrollBar {}
+            }
+
+            // Empty state
+            Label {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: entriesList.count === 0
+                text: qsTr("Enter an issue and press Get to list its time entries.")
+                color: Material.secondaryTextColor
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                wrapMode: Text.WordWrap
             }
         }
     }

@@ -46,15 +46,18 @@ repos:
     hooks:
       - id: codespell
         args: ["--skip=*.gitignore"]
+        exclude: ^src/[^/]+/i18n/.*\.ts$
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.39.0
     hooks:
       - id: markdownlint
+        exclude: ^\.claude/agents/
   # Commit-msg hooks
-  - repo: https://github.com/jorisroovers/gitlint
-    rev: v0.19.1
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
     hooks:
-      - id: gitlint
+      - id: conventional-pre-commit
+        stages: [commit-msg]
 
 
   - repo: https://github.com/pocc/pre-commit-hooks

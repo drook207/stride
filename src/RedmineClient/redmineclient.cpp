@@ -1,21 +1,60 @@
 #include "redmineclient.h"
+#include <QCoreApplication>
 #include <QLoggingCategory>
 #include <QMetaEnum>
+#include <QPointer>
 #include <QStringLiteral>
+#include <QTranslator>
 #include <QUrlQuery>
 #include <QtLogging>
 
 #include "qsettingshelper.h"
+#include "securestorage.h"
 
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
 
 namespace QRedmineClient {
+
+// Key the API key is stored under within keychainService(), and the legacy QSettings key it used to
+// be (insecurely) persisted under before it was migrated to the OS-native secure storage.
+static const QString API_KEY_KEYCHAIN_KEY = QStringLiteral("apiKey");
+static const QString LEGACY_API_KEY_SETTING = QStringLiteral("client/apiKey");
+
+// Service identifier the API key is stored under in the OS-native secure storage (see securestorage.h).
+// Derived from the application name rather than a fixed literal so that, e.g., the test binary
+// (which sets its own QCoreApplication::applicationName(), see tests/main.cpp) never reads from or
+// writes to the same keychain entry as the real application.
+static QString keychainService()
+{
+	const QString appName = QCoreApplication::applicationName();
+	return appName.isEmpty() ? QStringLiteral("QRedmineTimeTracker") : appName;
+}
 
 const QList<QNetworkReply::NetworkError> RedmineClient::REASONS_FOR_CONNECTION_LOSS = {
 	QNetworkReply::HostNotFoundError, QNetworkReply::TimeoutError, QNetworkReply::OperationCanceledError,
 	QNetworkReply::TemporaryNetworkFailureError, QNetworkReply::AuthenticationRequiredError,
 	QNetworkReply::UnknownServerError
 };
+
+bool RedmineClient::installTranslations(const QLocale& locale)
+{
+	// The catalog installed by the previous call, if any, so that switching the language at runtime
+	// replaces it instead of stacking another translator on top of it.
+	static QPointer<QTranslator> installedTranslator;
+	if (installedTranslator) {
+		QCoreApplication::removeTranslator(installedTranslator);
+		delete installedTranslator;
+	}
+
+	// Parented to the application so it lives exactly as long as the application it is installed on.
+	auto* translator = new QTranslator(QCoreApplication::instance());
+	if (!translator->load(locale, QStringLiteral("QRedmineClient"), QStringLiteral("_"), QStringLiteral(":/i18n"))) {
+		delete translator;
+		return false;
+	}
+	installedTranslator = translator;
+	return QCoreApplication::installTranslator(translator);
+}
 
 void QRedmineClient::RedmineClient::setupConnectionCheckTimer()
 {
@@ -38,12 +77,29 @@ RedmineClient::RedmineClient(QObject* parent)
 {
 	connect(mNetworkManager, &QNetworkAccessManager::finished, this, &RedmineClient::handleNetworkReply);
 	auto url = Utils::GetSetting("client/baseUrl").toString();
-	auto key = Utils::GetSetting("client/apiKey").toString();
 	if (!url.isEmpty()) {
 		setBaseUrl(url);
 	}
-	if (!key.isEmpty()) {
-		setApiKey(key);
+
+	// Migrate a legacy plaintext API key out of QSettings into the OS-native secure storage, if one
+	// is still present from before this migration existed. setApiKey() already takes care of writing
+	// the new value to the keychain and updating mApiKey/emitting apiKeyChanged synchronously.
+	auto legacyKey = Utils::GetSetting(LEGACY_API_KEY_SETTING).toString();
+	if (!legacyKey.isEmpty()) {
+		setApiKey(legacyKey);
+		Utils::RemoveSetting(LEGACY_API_KEY_SETTING);
+	} else {
+		// Nothing to migrate, load the API key from the keychain asynchronously instead. Applying it
+		// here must not trigger another write back to the keychain.
+		Utils::ReadSecret(
+			keychainService(), API_KEY_KEYCHAIN_KEY,
+			[this](const QString& key) {
+				if (mApiKey != key) {
+					mApiKey = key;
+					emit apiKeyChanged();
+				}
+			},
+			{}, {}, this);
 	}
 
 	setupConnectionCheckTimer();
@@ -71,12 +127,15 @@ void RedmineClient::checkConnection()
 
 void RedmineClient::setBaseUrl(const QString& url)
 {
-	auto newUrl = url;
-	if (!newUrl.endsWith('/')) {
-		newUrl = url + "/";
+	// createRequest() builds request URLs by concatenating mBaseUrl directly with endpoints such as
+	// "issues.json", so mBaseUrl must always end with a slash or every request URL would be malformed.
+	QString normalizedUrl = url;
+	if (!normalizedUrl.isEmpty() && !normalizedUrl.endsWith('/')) {
+		normalizedUrl += '/';
 	}
-	if (mBaseUrl != newUrl) {
-		mBaseUrl = newUrl;
+
+	if (mBaseUrl != normalizedUrl) {
+		mBaseUrl = normalizedUrl;
 		Utils::SaveSetting("client/baseUrl", mBaseUrl);
 		emit baseUrlChanged();
 	}
@@ -88,13 +147,50 @@ void RedmineClient::setApiKey(const QString& key)
 {
 	if (mApiKey != key) {
 		mApiKey = key;
-		Utils::SaveSetting("client/apiKey", mApiKey);
-		Utils::SaveSetting("client/apiKey", mApiKey);
+		Utils::WriteSecret(keychainService(), API_KEY_KEYCHAIN_KEY, mApiKey);
 		emit apiKeyChanged();
 	}
 }
 
+void RedmineClient::useSSL(bool useSSL)
+{
+	if (mUseSSL != useSSL) {
+		mUseSSL = useSSL;
+		mNetworkManager->setStrictTransportSecurityEnabled(useSSL);
+		emit useSSLChanged();
+	}
+}
+
 bool RedmineClient::loading() const { return mLoading; }
+
+int RedmineClient::apiVersion() const { return mApiVersion; }
+
+bool RedmineClient::hasApiVersion(int minVersion) const
+{
+	return mApiVersion != UNKNOWN_API_VERSION && mApiVersion >= minVersion;
+}
+
+void RedmineClient::detectApiVersion()
+{
+	setLoading(true);
+	QUrlQuery query;
+	query.addQueryItem("limit", "0");
+	mNetworkManager->get(createRequest(ApiResources::ISSUES, query));
+}
+
+void RedmineClient::updateApiVersionFromReply(QNetworkReply* reply)
+{
+	if (!reply->hasRawHeader("X-Redmine-API-Version")) {
+		return;
+	}
+
+	bool ok = false;
+	int version = reply->rawHeader("X-Redmine-API-Version").toInt(&ok);
+	if (ok && version != mApiVersion) {
+		mApiVersion = version;
+		emit apiVersionChanged();
+	}
+}
 
 void RedmineClient::setLoading(bool loading)
 {
@@ -111,6 +207,53 @@ QNetworkRequest RedmineClient::createRequest(const QString& endpoint, const QUrl
 	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 	request.setRawHeader("X-Redmine-API-Key", mApiKey.toUtf8());
 	return request;
+}
+
+QString RedmineClient::userErrorMessage(QNetworkReply* reply, const QJsonObject& response) const
+{
+	switch (reply->error()) {
+		case QNetworkReply::HostNotFoundError:
+			return tr("The Redmine server could not be found. Please check the server URL in the settings.");
+		case QNetworkReply::ConnectionRefusedError:
+			return tr("The Redmine server refused the connection.");
+		case QNetworkReply::RemoteHostClosedError:
+			return tr("The Redmine server closed the connection unexpectedly.");
+		case QNetworkReply::TimeoutError:
+		case QNetworkReply::OperationCanceledError:
+			return tr("The connection to the Redmine server timed out.");
+		case QNetworkReply::SslHandshakeFailedError:
+			return tr("A secure connection to the Redmine server could not be established.");
+		case QNetworkReply::TemporaryNetworkFailureError:
+		case QNetworkReply::NetworkSessionFailedError:
+			return tr("No network connection is available.");
+		case QNetworkReply::AuthenticationRequiredError:
+			return tr("Authentication failed. Please check your API key in the settings.");
+		case QNetworkReply::ContentAccessDenied:
+			return tr("Access denied. You are not allowed to perform this action.");
+		default:
+			break;
+	}
+
+	// Redmine answers validation failures (422 Unprocessable Entity) with {"errors": ["..."]}. Those
+	// texts are already localized by the server according to the API user's language, so they are
+	// passed through as-is.
+	const QJsonArray errors = response.value(QStringLiteral("errors")).toArray();
+	if (!errors.isEmpty()) {
+		QStringList messages;
+		for (const auto& error : errors) {
+			messages.append(error.toString());
+		}
+		return tr("The Redmine server rejected the request: %1").arg(messages.join(QStringLiteral(", ")));
+	}
+
+	const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+	if (httpStatus >= 500) {
+		return tr("The Redmine server reported an internal error (HTTP %1).").arg(httpStatus);
+	}
+
+	// Fallback for everything not covered above; QNetworkReply::errorString() is translated through
+	// Qt's own qtbase catalog.
+	return tr("Network error: %1").arg(reply->errorString());
 }
 
 RedmineClient::ConnectionState RedmineClient::connectionState() const { return mConnectionState; }
@@ -151,9 +294,9 @@ void RedmineClient::createTimeEntry(
 	timeEntry["spent_on"] = spentOn;
 	timeEntry["hours"] = hours;
 	timeEntry["comments"] = comments;
-	// FIXME Currently not supported
-	// TODO Add fields to UI
-	// timeEntry["activity_id"] = activityId;
+	if (activityId > 0) {
+		timeEntry["activity_id"] = activityId;
+	}
 
 	// FIXME Currently not supported
 	// TODO Add fields to UI
@@ -192,10 +335,148 @@ void RedmineClient::getTimeEntries(int issueId)
 	mNetworkManager->get(createRequest(ApiResources::TIME_ENTRIES, query));
 }
 
+void RedmineClient::deleteTimeEntry(int timeEntryId)
+{
+	setLoading(true);
+	mNetworkManager->deleteResource(createRequest(ApiResources::TIME_ENTRY.arg(timeEntryId)));
+}
+
 void RedmineClient::getIssue(int issueId)
 {
 	setLoading(true);
 	mNetworkManager->get(createRequest(ApiResources::ISSUE.arg(QString::number(issueId))));
+}
+
+void RedmineClient::getIssues(int projectId, int statusId, int limit, int offset)
+{
+	setLoading(true);
+
+	QUrlQuery query;
+	if (projectId > 0) {
+		query.addQueryItem("project_id", QString::number(projectId));
+	}
+	if (statusId > 0) {
+		query.addQueryItem("status_id", QString::number(statusId));
+	}
+	query.addQueryItem("limit", QString::number(limit));
+	query.addQueryItem("offset", QString::number(offset));
+
+	mNetworkManager->get(createRequest(ApiResources::ISSUES, query));
+}
+
+void RedmineClient::createIssue(
+	int projectId, const QString& subject, const QString& description, int trackerId, int priorityId)
+{
+	setLoading(true);
+
+	QJsonObject issue;
+	issue["project_id"] = projectId;
+	issue["subject"] = subject;
+	if (!description.isEmpty()) {
+		issue["description"] = description;
+	}
+	if (trackerId > 0) {
+		issue["tracker_id"] = trackerId;
+	}
+	if (priorityId > 0) {
+		issue["priority_id"] = priorityId;
+	}
+
+	QJsonObject issueData;
+	issueData["issue"] = issue;
+
+	QJsonDocument doc(issueData);
+	mNetworkManager->post(createRequest(ApiResources::ISSUES), doc.toJson());
+}
+
+void RedmineClient::updateIssue(int issueId, const QString& subject, const QString& description, int statusId)
+{
+	setLoading(true);
+
+	QJsonObject issue;
+	if (!subject.isEmpty()) {
+		issue["subject"] = subject;
+	}
+	if (!description.isEmpty()) {
+		issue["description"] = description;
+	}
+	if (statusId > 0) {
+		issue["status_id"] = statusId;
+	}
+
+	QJsonObject issueData;
+	issueData["issue"] = issue;
+
+	QJsonDocument doc(issueData);
+	QString endpoint = ApiResources::ISSUE.arg(issueId);
+	mNetworkManager->put(createRequest(endpoint), doc.toJson());
+}
+
+void RedmineClient::deleteIssue(int issueId)
+{
+	setLoading(true);
+	mNetworkManager->deleteResource(createRequest(ApiResources::ISSUE.arg(issueId)));
+}
+
+void RedmineClient::getProject(int projectId)
+{
+	setLoading(true);
+	mNetworkManager->get(createRequest(ApiResources::PROJECT.arg(projectId)));
+}
+
+void RedmineClient::getProjects(int limit, int offset)
+{
+	setLoading(true);
+
+	QUrlQuery query;
+	query.addQueryItem("limit", QString::number(limit));
+	query.addQueryItem("offset", QString::number(offset));
+
+	mNetworkManager->get(createRequest(ApiResources::PROJECTS, query));
+}
+
+void RedmineClient::createProject(const QString& name, const QString& identifier, const QString& description)
+{
+	setLoading(true);
+
+	QJsonObject project;
+	project["name"] = name;
+	project["identifier"] = identifier;
+	if (!description.isEmpty()) {
+		project["description"] = description;
+	}
+
+	QJsonObject projectData;
+	projectData["project"] = project;
+
+	QJsonDocument doc(projectData);
+	mNetworkManager->post(createRequest(ApiResources::PROJECTS), doc.toJson());
+}
+
+void RedmineClient::updateProject(int projectId, const QString& name, const QString& description)
+{
+	setLoading(true);
+
+	QJsonObject project;
+	if (!name.isEmpty()) {
+		project["name"] = name;
+	}
+	if (!description.isEmpty()) {
+		project["description"] = description;
+	}
+
+	QJsonObject projectData;
+	projectData["project"] = project;
+
+	QJsonDocument doc(projectData);
+	QString endpoint = ApiResources::PROJECT.arg(projectId);
+	mNetworkManager->put(createRequest(endpoint), doc.toJson());
+}
+
+void RedmineClient::deleteProject(int projectId)
+{
+	setLoading(true);
+	mNetworkManager->deleteResource(createRequest(ApiResources::PROJECT.arg(projectId)));
 }
 
 void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
@@ -204,17 +485,17 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 	QString endpoint;
 	switch (enumerationType) {
 		case TIME_ENTRY_ACTIVITIES:
-			endpoint = QString("/enumerations/time_entry_activities.json");
+			endpoint = QString("enumerations/time_entry_activities.json");
 			break;
 		case ISSUE_PRIORITIES:
-			endpoint = QString("/enumerations/issue_priorities.json");
+			endpoint = QString("enumerations/issue_priorities.json");
 			break;
 		case DOCUMENT_CATEGORIES:
-			endpoint = QString("/enumerations/document_categories.json");
+			endpoint = QString("enumerations/document_categories.json");
 			break;
 		default:
-			qWarning(lcRedmineClient()) << QT_TR_NOOP(
-				QStringLiteral("No valid Enumeration type is provided: <%0>").arg(enumerationType));
+			qWarning(lcRedmineClient())
+				<< QStringLiteral("No valid Enumeration type is provided: <%0>").arg(enumerationType);
 			return;
 	}
 
@@ -224,7 +505,7 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 void RedmineClient::getCustomFields()
 {
 	setLoading(true);
-	QString endpoint = QString("/custom_fields.json");
+	QString endpoint = QString("custom_fields.json");
 	mNetworkManager->get(createRequest(endpoint));
 }
 
@@ -232,16 +513,18 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 {
 	reply->deleteLater();
 	setLoading(false);
+	updateApiVersionFromReply(reply);
 
 	if (reply->error() != QNetworkReply::NoError) {
-		if (reply->error() != QNetworkReply::ContentNotFoundError) {
-			emit errorOccurred(reply->errorString());
-		}
 		QByteArray data = reply->readAll();
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();
 
-		qWarning(lcRedmineClient) << tr("[%0] %1: ").arg(reply->error()).arg(reply->errorString())
+		if (reply->error() != QNetworkReply::ContentNotFoundError) {
+			emit errorOccurred(userErrorMessage(reply, response));
+		}
+
+		qWarning(lcRedmineClient) << QStringLiteral("[%0] %1: ").arg(reply->error()).arg(reply->errorString())
 								  << QJsonDocument(response).toJson(QJsonDocument::Compact);
 
 		if (REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {
@@ -286,21 +569,51 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			if (response.contains("issue")) {
 				emit issueReceived(response["issue"].toObject());
 			}
+			if (response.contains("issues")) {
+				emit issuesReceived(response["issues"].toArray());
+			}
+			if (response.contains("project")) {
+				emit projectReceived(response["project"].toObject());
+			}
+			if (response.contains("projects")) {
+				emit projectsReceived(response["projects"].toArray());
+			}
 			break;
 		case QNetworkAccessManager::PutOperation:
-			path = reply->url().path();
 			// TODO Add logic to ensure that the recepted id is the correct one
 			// TODO Make the split more obvious
+			path = reply->url().path();
 			id = path.split('/').at(2).split('.').at(0).toInt();
-			emit timeEntryUpdated(id);
+			if (path.contains("/time_entries/")) {
+				emit timeEntryUpdated(id);
+			} else if (path.contains("/issues/")) {
+				emit issueUpdated(id);
+			} else if (path.contains("/projects/")) {
+				emit projectUpdated(id);
+			}
 			break;
 
 		case QNetworkAccessManager::PostOperation:
 			if (response.contains("time_entry")) {
 				emit timeEntryCreated(response["time_entry"].toObject());
 			}
+			if (response.contains("issue")) {
+				emit issueCreated(response["issue"].toObject());
+			}
+			if (response.contains("project")) {
+				emit projectCreated(response["project"].toObject());
+			}
 			break;
 		case QNetworkAccessManager::DeleteOperation:
+			path = reply->url().path();
+			id = path.split('/').at(2).split('.').at(0).toInt();
+			if (path.contains("/time_entries/")) {
+				emit timeEntryDeleted(id);
+			} else if (path.contains("/issues/")) {
+				emit issueDeleted(id);
+			} else if (path.contains("/projects/")) {
+				emit projectDeleted(id);
+			}
 			break;
 		case QNetworkAccessManager::CustomOperation:
 			break;

@@ -9,28 +9,36 @@ include(FetchContent)
 
 # Download and configure Google Test
 FetchContent_Declare(
-	googletest
-	GIT_REPOSITORY https://github.com/google/googletest.git
-	GIT_TAG v1.15.2  # Specify the version you want
+ googletest
+ GIT_REPOSITORY https://github.com/google/googletest.git
+ GIT_TAG v1.15.2  # Specify the version you want
 )
 # Configure Google Test build options
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+# Don't add GoogleTest/GoogleMock's own install() rules to the build - CPack packages
+# every install() rule in the whole project, not just QRedmineTimeTracker's, so leaving
+# this on bundles GTest's development headers/libraries into the shipped app package.
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 
 add_executable(qredminetesting
 redmineclienttest.h redmineclienttest.cpp
+redmineclientintegrationtest.h redmineclientintegrationtest.cpp
+mockhttpserver.h mockhttpserver.cpp
+testutils.h
 main.cpp)
 
 find_package(Qt6 REQUIRED Core Network Quick)
 
 target_link_libraries(qredminetesting
-	PRIVATE
-	redmineclient
-	GTest::gtest_main
-	Qt6::Core
-	Qt6::Network
-	Qt6::Quick
+ PRIVATE
+QRedmine::Client
+QRedmine::Utils
+ GTest::gtest_main
+ Qt6::Core
+ Qt6::Network
+ Qt6::Quick
 )
 
 include(GoogleTest)
