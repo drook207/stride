@@ -20,6 +20,12 @@ int main(int argc, char* argv[])
 	app.setApplicationName("Stride");
 	app.setApplicationVersion("0.0.1");
 
+	// Window/taskbar icon, embedded via the QML module's RESOURCES. Most Wayland compositors ignore it
+	// and look the icon up from the desktop entry matching the app ID instead, so the desktop file
+	// name must match the entry the installer creates (see packaging/ifw/installscript.qs).
+	app.setWindowIcon(QIcon(":/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/app-icon.svg"));
+	app.setDesktopFileName("qredminetimetracker");
+
 	// Create QML engine and load main QML file
 	QQmlApplicationEngine engine;
 
