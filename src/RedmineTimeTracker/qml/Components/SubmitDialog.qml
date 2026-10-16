@@ -29,6 +29,7 @@ Dialog {
 	anchors.centerIn: parent
 	parent: Overlay.overlay
 	modal: true
+	Overlay.modal: DialogScrim {}
 
 	onAccepted: {
 		docroot.timeTracker.stopTracking()

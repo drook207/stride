@@ -21,6 +21,7 @@ Dialog {
 	x: (parent.width - width) / 2
 	y: (parent.height - height) / 2
 	modal: true
+	Overlay.modal: DialogScrim {}
 
 	contentItem: Label {
 		id: messageLabel

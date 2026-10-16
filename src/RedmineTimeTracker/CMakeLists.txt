@@ -53,6 +53,7 @@ qt_add_qml_module(
  qml/Components/TrackingBar.qml
  qml/Components/AddDialog.qml
  qml/Components/LabeledField.qml
+ qml/Components/DialogScrim.qml
  qml/Desktop/DesktopShell.qml
  qml/Mobile/MobileShell.qml
  qml/Mobile/MobileHeader.qml
