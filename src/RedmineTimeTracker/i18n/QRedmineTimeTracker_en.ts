@@ -9,12 +9,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/AddDialog.qml" line="64"/>
+        <location filename="../qml/Components/AddDialog.qml" line="65"/>
         <source>Would you like to submit this time entry?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/AddDialog.qml" line="68"/>
+        <location filename="../qml/Components/AddDialog.qml" line="69"/>
         <source>Total time: %1 spent on: %2</source>
         <translation type="unfinished"></translation>
     </message>
@@ -278,12 +278,12 @@
 <context>
     <name>Sidebar</name>
     <message>
-        <location filename="../qml/Components/Sidebar.qml" line="67"/>
+        <location filename="../qml/Components/Sidebar.qml" line="69"/>
         <source>Menu</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/Sidebar.qml" line="141"/>
+        <location filename="../qml/Components/Sidebar.qml" line="151"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
@@ -296,12 +296,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/SubmitDialog.qml" line="64"/>
+        <location filename="../qml/Components/SubmitDialog.qml" line="65"/>
         <source>Would you like to submit this time entry?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/SubmitDialog.qml" line="68"/>
+        <location filename="../qml/Components/SubmitDialog.qml" line="69"/>
         <source>Total time: %0</source>
         <translation type="unfinished"></translation>
     </message>
@@ -309,22 +309,27 @@
 <context>
     <name>TrackingBar</name>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="84"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="100"/>
+        <source>Time</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TrackingBar.qml" line="121"/>
         <source>Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="111"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="151"/>
         <source>Comment</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="131"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="176"/>
         <source>Activity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="155"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="201"/>
         <source>Special</source>
         <translation type="unfinished"></translation>
     </message>

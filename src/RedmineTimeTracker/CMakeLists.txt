@@ -54,6 +54,7 @@ qt_add_qml_module(
  qml/Components/AddDialog.qml
  qml/Components/LabeledField.qml
  qml/Components/DialogScrim.qml
+ qml/Components/ClearButton.qml
  qml/Desktop/DesktopShell.qml
  qml/Mobile/MobileShell.qml
  qml/Mobile/MobileHeader.qml
