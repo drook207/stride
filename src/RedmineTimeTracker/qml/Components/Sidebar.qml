@@ -32,6 +32,8 @@ Rectangle {
 
 	width: expanded ? 220 : 0
 	clip: true
+	// Hidden once fully collapsed, so keyboard focus (Tab) never lands on an invisible nav item.
+	visible: width > 0
 	color: "transparent"
 
 	Behavior on width {
@@ -83,12 +85,18 @@ Rectangle {
 				text: sidebar.buttonTitles[index]
 				icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/" + sidebar.navIcons[index]
 				icon.color: navItem.checked ? sidebar.activeForegroundColor : Material.foreground
+				// ItemDelegate isn't focusable by default; make the nav reachable with Tab. Space
+				// activates it like any button, Enter is handled below.
+				focusPolicy: Qt.StrongFocus
 				checked: sidebar.currentIndex === index
 				display: AbstractButton.TextBesideIcon
 
 				background: Rectangle {
 					radius: 20
 					color: navItem.checked ? sidebar.activePillColor : "transparent"
+					// Focus ring, only for keyboard focus (the custom background hides the style's own).
+					border.width: navItem.visualFocus ? 2 : 0
+					border.color: Material.accentColor
 				}
 
 				contentItem: RowLayout {
@@ -121,6 +129,8 @@ Rectangle {
 				}
 
 				onClicked: sidebar.select(index)
+				Keys.onReturnPressed: sidebar.select(index)
+				Keys.onEnterPressed: sidebar.select(index)
 			}
 		}
 
@@ -141,12 +151,15 @@ Rectangle {
 			text: qsTr("Settings")
 			icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/gear.svg"
 			icon.color: settingsItem.checked ? sidebar.activeForegroundColor : Material.foreground
+			focusPolicy: Qt.StrongFocus
 			checked: sidebar.currentIndex === sidebar.buttonTitles.length
 			display: AbstractButton.TextBesideIcon
 
 			background: Rectangle {
 				radius: 20
 				color: settingsItem.checked ? sidebar.activePillColor : "transparent"
+				border.width: settingsItem.visualFocus ? 2 : 0
+				border.color: Material.accentColor
 			}
 
 			contentItem: RowLayout {
@@ -164,6 +177,8 @@ Rectangle {
 			}
 
 			onClicked: sidebar.select(sidebar.buttonTitles.length)
+			Keys.onReturnPressed: sidebar.select(sidebar.buttonTitles.length)
+			Keys.onEnterPressed: sidebar.select(sidebar.buttonTitles.length)
 		}
 	}
 }
