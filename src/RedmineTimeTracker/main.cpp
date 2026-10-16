@@ -6,9 +6,8 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QSortFilterProxyModel>
-#include <QTranslator>
 
-#include "redmineclient.h"
+#include "languagemanager.h"
 
 int main(int argc, char* argv[])
 {
@@ -21,18 +20,13 @@ int main(int argc, char* argv[])
 	app.setApplicationName("Stride");
 	app.setApplicationVersion("0.0.1");
 
-	// Load the UI translation matching the system locale (see i18n/README.md). Falls back to the
-	// English source strings when no matching catalog is found, e.g. for unsupported languages.
-	QTranslator translator;
-	if (translator.load(QLocale::system(), "QRedmineTimeTracker", "_", ":/i18n")) {
-		app.installTranslator(&translator);
-	}
-	// The QRedmine::Client library ships its own catalog for its user-facing strings (e.g. the
-	// messages emitted via RedmineClient::errorOccurred), see src/RedmineClient/i18n/README.md.
-	QRedmineClient::RedmineClient::installTranslations(QLocale::system());
-
 	// Create QML engine and load main QML file
 	QQmlApplicationEngine engine;
+
+	// Installs the translators for the language selected in the settings (or the system locale),
+	// before any QML is loaded. Exposed to QML as the LanguageManager singleton; parented to the
+	// engine so it outlives every QML object that may still reference it during teardown.
+	new QRedmineClient::LanguageManager(&engine, &engine);
 
 	// Load main QML file
 

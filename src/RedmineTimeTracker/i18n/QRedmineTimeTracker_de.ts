@@ -255,7 +255,22 @@
         <translation>SSL verwenden</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="91"/>
+        <location filename="../qml/Views/SettingsView.qml" line="95"/>
+        <source>Appearance</source>
+        <translation>Darstellung</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="103"/>
+        <source>Language</source>
+        <translation>Sprache</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="114"/>
+        <source>System default</source>
+        <translation>Systemstandard</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="125"/>
         <source>Version %0</source>
         <translation>Version %0</translation>
     </message>

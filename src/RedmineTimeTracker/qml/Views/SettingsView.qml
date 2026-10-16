@@ -87,6 +87,40 @@ Item {
             onCheckedChanged: redmineClient.useSSL = checked
         }
 
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            Label {
+                text: qsTr("Appearance")
+                font.bold: true
+                font.pixelSize: 14
+                color: Material.foreground
+            }
+
+            LabeledField {
+                Layout.fillWidth: true
+                label: qsTr("Language")
+
+                ComboBox {
+                    id: languageComboBox
+                    Layout.fillWidth: true
+                    textRole: "name"
+                    valueRole: "code"
+                    // "System default" (empty code) first, then one entry per embedded catalog. Language
+                    // names are shown in their own language, so only the first entry is translated.
+                    model: [{
+                            "code": "",
+                            "name": qsTr("System default")
+                        }].concat(LanguageManager.availableLanguages)
+                    // Re-sync after the model is rebuilt on retranslation, which resets currentIndex.
+                    onModelChanged: currentIndex = indexOfValue(LanguageManager.language)
+                    Component.onCompleted: currentIndex = indexOfValue(LanguageManager.language)
+                    onActivated: LanguageManager.language = currentValue
+                }
+            }
+        }
+
         Label {
             text: qsTr("Version %0").arg(Application.version)
             color: Material.hintTextColor

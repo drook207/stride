@@ -2,6 +2,7 @@
 #include <QCoreApplication>
 #include <QLoggingCategory>
 #include <QMetaEnum>
+#include <QPointer>
 #include <QStringLiteral>
 #include <QTranslator>
 #include <QUrlQuery>
@@ -37,12 +38,21 @@ const QList<QNetworkReply::NetworkError> RedmineClient::REASONS_FOR_CONNECTION_L
 
 bool RedmineClient::installTranslations(const QLocale& locale)
 {
+	// The catalog installed by the previous call, if any, so that switching the language at runtime
+	// replaces it instead of stacking another translator on top of it.
+	static QPointer<QTranslator> installedTranslator;
+	if (installedTranslator) {
+		QCoreApplication::removeTranslator(installedTranslator);
+		delete installedTranslator;
+	}
+
 	// Parented to the application so it lives exactly as long as the application it is installed on.
 	auto* translator = new QTranslator(QCoreApplication::instance());
 	if (!translator->load(locale, QStringLiteral("QRedmineClient"), QStringLiteral("_"), QStringLiteral(":/i18n"))) {
 		delete translator;
 		return false;
 	}
+	installedTranslator = translator;
 	return QCoreApplication::installTranslator(translator);
 }
 

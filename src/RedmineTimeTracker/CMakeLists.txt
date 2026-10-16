@@ -89,6 +89,7 @@ qt_add_qml_module(
   SOURCES qmlexposedsortfiltermodelproxy.h qmlexposedsortfiltermodelproxy.cpp
   QML_FILES qml/Components/IssueSearchInputField.qml
   SOURCES issueinputvalidator.h issueinputvalidator.cpp
+  SOURCES languagemanager.h languagemanager.cpp
  )
 
 # Translation catalogs (see i18n/README.md). "update_translations" (not built by default) runs

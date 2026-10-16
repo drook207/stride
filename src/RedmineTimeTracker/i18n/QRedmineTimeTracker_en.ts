@@ -255,7 +255,22 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="91"/>
+        <location filename="../qml/Views/SettingsView.qml" line="95"/>
+        <source>Appearance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="103"/>
+        <source>Language</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="114"/>
+        <source>System default</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="125"/>
         <source>Version %0</source>
         <translation type="unfinished"></translation>
     </message>

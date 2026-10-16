@@ -69,7 +69,8 @@ public:
 	 * \brief installTranslations Loads this library's translation catalog (embedded under
 	 * :/i18n/QRedmineClient_<lang>.qm, see i18n/README.md) matching \a locale and installs it on the
 	 * running QCoreApplication, so that user-facing strings such as the errorOccurred() messages are
-	 * localized. Must be called after the QCoreApplication has been created.
+	 * localized. Must be called after the QCoreApplication has been created. Calling it again (e.g.
+	 * to switch the language at runtime) replaces the catalog installed by the previous call.
 	 * \param locale Locale to load the catalog for, the system locale by default
 	 * \return true if a matching catalog was found and installed, false otherwise (strings then
 	 * fall back to their English source text)

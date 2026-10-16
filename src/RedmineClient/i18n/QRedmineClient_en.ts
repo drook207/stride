@@ -4,57 +4,57 @@
 <context>
     <name>QRedmineClient::RedmineClient</name>
     <message>
-        <location filename="../redmineclient.cpp" line="206"/>
+        <location filename="../redmineclient.cpp" line="216"/>
         <source>The Redmine server could not be found. Please check the server URL in the settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="208"/>
+        <location filename="../redmineclient.cpp" line="218"/>
         <source>The Redmine server refused the connection.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="210"/>
+        <location filename="../redmineclient.cpp" line="220"/>
         <source>The Redmine server closed the connection unexpectedly.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="213"/>
+        <location filename="../redmineclient.cpp" line="223"/>
         <source>The connection to the Redmine server timed out.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="215"/>
+        <location filename="../redmineclient.cpp" line="225"/>
         <source>A secure connection to the Redmine server could not be established.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="218"/>
+        <location filename="../redmineclient.cpp" line="228"/>
         <source>No network connection is available.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="220"/>
+        <location filename="../redmineclient.cpp" line="230"/>
         <source>Authentication failed. Please check your API key in the settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="222"/>
+        <location filename="../redmineclient.cpp" line="232"/>
         <source>Access denied. You are not allowed to perform this action.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="236"/>
+        <location filename="../redmineclient.cpp" line="246"/>
         <source>The Redmine server rejected the request: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="241"/>
+        <location filename="../redmineclient.cpp" line="251"/>
         <source>The Redmine server reported an internal error (HTTP %1).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="246"/>
+        <location filename="../redmineclient.cpp" line="256"/>
         <source>Network error: %1</source>
         <translation type="unfinished"></translation>
     </message>
