@@ -3,175 +3,122 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
-import QtQuick.Effects
-import drook207.timeTracker
-import drook207.redmineClient
+import QRedmine.TimeTracker
+import QRedmine.Client
 
+/*!
+ * \brief Application entry point and root window.
+ *
+ * Owns the backend instances shared by the whole UI (RedmineClient, TimeTracker, the time entry
+ * activities model) and their wiring, then delegates the actual visual layout to either
+ * DesktopShell or MobileShell via a Loader, picked once at startup based on isMobile.
+ */
 ApplicationWindow {
     id: window
     visible: true
-    width: 600
-    height: 1024
-    title: "Redmine Time Tracker"
+    width: 1280
+    height: 960
+    visibility: window.isMobile ? Window.FullScreen : Window.AutomaticVisibility
+    title: Application.name
 
     Material.theme: Material.Dark
-    Material.accent: Material.LightGreen
+    Material.accent: "#9F8FEF"
+
+    //! Chooses the UI shell (Desktop/Mobile) once at startup. Deliberately platform-based rather
+    //! than screen-size/aspect-ratio-based, since a resized desktop window should keep the desktop
+    //! layout rather than flip to the mobile one.
+    readonly property bool isMobile: Qt.platform.os === "android" || Qt.platform.os === "ios"
 
     RedmineClient {
         id: redmineClient
-        baseUrl: redmineClient.baseUrl
-                 === "" ? "https://your-redmine-instance.com" : redmineClient.baseUrl
-        apiKey: redmineClient.apiKey === "" ? "your-api-key" : redmineClient.apiKey
 
         onErrorOccurred: function (error) {
-            messageDialog.text = "Error: " + error
-            messageDialog.open()
+            messageDialog.text = qsTr("Error: %1").arg(error);
+            messageDialog.open();
         }
 
         onTimeEntryCreated: function (timeEntry) {
-            messageDialog.text = "Time entry created successfully"
-            messageDialog.open()
+            messageDialog.text = qsTr("Time entry created successfully");
+            messageDialog.open();
         }
     }
 
     Component.onCompleted: {
-        redmineClient.getEnumerations(0)
-        redmineClient.getEnumerations(1)
-        redmineClient.getEnumerations(2)
+        redmineClient.detectApiVersion();
+        redmineClient.getEnumerations(0);
+        redmineClient.getEnumerations(1);
+        redmineClient.getEnumerations(2);
     }
+    // The "Instance" suffix is deliberate: the shells below have properties named timeTracker and
+    // activitiesModel, and inside `DesktopShell { activitiesModel: activitiesModel }` the right-hand
+    // side resolves to the shell's own property rather than an id here, binding it to itself.
     TimeTracker {
         id: timeTrackerInstance
     }
     TimeEntryActivitiesModel {
-        id: activitiesModel
+        id: activitiesModelInstance
     }
     Connections {
         target: redmineClient
         function onTimeEntryActivitiesReceived(value) {
-            activitiesModel.addTimeEntryActivities(value)
+            activitiesModelInstance.addTimeEntryActivities(value);
         }
     }
 
     Connections {
         target: redmineClient
         function onIssueReceived(issue) {
-            timeTrackerInstance.addIssueToDatabase(issue)
+            timeTrackerInstance.addIssueToDatabase(issue);
         }
     }
 
     Connections {
         target: redmineClient
         function onTimeEntriesReceived(entries) {
-            timeTrackerInstance.addEntriesFromId(entries)
+            timeTrackerInstance.addEntriesFromId(entries);
             if (entries.length > 0) {
-                redmineClient.getIssue(entries[0].issue.id)
+                redmineClient.getIssue(entries[0].issue.id);
             }
         }
     }
 
-    Header {
-        id: header
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: parent.top
-            topMargin: 5
+    Loader {
+        anchors.fill: parent
+        sourceComponent: window.isMobile ? mobileShellComponent : desktopShellComponent
+    }
+
+    Component {
+        id: desktopShellComponent
+        DesktopShell {
+            client: redmineClient
+            timeTracker: timeTrackerInstance
+            activitiesModel: activitiesModelInstance
+            submitDialog: subDialog
         }
     }
 
-    ColumnLayout {
-        anchors {
-            top: header.bottom
-            bottom: parent.bottom
-            left: parent.left
-            right: parent.right
-        }
-
-        anchors.margins: 10
-        spacing: 10
-
-        StackView {
-            id: stackView
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            initialItem: trackTimeView
-        }
-        Item {
-            id: footer
-            Layout.fillWidth: true
-            Layout.minimumHeight: 20
-            Layout.maximumHeight: 20
-
-            ConnectionStateLamp {
-                anchors {
-                    left: parent.left
-                    verticalCenter: parent.verticalCenter
-                }
-                connectionState: redmineClient.connectionState
-            }
-
-            Text {
-                id: version
-                anchors {
-                    right: parent.right
-                    verticalCenter: parent.verticalCenter
-                }
-
-                color: Material.accentColor
-                text: Application.version
-            }
+    Component {
+        id: mobileShellComponent
+        MobileShell {
+            client: redmineClient
+            timeTracker: timeTrackerInstance
+            activitiesModel: activitiesModelInstance
+            submitDialog: subDialog
         }
     }
 
     Popup {
-
         id: busyIndicator
         BusyIndicator {
             running: redmineClient.loading
 
             onRunningChanged: {
                 if (running) {
-                    busyIndicator.open()
+                    busyIndicator.open();
                 } else {
-                    busyIndicator.close()
+                    busyIndicator.close();
                 }
             }
-        }
-    }
-
-    Component {
-        id: trackTimeView
-        TrackTimeView {
-            timeTracker: timeTrackerInstance
-            client: redmineClient
-            submitDialog: subDialog
-        }
-    }
-
-    Component {
-        id: addTimeEntryView
-        AddTimeEntryView {
-            timeTracker: timeTrackerInstance
-            client: redmineClient
-        }
-    }
-
-    Component {
-        id: getTimeEntriesView
-
-        GetTimeEntriesView {
-            timeTracker: timeTrackerInstance
-            client: redmineClient
-        }
-    }
-
-    Component {
-        id: settingsView
-
-        SettingsView {
-            timeTracker: timeTrackerInstance
-            client: redmineClient
-            submitDialog: subDialog
         }
     }
 
@@ -184,12 +131,5 @@ ApplicationWindow {
 
         timeTracker: timeTrackerInstance
         client: redmineClient
-    }
-
-    BurgerMenu {
-
-        view: stackView
-        componentsToLoad: [trackTimeView, addTimeEntryView, getTimeEntriesView, settingsView]
-        buttonTitles: ["Track Time", "Add Time Entry", "Get Time Entries", "Settings"]
     }
 }

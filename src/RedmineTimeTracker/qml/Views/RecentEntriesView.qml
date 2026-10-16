@@ -1,63 +1,87 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Controls.Material
 import QtQuick.Layouts
-import drook207.timeTracker
+import QRedmine.TimeTracker
 
-GroupBox {
+/*!
+ * \brief Default/home view: lists locally tracked time entries (TimeTracker's local SQLite-backed
+ * recentEntries model), newest first.
+ */
+Item {
 	id: docroot
 
 	required property TimeTracker timeTracker
 
-	title: qsTr("Recent Time Entries")
-	Layout.fillWidth: true
-	Layout.fillHeight: true
+	ColumnLayout {
+		anchors {
+			fill: parent
+			margins: Metrics.pageMargin
+		}
+		spacing: Metrics.sectionSpacing
 
-	ListView {
-		id: recentEntries
-		anchors.fill: parent
-		model: docroot.timeTracker.recentEntries
-		clip: true
+		PageTitle {
+			Layout.fillWidth: true
+			text: qsTr("Recent Entries")
+		}
 
-		delegate: ItemDelegate {
-			width: parent.width
-			contentItem: ColumnLayout {
-				spacing: 5
+		Card {
+			Layout.fillWidth: true
+			Layout.fillHeight: true
+			padding: 8
 
-				RowLayout {
-					Layout.fillWidth: true
-					Label {
-						text: qsTr("Id: %0").arg(modelData.id)
-						font.bold: true
-					}
-					Label {
-						text: qsTr("Issue #%0").arg(modelData.issue_id)
-						font.bold: true
-					}
-					Label {
-						text: qsTr("%0 hours").arg(modelData.hours.toFixed(2))
-						Layout.leftMargin: 10
-					}
-					Label {
-						text: Qt.formatDateTime(modelData.spent_on, "yyyy-MM-dd hh:mm")
-						Layout.fillWidth: true
-						horizontalAlignment: Text.AlignRight
-					}
-					Label {
-						text: modelData.sync_status === 0 ? false : true
-						Layout.fillWidth: true
-						horizontalAlignment: Text.AlignRight
-					}
+			ListView {
+				id: recentEntries
+				Layout.fillWidth: true
+				Layout.fillHeight: true
+				visible: count > 0
+				model: docroot.timeTracker.recentEntries
+				clip: true
+
+				delegate: TimeEntryDelegate {
+					required property var modelData
+					required property int index
+
+					issueId: modelData.issue_id
+					hours: modelData.hours
+					comment: modelData.comments || ""
+					spentOn: modelData.spent_on
+					showDivider: index < ListView.view.count - 1
 				}
 
+				ScrollBar.vertical: ScrollBar {}
+			}
+
+			// Empty state
+			ColumnLayout {
+				Layout.fillWidth: true
+				Layout.fillHeight: true
+				Layout.margins: 12
+				visible: recentEntries.count === 0
+				spacing: 6
+
+				Item {
+					Layout.fillHeight: true
+				}
 				Label {
-					text: modelData.comments
-					visible: modelData.comments !== ""
-					wrapMode: Text.WordWrap
 					Layout.fillWidth: true
+					text: qsTr("No time entries yet")
+					color: Material.foreground
+					font.pixelSize: 15
+					font.weight: Font.DemiBold
+					horizontalAlignment: Text.AlignHCenter
+				}
+				Label {
+					Layout.fillWidth: true
+					text: qsTr("Track time with the bar below or add an entry manually.")
+					color: Material.secondaryTextColor
+					horizontalAlignment: Text.AlignHCenter
+					wrapMode: Text.WordWrap
+				}
+				Item {
+					Layout.fillHeight: true
 				}
 			}
 		}
-
-		ScrollBar.vertical: ScrollBar {}
 	}
 }

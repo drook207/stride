@@ -20,5 +20,11 @@ namespace Utils {
 		return result.isValid() ? result : defaultValue;
 	}
 
+	static inline void RemoveSetting(const QString& key)
+	{
+		QSettings settings;
+		settings.remove(key);
+	}
+
 } // namespace Utils
 } // namespace QRedmineClient

@@ -18,7 +18,7 @@ TimeTracker::TimeTracker(QObject* parent)
 	connect(&mTimer, &QTimer::timeout, this, &TimeTracker::updateElapsedTime);
 	mTimer.setInterval(1000); // Update every second
 	if (!Database::initialize()) {
-		qCWarning(lcTimeTracker) << "Could not initialise database";
+		qCWarning(lcTimeTracker) << "Could not initialize database";
 	}
 	loadRecentEntries();
 }

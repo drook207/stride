@@ -1,0 +1,124 @@
+import QtQuick.Controls.Material
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+import QRedmine.TimeTracker
+import QRedmine.Client
+
+/*!
+ * \brief Root layout for the desktop UI: Header, collapsible Sidebar, a StackView holding the
+ * currently selected view, and the always-visible TrackingBar at the bottom.
+ *
+ * Instantiated by Main.qml's Loader when isMobile is false. All backend instances are owned by
+ * Main.qml and only forwarded here; this component and its children never create their own.
+ */
+Item {
+    id: docroot
+
+    required property RedmineClient client
+    required property TimeTracker timeTracker
+    required property var activitiesModel
+    required property SubmitDialog submitDialog
+
+    Header {
+        id: header
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+            topMargin: 5
+        }
+
+        connectionState: docroot.client.connectionState
+
+        onMenuToggled: sidebar.expanded = !sidebar.expanded
+    }
+
+    ColumnLayout {
+        anchors {
+            top: header.bottom
+            bottom: parent.bottom
+            left: parent.left
+            right: parent.right
+        }
+
+        anchors.margins: 10
+        spacing: 10
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 10
+
+            Sidebar {
+                id: sidebar
+                Layout.fillHeight: true
+
+                view: stackView
+                timeTracker: docroot.timeTracker
+                componentsToLoad: [recentEntriesView, addTimeEntryView, getTimeEntriesView, addIssueView, settingsView]
+                buttonTitles: [qsTr("Recent Entries"), qsTr("Add Entry"), qsTr("Search Issue"), qsTr("Add Issue")]
+            }
+
+            StackView {
+                id: stackView
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                initialItem: recentEntriesView
+            }
+        }
+
+        TrackingBar {
+            id: trackingBar
+            Layout.fillWidth: true
+
+            timeTracker: docroot.timeTracker
+            client: docroot.client
+            submitDialog: docroot.submitDialog
+            activitiesModel: docroot.activitiesModel
+        }
+    }
+
+    Component {
+        id: recentEntriesView
+        RecentEntriesView {
+            timeTracker: docroot.timeTracker
+        }
+    }
+
+    Component {
+        id: addTimeEntryView
+        AddTimeEntryView {
+            timeTracker: docroot.timeTracker
+            client: docroot.client
+            activitiesModel: docroot.activitiesModel
+        }
+    }
+
+    Component {
+        id: getTimeEntriesView
+
+        GetTimeEntriesView {
+            timeTracker: docroot.timeTracker
+            client: docroot.client
+        }
+    }
+
+    Component {
+        id: addIssueView
+
+        AddIssueView {
+            client: docroot.client
+        }
+    }
+
+    Component {
+        id: settingsView
+
+        SettingsView {
+            timeTracker: docroot.timeTracker
+            client: docroot.client
+            submitDialog: docroot.submitDialog
+        }
+    }
+}
