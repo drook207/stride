@@ -3,6 +3,7 @@
 #include <QLoggingCategory>
 #include <QMetaEnum>
 #include <QStringLiteral>
+#include <QTranslator>
 #include <QUrlQuery>
 #include <QtLogging>
 
@@ -33,6 +34,17 @@ const QList<QNetworkReply::NetworkError> RedmineClient::REASONS_FOR_CONNECTION_L
 	QNetworkReply::TemporaryNetworkFailureError, QNetworkReply::AuthenticationRequiredError,
 	QNetworkReply::UnknownServerError
 };
+
+bool RedmineClient::installTranslations(const QLocale& locale)
+{
+	// Parented to the application so it lives exactly as long as the application it is installed on.
+	auto* translator = new QTranslator(QCoreApplication::instance());
+	if (!translator->load(locale, QStringLiteral("QRedmineClient"), QStringLiteral("_"), QStringLiteral(":/i18n"))) {
+		delete translator;
+		return false;
+	}
+	return QCoreApplication::installTranslator(translator);
+}
 
 void QRedmineClient::RedmineClient::setupConnectionCheckTimer()
 {
@@ -185,6 +197,53 @@ QNetworkRequest RedmineClient::createRequest(const QString& endpoint, const QUrl
 	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 	request.setRawHeader("X-Redmine-API-Key", mApiKey.toUtf8());
 	return request;
+}
+
+QString RedmineClient::userErrorMessage(QNetworkReply* reply, const QJsonObject& response) const
+{
+	switch (reply->error()) {
+		case QNetworkReply::HostNotFoundError:
+			return tr("The Redmine server could not be found. Please check the server URL in the settings.");
+		case QNetworkReply::ConnectionRefusedError:
+			return tr("The Redmine server refused the connection.");
+		case QNetworkReply::RemoteHostClosedError:
+			return tr("The Redmine server closed the connection unexpectedly.");
+		case QNetworkReply::TimeoutError:
+		case QNetworkReply::OperationCanceledError:
+			return tr("The connection to the Redmine server timed out.");
+		case QNetworkReply::SslHandshakeFailedError:
+			return tr("A secure connection to the Redmine server could not be established.");
+		case QNetworkReply::TemporaryNetworkFailureError:
+		case QNetworkReply::NetworkSessionFailedError:
+			return tr("No network connection is available.");
+		case QNetworkReply::AuthenticationRequiredError:
+			return tr("Authentication failed. Please check your API key in the settings.");
+		case QNetworkReply::ContentAccessDenied:
+			return tr("Access denied. You are not allowed to perform this action.");
+		default:
+			break;
+	}
+
+	// Redmine answers validation failures (422 Unprocessable Entity) with {"errors": ["..."]}. Those
+	// texts are already localized by the server according to the API user's language, so they are
+	// passed through as-is.
+	const QJsonArray errors = response.value(QStringLiteral("errors")).toArray();
+	if (!errors.isEmpty()) {
+		QStringList messages;
+		for (const auto& error : errors) {
+			messages.append(error.toString());
+		}
+		return tr("The Redmine server rejected the request: %1").arg(messages.join(QStringLiteral(", ")));
+	}
+
+	const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+	if (httpStatus >= 500) {
+		return tr("The Redmine server reported an internal error (HTTP %1).").arg(httpStatus);
+	}
+
+	// Fallback for everything not covered above; QNetworkReply::errorString() is translated through
+	// Qt's own qtbase catalog.
+	return tr("Network error: %1").arg(reply->errorString());
 }
 
 RedmineClient::ConnectionState RedmineClient::connectionState() const { return mConnectionState; }
@@ -425,8 +484,8 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 			endpoint = QString("enumerations/document_categories.json");
 			break;
 		default:
-			qWarning(lcRedmineClient()) << QT_TR_NOOP(
-				QStringLiteral("No valid Enumeration type is provided: <%0>").arg(enumerationType));
+			qWarning(lcRedmineClient())
+				<< QStringLiteral("No valid Enumeration type is provided: <%0>").arg(enumerationType);
 			return;
 	}
 
@@ -447,14 +506,15 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	updateApiVersionFromReply(reply);
 
 	if (reply->error() != QNetworkReply::NoError) {
-		if (reply->error() != QNetworkReply::ContentNotFoundError) {
-			emit errorOccurred(reply->errorString());
-		}
 		QByteArray data = reply->readAll();
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();
 
-		qWarning(lcRedmineClient) << tr("[%0] %1: ").arg(reply->error()).arg(reply->errorString())
+		if (reply->error() != QNetworkReply::ContentNotFoundError) {
+			emit errorOccurred(userErrorMessage(reply, response));
+		}
+
+		qWarning(lcRedmineClient) << QStringLiteral("[%0] %1: ").arg(reply->error()).arg(reply->errorString())
 								  << QJsonDocument(response).toJson(QJsonDocument::Compact);
 
 		if (REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {

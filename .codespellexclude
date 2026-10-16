@@ -1,1 +1,2 @@
 .gitignore
+		QStringLiteral("Anmeldung fehlgeschlagen. Bitte prüfen Sie Ihren API-Schlüssel in den Einstellungen."));

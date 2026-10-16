@@ -4,6 +4,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLocale>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
@@ -63,6 +64,17 @@ public:
 	Q_ENUM(ConnectionState)
 
 	static const QList<QNetworkReply::NetworkError> REASONS_FOR_CONNECTION_LOSS;
+
+	/*!
+	 * \brief installTranslations Loads this library's translation catalog (embedded under
+	 * :/i18n/QRedmineClient_<lang>.qm, see i18n/README.md) matching \a locale and installs it on the
+	 * running QCoreApplication, so that user-facing strings such as the errorOccurred() messages are
+	 * localized. Must be called after the QCoreApplication has been created.
+	 * \param locale Locale to load the catalog for, the system locale by default
+	 * \return true if a matching catalog was found and installed, false otherwise (strings then
+	 * fall back to their English source text)
+	 */
+	static bool installTranslations(const QLocale& locale = QLocale::system());
 
 	/*!
 	 * \brief RedmineClient
@@ -308,8 +320,9 @@ signals:
 	void customFieldsReceived(const QJsonArray& customFields);
 
 	/*!
-	 * \brief errorOccurred
-	 * \param error
+	 * \brief errorOccurred Emitted when a request fails (except for 404 Not Found)
+	 * \param error Human-readable, translated description of the failure, suitable for showing to
+	 * the user (see installTranslations())
 	 */
 	void errorOccurred(const QString& error);
 
@@ -412,6 +425,15 @@ private:
 	 * \return
 	 */
 	QNetworkRequest createRequest(const QString& endpoint, const QUrlQuery& query = QUrlQuery());
+
+	/*!
+	 * \brief userErrorMessage Builds the translated, user-facing message emitted via errorOccurred()
+	 * \param reply The failed reply
+	 * \param response The parsed JSON body of the reply; Redmine reports validation failures (422)
+	 * as an "errors" string array in it
+	 * \return
+	 */
+	QString userErrorMessage(QNetworkReply* reply, const QJsonObject& response) const;
 
 	/*!
 	 * \brief updateApiVersionFromReply Reads the "X-Redmine-API-Version" header, if present,

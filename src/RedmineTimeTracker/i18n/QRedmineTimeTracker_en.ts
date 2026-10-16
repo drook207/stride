@@ -4,17 +4,17 @@
 <context>
     <name>AddDialog</name>
     <message>
-        <location filename="../qml/Components/AddDialog.qml" line="13"/>
+        <location filename="../qml/Components/AddDialog.qml" line="21"/>
         <source>Add Time Entry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/AddDialog.qml" line="56"/>
+        <location filename="../qml/Components/AddDialog.qml" line="64"/>
         <source>Would you like to submit this time entry?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/AddDialog.qml" line="60"/>
+        <location filename="../qml/Components/AddDialog.qml" line="68"/>
         <source>Total time: %1 spent on: %2</source>
         <translation type="unfinished"></translation>
     </message>
@@ -22,28 +22,28 @@
 <context>
     <name>AddIssueView</name>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="16"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="20"/>
         <source>Issue #%0 created successfully</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="35"/>
-        <location filename="../qml/Views/AddIssueView.qml" line="82"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="39"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="86"/>
         <source>Add Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="47"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="51"/>
         <source>Project ID</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="60"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="64"/>
         <source>Subject</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="71"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="75"/>
         <source>Description (optional)</source>
         <translation type="unfinished"></translation>
     </message>
@@ -51,32 +51,32 @@
 <context>
     <name>AddTimeEntryView</name>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="45"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="57"/>
         <source>Add Time Entry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="57"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="69"/>
         <source>Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="79"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="91"/>
         <source>Time spent (eg. 1,0)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="104"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="116"/>
         <source>Date (yyyy-mm-dd)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="121"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="133"/>
         <source>Comments</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="132"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="144"/>
         <source>Add</source>
         <translation type="unfinished"></translation>
     </message>
@@ -84,22 +84,22 @@
 <context>
     <name>DesktopShell</name>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="53"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="60"/>
         <source>Recent Entries</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="53"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="60"/>
         <source>Add Entry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="53"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="60"/>
         <source>Search Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="53"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="60"/>
         <source>Add Issue</source>
         <translation type="unfinished"></translation>
     </message>
@@ -107,37 +107,37 @@
 <context>
     <name>GetTimeEntriesView</name>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="22"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="27"/>
         <source>Entries from Id</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="34"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="39"/>
         <source>Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="47"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="52"/>
         <source>Get</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="59"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="64"/>
         <source>Time Entries</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="80"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="85"/>
         <source>Id: %0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="84"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="89"/>
         <source>Issue #%0</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="88"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="93"/>
         <source>%0 hours</source>
         <translation type="unfinished"></translation>
     </message>
@@ -145,17 +145,17 @@
 <context>
     <name>Header</name>
     <message>
-        <location filename="../qml/Header.qml" line="76"/>
+        <location filename="../qml/Header.qml" line="85"/>
         <source>Online</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Header.qml" line="78"/>
+        <location filename="../qml/Header.qml" line="87"/>
         <source>Reconnecting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Header.qml" line="80"/>
+        <location filename="../qml/Header.qml" line="89"/>
         <source>Offline</source>
         <translation type="unfinished"></translation>
     </message>
@@ -163,12 +163,12 @@
 <context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="26"/>
+        <location filename="../qml/Main.qml" line="36"/>
         <source>Error: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="31"/>
+        <location filename="../qml/Main.qml" line="41"/>
         <source>Time entry created successfully</source>
         <translation type="unfinished"></translation>
     </message>
@@ -176,7 +176,7 @@
 <context>
     <name>MessageDialog</name>
     <message>
-        <location filename="../qml/Components/MessageDialog.qml" line="12"/>
+        <location filename="../qml/Components/MessageDialog.qml" line="19"/>
         <source>Message</source>
         <translation type="unfinished"></translation>
     </message>
@@ -184,27 +184,27 @@
 <context>
     <name>MobileShell</name>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="62"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
         <source>Recent</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="62"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
         <source>Add Entry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="62"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
         <source>Search</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="62"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
         <source>Add Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="62"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
@@ -212,17 +212,17 @@
 <context>
     <name>MobileTrackingBar</name>
     <message>
-        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="103"/>
+        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="114"/>
         <source>Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="134"/>
+        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="145"/>
         <source>Comment</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="150"/>
+        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="161"/>
         <source>Activity</source>
         <translation type="unfinished"></translation>
     </message>
@@ -230,32 +230,32 @@
 <context>
     <name>SettingsView</name>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="24"/>
+        <location filename="../qml/Views/SettingsView.qml" line="33"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="35"/>
+        <location filename="../qml/Views/SettingsView.qml" line="44"/>
         <source>Connection Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="43"/>
+        <location filename="../qml/Views/SettingsView.qml" line="52"/>
         <source>Redmine URL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="64"/>
+        <location filename="../qml/Views/SettingsView.qml" line="73"/>
         <source>API Key</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="76"/>
+        <location filename="../qml/Views/SettingsView.qml" line="85"/>
         <source>Use SSL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="82"/>
+        <location filename="../qml/Views/SettingsView.qml" line="91"/>
         <source>Version %0</source>
         <translation type="unfinished"></translation>
     </message>
@@ -263,12 +263,12 @@
 <context>
     <name>Sidebar</name>
     <message>
-        <location filename="../qml/Components/Sidebar.qml" line="48"/>
+        <location filename="../qml/Components/Sidebar.qml" line="67"/>
         <source>Menu</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/Sidebar.qml" line="122"/>
+        <location filename="../qml/Components/Sidebar.qml" line="141"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
@@ -276,17 +276,17 @@
 <context>
     <name>SubmitDialog</name>
     <message>
-        <location filename="../qml/Components/SubmitDialog.qml" line="19"/>
+        <location filename="../qml/Components/SubmitDialog.qml" line="27"/>
         <source>Submit Time Entry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/SubmitDialog.qml" line="56"/>
+        <location filename="../qml/Components/SubmitDialog.qml" line="64"/>
         <source>Would you like to submit this time entry?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/SubmitDialog.qml" line="60"/>
+        <location filename="../qml/Components/SubmitDialog.qml" line="68"/>
         <source>Total time: %0</source>
         <translation type="unfinished"></translation>
     </message>
@@ -294,22 +294,22 @@
 <context>
     <name>TrackingBar</name>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="76"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="84"/>
         <source>Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="103"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="111"/>
         <source>Comment</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="123"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="131"/>
         <source>Activity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="145"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="155"/>
         <source>Special</source>
         <translation type="unfinished"></translation>
     </message>

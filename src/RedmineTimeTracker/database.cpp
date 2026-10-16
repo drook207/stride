@@ -45,7 +45,7 @@ bool Database::initialize()
 	db.setDatabaseName(databaseName);
 
 	if (!db.open()) {
-		qWarning(lcDataBase) << QT_TR_NOOP(QStringLiteral("Failed to open database: <%0>")).arg(db.lastError().text());
+		qWarning(lcDataBase) << QStringLiteral("Failed to open database: <%0>").arg(db.lastError().text());
 		return false;
 	}
 
@@ -188,12 +188,12 @@ bool Database::addTimeEntryActivities(const QJsonArray& activities)
 bool Database::evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& query)
 {
 	if (sqlCommand.isEmpty()) {
-		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("Empty sql command"));
+		qWarning(lcDataBase()) << QStringLiteral("Empty sql command");
 		return false;
 	}
 	if (!query.prepare(sqlCommand.toString())) {
-		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("SQL Query prepare <%0> failed with: <%1>")
-												 .arg(query.lastQuery(), query.lastError().text()));
+		qWarning(lcDataBase()) << QStringLiteral("SQL Query prepare <%0> failed with: <%1>")
+									  .arg(query.lastQuery(), query.lastError().text());
 		return false;
 	}
 
@@ -203,8 +203,8 @@ bool Database::evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& qu
 bool Database::evaluateQueryExec(QSqlQuery& query)
 {
 	if (!query.exec()) {
-		qWarning(lcDataBase()) << QT_TR_NOOP(QStringLiteral("SQL Query prepare <%0> failed with: <%1>")
-												 .arg(query.lastQuery(), query.lastError().text()));
+		qWarning(lcDataBase())
+			<< QStringLiteral("SQL Query exec <%0> failed with: <%1>").arg(query.lastQuery(), query.lastError().text());
 		return false;
 	}
 

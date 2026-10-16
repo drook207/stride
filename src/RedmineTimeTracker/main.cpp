@@ -8,6 +8,8 @@
 #include <QSortFilterProxyModel>
 #include <QTranslator>
 
+#include "redmineclient.h"
+
 int main(int argc, char* argv[])
 {
 	QGuiApplication app(argc, argv);
@@ -25,6 +27,9 @@ int main(int argc, char* argv[])
 	if (translator.load(QLocale::system(), "QRedmineTimeTracker", "_", ":/i18n")) {
 		app.installTranslator(&translator);
 	}
+	// The QRedmine::Client library ships its own catalog for its user-facing strings (e.g. the
+	// messages emitted via RedmineClient::errorOccurred), see src/RedmineClient/i18n/README.md.
+	QRedmineClient::RedmineClient::installTranslations(QLocale::system());
 
 	// Create QML engine and load main QML file
 	QQmlApplicationEngine engine;

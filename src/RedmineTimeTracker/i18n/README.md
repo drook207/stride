@@ -6,6 +6,11 @@ into the binary under the `:/i18n/` resource prefix. `main.cpp` installs a
 `QTranslator` matching `QLocale::system()` at startup, falling back to the
 English source strings when no matching catalog is found.
 
+The `QRedmine::Client` library ships a separate catalog for its own
+user-facing strings (e.g. network error messages) in
+[src/RedmineClient/i18n](../../RedmineClient/i18n), which `main.cpp`
+installs via `RedmineClient::installTranslations()`.
+
 Building translations requires the `LinguistTools` component of Qt (the
 `lupdate`/`lrelease` tools) - on most Linux distributions this is a separate
 package, e.g. `qt6-tools` on Arch/CachyOS, `qt6-tools-dev-tools` on Debian/
