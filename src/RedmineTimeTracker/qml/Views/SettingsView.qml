@@ -20,32 +20,13 @@ Item {
     required property RedmineClient client
     required property SubmitDialog submitDialog
 
-    ColumnLayout {
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: parent.top
-            margins: 15
-        }
-        spacing: 15
+    FormPage {
+        anchors.fill: parent
+        title: qsTr("Settings")
 
-        Label {
-            text: qsTr("Settings")
-            font.bold: true
-            font.pixelSize: 18
-            color: Material.foreground
-        }
-
-        ColumnLayout {
+        Card {
             Layout.fillWidth: true
-            spacing: 10
-
-            Label {
-                text: qsTr("Connection Settings")
-                font.bold: true
-                font.pixelSize: 14
-                color: Material.foreground
-            }
+            title: qsTr("Connection Settings")
 
             LabeledField {
                 Layout.fillWidth: true
@@ -53,6 +34,7 @@ Item {
 
                 TextField {
                     Layout.fillWidth: true
+                    Layout.preferredHeight: Metrics.controlHeight
                     text: redmineClient.baseUrl
                     validator: RegularExpressionValidator {
                         regularExpression: /^https?:\/\/[^\s\/$.?#].[^\s]*$/
@@ -74,29 +56,24 @@ Item {
 
                 TextField {
                     Layout.fillWidth: true
+                    Layout.preferredHeight: Metrics.controlHeight
                     text: redmineClient.apiKey
                     onTextChanged: redmineClient.apiKey = text
                     echoMode: TextInput.Password
                 }
             }
-        }
 
-        CheckBox {
-            text: qsTr("Use SSL")
-            checked: redmineClient.useSSL
-            onCheckedChanged: redmineClient.useSSL = checked
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 10
-
-            Label {
-                text: qsTr("Appearance")
-                font.bold: true
-                font.pixelSize: 14
-                color: Material.foreground
+            CheckBox {
+                Layout.leftMargin: -8
+                text: qsTr("Use SSL")
+                checked: redmineClient.useSSL
+                onCheckedChanged: redmineClient.useSSL = checked
             }
+        }
+
+        Card {
+            Layout.fillWidth: true
+            title: qsTr("Appearance")
 
             LabeledField {
                 Layout.fillWidth: true
@@ -105,6 +82,9 @@ Item {
                 ComboBox {
                     id: languageComboBox
                     Layout.fillWidth: true
+                    Layout.preferredHeight: Metrics.controlHeight
+                    topInset: 0
+                    bottomInset: 0
                     textRole: "name"
                     valueRole: "code"
                     // "System default" (empty code) first, then one entry per embedded catalog. Language
@@ -122,10 +102,10 @@ Item {
         }
 
         Label {
+            Layout.leftMargin: 4
             text: qsTr("Version %0").arg(Application.version)
             color: Material.hintTextColor
             font.pixelSize: 11
-            Layout.topMargin: 20
         }
     }
 }

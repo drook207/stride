@@ -24,7 +24,7 @@ Rectangle {
 	property int selectedActivityId: 0
 
 	//! Height of every control in the bar (buttons, fields, combo boxes), so they line up.
-	readonly property int controlHeight: 40
+	readonly property int controlHeight: Metrics.controlHeight
 	//! Below this width the non-functional "Special" placeholder is hidden to keep room for the
 	//! fields that matter.
 	readonly property int compactWidth: 1100
@@ -32,7 +32,7 @@ Rectangle {
 	implicitHeight: layout.implicitHeight + layout.anchors.topMargin + layout.anchors.bottomMargin
 	color: Material.dialogColor
 	// Same corner radius as the Sidebar, which shares this surface color.
-	radius: 12
+	radius: Metrics.panelRadius
 
 	Timer {
 		id: inputValidatorTimer

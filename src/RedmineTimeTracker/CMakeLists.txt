@@ -33,6 +33,9 @@ endif()
 
 qt_add_executable(QRedmineTimeTracker main.cpp ${APP_ICON_RESOURCE_WINDOWS})
 
+# Shared layout sizes, used as a QML singleton (see qml/Components/Metrics.qml).
+set_source_files_properties(qml/Components/Metrics.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+
 qt_add_qml_module(
  QRedmineTimeTracker
  URI
@@ -55,6 +58,12 @@ qt_add_qml_module(
  qml/Components/LabeledField.qml
  qml/Components/DialogScrim.qml
  qml/Components/ClearButton.qml
+ qml/Components/Metrics.qml
+ qml/Components/Card.qml
+ qml/Components/PageTitle.qml
+ qml/Components/FormPage.qml
+ qml/Components/PrimaryButton.qml
+ qml/Components/TimeEntryDelegate.qml
  qml/Desktop/DesktopShell.qml
  qml/Mobile/MobileShell.qml
  qml/Mobile/MobileHeader.qml

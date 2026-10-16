@@ -43,26 +43,12 @@ Item {
         }
     }
 
-    ColumnLayout {
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: parent.top
-            margins: 15
-        }
+    FormPage {
+        anchors.fill: parent
+        title: qsTr("Add Time Entry")
 
-        spacing: 15
-
-        Label {
-            text: qsTr("Add Time Entry")
-            font.bold: true
-            font.pixelSize: 18
-            color: Material.foreground
-        }
-
-        ColumnLayout {
+        Card {
             Layout.fillWidth: true
-            spacing: 10
 
             LabeledField {
                 Layout.fillWidth: true
@@ -71,11 +57,11 @@ Item {
                 IssueSearchInputField {
                     id: issueField
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 60
+                    Layout.preferredHeight: Metrics.controlHeight
                     timeTracker: docroot.timeTracker
 
                     onAccepted: {
-						if (acceptableInput) {
+                        if (acceptableInput) {
                             docroot.addDialog.issueId = issueField.value
                         }
                     }
@@ -86,66 +72,74 @@ Item {
                 }
             }
 
-            LabeledField {
+            RowLayout {
                 Layout.fillWidth: true
-                label: qsTr("Time spent (eg. 1,0)")
+                spacing: 12
 
-                TextField {
-                    id: timeSpentField
+                LabeledField {
                     Layout.fillWidth: true
-                    validator: DoubleValidator {
-                        bottom: 0
-                        decimals: 2
-                        notation: DoubleValidator.StandardNotation
-                    }
-                    onAccepted: {
-                        if (acceptableInput) {
-                            var german = Qt.locale("de_DE")
-							const number = Number.fromLocaleString(german, text)
-                            docroot.addDialog.hours = number
+                    label: qsTr("Time spent (eg. 1,0)")
+
+                    TextField {
+                        id: timeSpentField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        validator: DoubleValidator {
+                            bottom: 0
+                            decimals: 2
+                            notation: DoubleValidator.StandardNotation
+                        }
+                        onAccepted: {
+                            if (acceptableInput) {
+                                var german = Qt.locale("de_DE")
+                                const number = Number.fromLocaleString(german, text)
+                                docroot.addDialog.hours = number
+                            }
+                        }
+                        onTextChanged: {
+                            inputValidatorTimer.restart()
                         }
                     }
-                    onTextChanged: {
-                        inputValidatorTimer.restart()
+                }
+
+                LabeledField {
+                    Layout.fillWidth: true
+                    label: qsTr("Date (yyyy-mm-dd)")
+
+                    TextField {
+                        id: spentOnField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        validator: RegularExpressionValidator {
+                            regularExpression: /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/
+                        }
+                        onAcceptableInputChanged: {
+                            docroot.addDialog.spentOn = spentOnField.text
+                        }
                     }
                 }
             }
 
             LabeledField {
                 Layout.fillWidth: true
-                label: qsTr("Date (yyyy-mm-dd)")
+                label: qsTr("Comments")
 
-                TextField {
-                    id: spentOnField
+                TextArea {
+                    id: commentsField
                     Layout.fillWidth: true
-                    validator: RegularExpressionValidator {
-                        regularExpression: /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$/
-                    }
-                    onAcceptableInputChanged: {
-                        docroot.addDialog.spentOn = spentOnField.text
-                    }
+                    Layout.preferredHeight: Metrics.textAreaHeight
+                    wrapMode: TextEdit.Wrap
                 }
             }
-        }
 
-        LabeledField {
-            Layout.fillWidth: true
-            label: qsTr("Comments")
-
-            TextArea {
-                id: commentsField
-                Layout.fillWidth: true
-                Layout.preferredHeight: 80
-                wrapMode: TextEdit.Wrap
-            }
-        }
-
-        RoundButton {
-            text: qsTr("Add")
-            highlighted: true
-            onClicked: {
-                docroot.addDialog.comment = commentsField.text
-                docroot.addDialog.open()
+            PrimaryButton {
+                Layout.alignment: Qt.AlignRight
+                Layout.topMargin: 4
+                text: qsTr("Add")
+                onClicked: {
+                    docroot.addDialog.comment = commentsField.text
+                    docroot.addDialog.open()
+                }
             }
         }
     }

@@ -38,7 +38,7 @@ Rectangle {
 	// Its own surface (the same as the TrackingBar's) so the sidebar reads as a panel rather than
 	// blending into the content next to it.
 	color: Material.dialogColor
-	radius: 12
+	radius: Metrics.panelRadius
 
 	Behavior on width {
 		NumberAnimation {

@@ -25,9 +25,8 @@ Rectangle {
     //! Whether the issue/comment/activity fields are visible. Toggled by the chevron button.
     property bool expanded: false
 
-    //! Height of every control in the bar. 44 rather than the desktop TrackingBar's 40, the
-    //! usual minimum size for touch targets; otherwise both bars follow the same layout rules.
-    readonly property int controlHeight: 44
+    //! Height of every control in the bar (44 on touch platforms, see Metrics).
+    readonly property int controlHeight: Metrics.controlHeight
 
     color: Material.dialogColor
     implicitHeight: layout.implicitHeight + layout.anchors.topMargin + layout.anchors.bottomMargin
