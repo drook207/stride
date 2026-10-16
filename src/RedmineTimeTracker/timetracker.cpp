@@ -114,25 +114,35 @@ void TimeTracker::resumeTracking()
 
 void TimeTracker::addRecentEntry(const QVariantMap& entry)
 {
-	mRecentEntries.prepend(entry);
-
-	// Keep only last 50 entries
-	while (mRecentEntries.size() > 50) {
-		mRecentEntries.removeLast();
-	}
-
 	const auto hours = entry["hours"].toDouble();
 	const auto comment = entry["comments"].toString();
 	const auto issueId = entry["issueId"].toInt();
 	const auto spentOn = entry["date"].toString();
 	QDateTime spentOnAsDateTime =
 		spentOn.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromString(spentOn, "yyyy-MM-dd");
-	const bool result = Database::addTimeEntry(issueId, hours, comment, spentOnAsDateTime);
-	if (!result) {
+
+	if (!Database::addTimeEntry(issueId, hours, comment, spentOnAsDateTime)) {
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return;
 	}
-	mRecentEntries.append(entry);
+
+	// Mirror the field names Database::getRecentEntries() produces (issue_id/spent_on, not
+	// issueId/date), since this entry is displayed immediately without waiting for a reload.
+	QVariantMap canonicalEntry;
+	canonicalEntry["issue_id"] = issueId;
+	canonicalEntry["hours"] = hours;
+	canonicalEntry["comments"] = comment;
+	canonicalEntry["spent_on"] = spentOnAsDateTime.toString(Qt::ISODate);
+	canonicalEntry["sync_status"] = 0;
+	canonicalEntry["redmine_id"] = 0;
+
+	mRecentEntries.prepend(canonicalEntry);
+
+	// Keep only last 50 entries
+	while (mRecentEntries.size() > 50) {
+		mRecentEntries.removeLast();
+	}
+
 	emit recentEntriesChanged();
 }
 

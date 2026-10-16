@@ -10,7 +10,6 @@
 #include <qcoreapplication.h>
 #include <qjsonobject.h>
 #include <qstringliteral.h>
-#include <utility>
 
 Q_LOGGING_CATEGORY(lcDataBase, "qredmine.timeentry.database")
 
@@ -50,14 +49,6 @@ bool Database::initialize()
 	}
 
 	QSqlQuery query;
-
-	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRY_ACTIVITIES_TABLE, query)) {
-		return false;
-	}
-
-	if (!evaluateQueryExec(query)) {
-		return false;
-	}
 
 	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRY_TABLE, query)) {
 		return false;
@@ -162,27 +153,6 @@ bool Database::updateSyncStatus(int id, int redmineId)
 		return false;
 	}
 	return true;
-}
-
-bool Database::addTimeEntryActivities(const QJsonArray& activities)
-{
-	QSqlQuery query;
-	bool status = false;
-	if (!evaluateQueryPrepare(SqlQueries::ADD_TIME_ENTRY_ACTIVITIE, query)) {
-		return false;
-	}
-
-	for (const auto& activity : std::as_const(activities)) {
-		QJsonObject obj = activity.toObject();
-		const auto id = obj["id"].toInt();
-		const auto is_default = obj["is_default"].toBool();
-		const auto name = obj["name"].toString();
-		query.addBindValue(id);
-		query.addBindValue(is_default);
-		query.addBindValue(name);
-		status &= evaluateQueryExec(query);
-	}
-	return status;
 }
 
 bool Database::evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& query)
