@@ -31,6 +31,8 @@ Rectangle {
 
 	implicitHeight: layout.implicitHeight + layout.anchors.topMargin + layout.anchors.bottomMargin
 	color: Material.dialogColor
+	// Same corner radius as the Sidebar, which shares this surface color.
+	radius: 12
 
 	Timer {
 		id: inputValidatorTimer
