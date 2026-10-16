@@ -176,6 +176,15 @@ qt_generate_deploy_qml_app_script(
  DEPLOY_USER_QML_MODULES_ON_UNSUPPORTED_PLATFORM)
 install(SCRIPT ${deploy_script})
 
+# Linux: the application icon, referenced by the desktop entry the IFW installer creates (see
+# packaging/ifw/installscript.qs). Windows uses the icon embedded into the executable instead.
+if(UNIX AND NOT APPLE)
+  install(
+   FILES qml/Assets/Icons/app-icon.svg
+   DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+   RENAME qredminetimetracker.svg)
+endif()
+
 set(CPACK_PACKAGE_NAME "QRedmineTimeTracker")
 set(CPACK_PACKAGE_VENDOR "drook207")
 set(CPACK_PACKAGE_CONTACT "Pascal Berndt <berndt.pascal90@gmail.com>")
@@ -185,20 +194,62 @@ set(CPACK_RESOURCE_FILE_LICENSE ${CMAKE_SOURCE_DIR}/LICENSE)
 set(CPACK_PACKAGE_ICON
  "${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker/qml/Assets/Icons/app-icon.ico")
 
-if(WIN32)
-  # Windows: Qt Installer Framework (QtIFW) installer.
-  # If binarycreator/repogen aren't found automatically, point CMake at your QtIFW
-  # install (the directory containing "bin", not "bin" itself) via the CPACK_IFW_ROOT
-  # or QTIFWDIR cache/environment variable, e.g.
-  # -DCPACK_IFW_ROOT=C:/Qt/Tools/QtInstallerFramework/4.7
-  set(CPACK_GENERATOR "IFW")
+# Only package the application component. CMake also knows QtKeychain's "Unspecified" component from
+# its install rules, which are never run (EXCLUDE_FROM_ALL, see the root CMakeLists.txt), and would
+# otherwise add an empty package for it to the installer.
+set(CPACK_COMPONENTS_ALL "${CPACK_PACKAGE_NAME}")
 
-  set(CPACK_IFW_PACKAGE_TITLE "${CPACK_PACKAGE_NAME}")
-  set(CPACK_IFW_PACKAGE_PUBLISHER "${CPACK_PACKAGE_VENDOR}")
-  set(CPACK_IFW_PRODUCT_URL "https://gitlab.com/drook207/QRedmineTimeTracker")
+# Windows and Linux: Qt Installer Framework (QtIFW) installer, see packaging/ifw/README.md.
+# If binarycreator/repogen aren't found automatically, point CMake at your QtIFW install (the
+# directory containing "bin", not "bin" itself) via the CPACK_IFW_ROOT or QTIFWDIR cache/environment
+# variable, e.g. -DCPACK_IFW_ROOT=C:/Qt/Tools/QtInstallerFramework/4.11
+set(IFW_RESOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/packaging/ifw")
+
+# CPackIFW only probes <Qt>/Tools/QtInstallerFramework/<major.minor.patch>, but the Qt Maintenance
+# Tool installs recent versions as e.g. ".../4.11". Unless set explicitly, use the newest QtIFW found
+# next to the Qt installation this project is built against (<Qt>/<version>/<arch>/../../Tools).
+if(NOT CPACK_IFW_ROOT AND NOT DEFINED ENV{CPACK_IFW_ROOT} AND NOT DEFINED ENV{QTIFWDIR})
+  file(GLOB _ifw_binarycreators
+   "${QT6_INSTALL_PREFIX}/../../Tools/QtInstallerFramework/*/bin/binarycreator"
+   "${QT6_INSTALL_PREFIX}/../../Tools/QtInstallerFramework/*/bin/binarycreator.exe")
+  if(_ifw_binarycreators)
+    list(SORT _ifw_binarycreators COMPARE NATURAL ORDER DESCENDING)
+    list(GET _ifw_binarycreators 0 _ifw_binarycreator)
+    cmake_path(GET _ifw_binarycreator PARENT_PATH _ifw_bin_dir)
+    cmake_path(GET _ifw_bin_dir PARENT_PATH CPACK_IFW_ROOT)
+    cmake_path(NORMAL_PATH CPACK_IFW_ROOT)
+    message(STATUS "Using Qt Installer Framework from ${CPACK_IFW_ROOT}")
+  endif()
+endif()
+
+set(CPACK_IFW_PACKAGE_TITLE "${CPACK_PACKAGE_NAME}")
+set(CPACK_IFW_PACKAGE_PUBLISHER "${CPACK_PACKAGE_VENDOR}")
+set(CPACK_IFW_PRODUCT_URL "https://gitlab.com/drook207/QRedmineTimeTracker")
+set(CPACK_IFW_PACKAGE_START_MENU_DIRECTORY "${CPACK_PACKAGE_NAME}")
+
+# Look & feel matching the application's Material Dark theme and accent color (qml/Main.qml).
+# "Modern" is the only wizard style that renders identically on Windows and Linux and honors the
+# banner/logo; the style sheet then recolors every widget of the wizard.
+set(CPACK_IFW_PACKAGE_WIZARD_STYLE "Modern")
+set(CPACK_IFW_PACKAGE_STYLE_SHEET "${IFW_RESOURCE_DIR}/style.qss")
+set(CPACK_IFW_PACKAGE_RESOURCES "${IFW_RESOURCE_DIR}/resources.qrc")
+set(CPACK_IFW_PACKAGE_TITLE_COLOR "#FFFFFF")
+set(CPACK_IFW_PACKAGE_BANNER "${IFW_RESOURCE_DIR}/banner.png")
+set(CPACK_IFW_PACKAGE_LOGO "${IFW_RESOURCE_DIR}/logo.png")
+set(CPACK_IFW_PACKAGE_WINDOW_ICON "${IFW_RESOURCE_DIR}/window-icon.png")
+set(CPACK_IFW_PACKAGE_WIZARD_SHOW_PAGE_LIST ON)
+set(CPACK_IFW_PACKAGE_CONTROL_SCRIPT "${IFW_RESOURCE_DIR}/controlscript.qs")
+set(CPACK_IFW_PACKAGE_WIZARD_DEFAULT_WIDTH 860)
+set(CPACK_IFW_PACKAGE_WIZARD_DEFAULT_HEIGHT 560)
+
+# Offer to start the application on the installer's last page.
+set(CPACK_IFW_PACKAGE_RUN_PROGRAM "@TargetDir@/bin/QRedmineTimeTracker")
+set(CPACK_IFW_PACKAGE_RUN_PROGRAM_DESCRIPTION "Start ${CPACK_PACKAGE_NAME}")
+
+if(WIN32)
+  set(CPACK_GENERATOR "IFW")
   set(CPACK_IFW_PACKAGE_ICON "${CPACK_PACKAGE_ICON}")
-  set(CPACK_IFW_PACKAGE_WINDOW_ICON "${CPACK_PACKAGE_ICON}")
-  set(CPACK_IFW_PACKAGE_START_MENU_DIRECTORY "${CPACK_PACKAGE_NAME}")
+  # Program Files; the installer requests elevation for it automatically.
   set(CPACK_IFW_TARGET_DIRECTORY "@ApplicationsDir@/${CPACK_PACKAGE_NAME}")
 
 elseif(APPLE)
@@ -207,10 +258,12 @@ elseif(APPLE)
   set(CPACK_DMG_VOLUME_NAME "${CPACK_PACKAGE_NAME}")
 
 else()
-  # Linux: a portable .tar.gz by default (no extra tooling required); pass
-  # -G DEB (needs dpkg-dev) or -G RPM (needs rpm-build) explicitly to build a
-  # native package instead - the metadata below applies to either.
-  set(CPACK_GENERATOR "TGZ")
+  # Linux: the IFW installer by default. A portable .tar.gz (-G TGZ, no extra tooling required) or a
+  # native package (-G DEB, needs dpkg-dev; -G RPM, needs rpm-build) can still be built by passing
+  # the generator explicitly - the metadata below applies to those.
+  set(CPACK_GENERATOR "IFW")
+  # Per-user install that needs no root privileges, like the desktop entry the installer creates.
+  set(CPACK_IFW_TARGET_DIRECTORY "@HomeDir@/${CPACK_PACKAGE_NAME}")
 
   set(CPACK_DEBIAN_PACKAGE_MAINTAINER "${CPACK_PACKAGE_CONTACT}")
   set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
@@ -222,3 +275,18 @@ else()
 endif()
 
 include(CPack)
+include(CPackIFW)
+
+# Every install() rule of the project lands in this one component (see
+# CMAKE_INSTALL_DEFAULT_COMPONENT_NAME in the root CMakeLists.txt), which carries the IFW component
+# script that creates the Start menu shortcut (Windows) / desktop entry (Linux).
+cpack_add_component(
+ ${CPACK_PACKAGE_NAME}
+ DISPLAY_NAME "${CPACK_PACKAGE_NAME}"
+ DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}"
+ REQUIRED)
+cpack_ifw_configure_component(
+ ${CPACK_PACKAGE_NAME}
+ FORCED_INSTALLATION
+ SCRIPT "${IFW_RESOURCE_DIR}/installscript.qs"
+ LICENSES "MIT License" "${CPACK_RESOURCE_FILE_LICENSE}")

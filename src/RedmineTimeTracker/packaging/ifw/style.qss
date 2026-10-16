@@ -1,0 +1,284 @@
+/*
+ * Qt Installer Framework style sheet matching the application's look: the Qt Quick Controls
+ * Material style in its Dark theme with the app's accent color (see qml/Main.qml).
+ *
+ *   background        #1C1B1F   Material.backgroundColor (Dark)
+ *   surface           #2B2930   raised elements (buttons, inputs, lists)
+ *   foreground        #FFFFFF   Material.foreground
+ *   secondary text    70% white Material.secondaryTextColor
+ *   hint / frame      30% white Material.hintTextColor / frameColor
+ *   divider           12% white Material.dividerColor
+ *   accent            #9F8FEF   Material.accent
+ */
+
+QWidget {
+	background-color: #1C1B1F;
+	color: #FFFFFF;
+	selection-background-color: rgba(159, 143, 239, 0.4);
+	selection-color: #FFFFFF;
+}
+
+QWidget:disabled {
+	color: rgba(255, 255, 255, 0.38);
+}
+
+QLabel {
+	background: transparent;
+}
+
+/* Buttons */
+
+QPushButton {
+	background-color: #2B2930;
+	color: #FFFFFF;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+	padding: 6px 18px;
+	min-width: 72px;
+}
+
+QPushButton:hover {
+	background-color: #36343B;
+}
+
+QPushButton:pressed {
+	background-color: #423F48;
+}
+
+QPushButton:focus {
+	border: 1px solid #9F8FEF;
+}
+
+QPushButton:disabled {
+	background-color: rgba(255, 255, 255, 0.06);
+	color: rgba(255, 255, 255, 0.38);
+	border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* The wizard's forward actions are highlighted with the accent color, like the app's primary
+   actions. */
+QPushButton:default,
+QPushButton#NextButton,
+QPushButton#CommitButton,
+QPushButton#FinishButton {
+	background-color: #9F8FEF;
+	color: #1C1B1F;
+	border: 1px solid #9F8FEF;
+	font-weight: bold;
+}
+
+QPushButton:default:hover,
+QPushButton#NextButton:hover,
+QPushButton#CommitButton:hover,
+QPushButton#FinishButton:hover {
+	background-color: #B1A4F3;
+	border-color: #B1A4F3;
+}
+
+QPushButton:default:pressed,
+QPushButton#NextButton:pressed,
+QPushButton#CommitButton:pressed,
+QPushButton#FinishButton:pressed {
+	background-color: #8C7AE6;
+	border-color: #8C7AE6;
+}
+
+QPushButton:default:disabled,
+QPushButton#NextButton:disabled,
+QPushButton#CommitButton:disabled,
+QPushButton#FinishButton:disabled {
+	background-color: rgba(159, 143, 239, 0.3);
+	color: rgba(28, 27, 31, 0.6);
+	border-color: transparent;
+}
+
+/* Inputs and content views */
+
+QLineEdit,
+QTextEdit,
+QPlainTextEdit,
+QTextBrowser,
+QListView,
+QListWidget,
+QTreeView,
+QTreeWidget {
+	background-color: #2B2930;
+	color: #FFFFFF;
+	border: 1px solid rgba(255, 255, 255, 0.3);
+	border-radius: 4px;
+	padding: 4px;
+}
+
+QLineEdit:focus,
+QTextEdit:focus,
+QPlainTextEdit:focus,
+QTextBrowser:focus,
+QListView:focus,
+QTreeView:focus {
+	border: 2px solid #9F8FEF;
+}
+
+QListView,
+QListWidget,
+QTreeView,
+QTreeWidget {
+	padding: 0;
+}
+
+/* No item padding: some installer pages size their lists to the exact row height. */
+QListView::item,
+QTreeView::item {
+	border-radius: 4px;
+}
+
+QListView::item:hover,
+QTreeView::item:hover {
+	background-color: rgba(255, 255, 255, 0.06);
+}
+
+QListView::item:selected,
+QTreeView::item:selected {
+	background-color: rgba(159, 143, 239, 0.4);
+	color: #FFFFFF;
+}
+
+QHeaderView::section {
+	background-color: #2B2930;
+	color: rgba(255, 255, 255, 0.7);
+	border: none;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+	padding: 4px 8px;
+}
+
+/* Wizard page list on the left, styled like the app's sidebar. The installer marks the current
+   page with a bold font rather than a selection, so there is no "active pill" to style. */
+
+QListWidget#PageListWidget {
+	background-color: #1C1B1F;
+	border: none;
+	border-right: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 0;
+	padding: 8px;
+}
+
+QListWidget#PageListWidget::item {
+	color: rgba(255, 255, 255, 0.7);
+	padding: 8px 12px;
+	border-radius: 16px;
+}
+
+/* Check boxes and radio buttons (component selection, license acceptance, run-after-install) */
+
+QCheckBox,
+QRadioButton {
+	background: transparent;
+	spacing: 8px;
+}
+
+QCheckBox::indicator,
+QTreeView::indicator {
+	width: 14px;
+	height: 14px;
+	border: 2px solid rgba(255, 255, 255, 0.7);
+	border-radius: 3px;
+	background-color: transparent;
+}
+
+QCheckBox::indicator:checked,
+QTreeView::indicator:checked {
+	background-color: #9F8FEF;
+	border-color: #9F8FEF;
+	image: url(:/qredmine/check.png);
+}
+
+QCheckBox::indicator:indeterminate,
+QTreeView::indicator:indeterminate {
+	background-color: rgba(159, 143, 239, 0.45);
+	border-color: #9F8FEF;
+}
+
+QCheckBox::indicator:disabled,
+QTreeView::indicator:disabled {
+	border-color: rgba(255, 255, 255, 0.3);
+}
+
+QRadioButton::indicator {
+	width: 14px;
+	height: 14px;
+	border: 2px solid rgba(255, 255, 255, 0.7);
+	border-radius: 9px;
+	background-color: transparent;
+}
+
+QRadioButton::indicator:checked {
+	border-color: #9F8FEF;
+	background-color: #9F8FEF;
+}
+
+/* Progress */
+
+QProgressBar {
+	background-color: rgba(255, 255, 255, 0.12);
+	border: none;
+	border-radius: 3px;
+	color: #FFFFFF;
+	text-align: center;
+	min-height: 6px;
+}
+
+QProgressBar::chunk {
+	background-color: #9F8FEF;
+	border-radius: 3px;
+}
+
+/* Scroll bars */
+
+QScrollBar:vertical,
+QScrollBar:horizontal {
+	background: transparent;
+	border: none;
+	margin: 0;
+}
+
+QScrollBar:vertical {
+	width: 10px;
+}
+
+QScrollBar:horizontal {
+	height: 10px;
+}
+
+QScrollBar::handle {
+	background-color: rgba(255, 255, 255, 0.3);
+	border-radius: 5px;
+	min-height: 24px;
+	min-width: 24px;
+}
+
+QScrollBar::handle:hover {
+	background-color: rgba(255, 255, 255, 0.5);
+}
+
+QScrollBar::add-line,
+QScrollBar::sub-line,
+QScrollBar::add-page,
+QScrollBar::sub-page {
+	background: none;
+	border: none;
+	width: 0;
+	height: 0;
+}
+
+/* Message boxes and tool tips */
+
+QMessageBox,
+QDialog {
+	background-color: #1C1B1F;
+}
+
+QToolTip {
+	background-color: #424242;
+	color: #FFFFFF;
+	border: none;
+	padding: 4px 8px;
+}
