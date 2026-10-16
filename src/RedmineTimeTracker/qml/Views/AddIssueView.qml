@@ -26,67 +26,65 @@ Item {
 		id: messageDialog
 	}
 
-	ColumnLayout {
-		anchors {
-			left: parent.left
-			right: parent.right
-			top: parent.top
-			margins: 15
-		}
-		spacing: 15
+	FormPage {
+		anchors.fill: parent
+		title: qsTr("Add Issue")
 
-		Label {
-			text: qsTr("Add Issue")
-			font.bold: true
-			font.pixelSize: 18
-			color: Material.foreground
-		}
-
-		ColumnLayout {
+		Card {
 			Layout.fillWidth: true
-			spacing: 10
 
-			LabeledField {
+			RowLayout {
 				Layout.fillWidth: true
-				label: qsTr("Project ID")
+				spacing: 12
 
-				TextField {
-					id: projectIdField
+				LabeledField {
+					// Only holds a number; the Material field's implicit width would otherwise make
+					// it as wide as the subject.
+					Layout.preferredWidth: 140
+					Layout.maximumWidth: 140
+					label: qsTr("Project ID")
+
+					TextField {
+						id: projectIdField
+						Layout.fillWidth: true
+						Layout.preferredHeight: Metrics.controlHeight
+						validator: IntValidator {
+							bottom: 1
+						}
+					}
+				}
+
+				LabeledField {
 					Layout.fillWidth: true
-					validator: IntValidator {
-						bottom: 1
+					label: qsTr("Subject")
+
+					TextField {
+						id: subjectField
+						Layout.fillWidth: true
+						Layout.preferredHeight: Metrics.controlHeight
 					}
 				}
 			}
 
 			LabeledField {
 				Layout.fillWidth: true
-				label: qsTr("Subject")
+				label: qsTr("Description (optional)")
 
-				TextField {
-					id: subjectField
+				TextArea {
+					id: descriptionField
 					Layout.fillWidth: true
+					Layout.preferredHeight: Metrics.textAreaHeight
+					wrapMode: TextEdit.Wrap
 				}
 			}
-		}
 
-		LabeledField {
-			Layout.fillWidth: true
-			label: qsTr("Description (optional)")
-
-			TextArea {
-				id: descriptionField
-				Layout.fillWidth: true
-				Layout.preferredHeight: 100
-				wrapMode: TextEdit.Wrap
+			PrimaryButton {
+				Layout.alignment: Qt.AlignRight
+				Layout.topMargin: 4
+				text: qsTr("Add Issue")
+				enabled: subjectField.text.length > 0 && projectIdField.acceptableInput
+				onClicked: docroot.client.createIssue(parseInt(projectIdField.text), subjectField.text, descriptionField.text)
 			}
-		}
-
-		RoundButton {
-			text: qsTr("Add Issue")
-			highlighted: true
-			enabled: subjectField.text.length > 0 && projectIdField.acceptableInput
-			onClicked: docroot.client.createIssue(parseInt(projectIdField.text), subjectField.text, descriptionField.text)
 		}
 	}
 }

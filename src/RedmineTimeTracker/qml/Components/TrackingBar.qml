@@ -23,8 +23,16 @@ Rectangle {
 
 	property int selectedActivityId: 0
 
-	implicitHeight: 84
+	//! Height of every control in the bar (buttons, fields, combo boxes), so they line up.
+	readonly property int controlHeight: Metrics.controlHeight
+	//! Below this width the non-functional "Special" placeholder is hidden to keep room for the
+	//! fields that matter.
+	readonly property int compactWidth: 1100
+
+	implicitHeight: layout.implicitHeight + layout.anchors.topMargin + layout.anchors.bottomMargin
 	color: Material.dialogColor
+	// Same corner radius as the Sidebar, which shares this surface color.
+	radius: Metrics.panelRadius
 
 	Timer {
 		id: inputValidatorTimer
@@ -37,16 +45,29 @@ Rectangle {
 	}
 
 	RowLayout {
+		id: layout
 		anchors {
 			fill: parent
-			leftMargin: 15
-			rightMargin: 15
+			leftMargin: 16
+			rightMargin: 16
 			topMargin: 10
-			bottomMargin: 10
+			bottomMargin: 12
 		}
-		spacing: 15
+		spacing: 12
+
+		// Buttons have no label, so every child is bottom-aligned to line the buttons up with the
+		// labeled fields' inputs.
 
 		RoundButton {
+			Layout.alignment: Qt.AlignBottom
+			Layout.preferredWidth: docroot.controlHeight
+			Layout.preferredHeight: docroot.controlHeight
+			topInset: 0
+			bottomInset: 0
+			leftInset: 0
+			rightInset: 0
+			icon.width: 16
+			icon.height: 16
 			icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/play.svg"
 			enabled: (issueField.knownIssue && issueField.acceptableInput && issueField.value >= 0 && !docroot.timeTracker.isTracking)
 					 || (docroot.timeTracker.isTracking && docroot.timeTracker.isPaused)
@@ -61,6 +82,15 @@ Rectangle {
 		}
 
 		RoundButton {
+			Layout.alignment: Qt.AlignBottom
+			Layout.preferredWidth: docroot.controlHeight
+			Layout.preferredHeight: docroot.controlHeight
+			topInset: 0
+			bottomInset: 0
+			leftInset: 0
+			rightInset: 0
+			icon.width: 16
+			icon.height: 16
 			icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/pause.svg"
 			highlighted: docroot.timeTracker.isTracking && !docroot.timeTracker.isPaused
 			enabled: docroot.timeTracker.isTracking && !docroot.timeTracker.isPaused
@@ -68,109 +98,132 @@ Rectangle {
 		}
 
 		LabeledField {
+			Layout.alignment: Qt.AlignBottom
+			label: qsTr("Time")
 			TextField {
-				Layout.preferredWidth: 90
-				Layout.preferredHeight: 40
+				Layout.preferredWidth: 96
+				Layout.preferredHeight: docroot.controlHeight
+				leftPadding: 8
+				rightPadding: 8
 				text: docroot.timeTracker.elapsedTime
 				readOnly: true
 				color: Material.foreground
-				font.pixelSize: 15
+				font.pixelSize: 14
 				font.bold: true
 				horizontalAlignment: Text.AlignHCenter
 			}
 		}
 
 		LabeledField {
+			Layout.alignment: Qt.AlignBottom
+			Layout.fillWidth: true
+			Layout.preferredWidth: 160
+			Layout.minimumWidth: 110
+			Layout.maximumWidth: 220
 			label: qsTr("Issue")
-			RowLayout {
-				spacing: 5
-				IssueSearchInputField {
-					id: issueField
-					Layout.preferredWidth: 150
-					Layout.preferredHeight: 40
-					timeTracker: docroot.timeTracker
+			IssueSearchInputField {
+				id: issueField
+				Layout.fillWidth: true
+				Layout.preferredHeight: docroot.controlHeight
+				timeTracker: docroot.timeTracker
 
-					onAccepted: {
-						docroot.client.getIssue(issueField.value)
-						inputValidatorTimer.stop()
-					}
-
-					onTextChanged: inputValidatorTimer.restart()
+				onAccepted: {
+					docroot.client.getIssue(issueField.value)
+					inputValidatorTimer.stop()
 				}
-				ToolButton {
-					Layout.preferredWidth: 40
-					Layout.preferredHeight: 40
-					icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/xmark.svg"
+
+				onTextChanged: inputValidatorTimer.restart()
+
+				ClearButton {
+					anchors.right: parent.right
+					anchors.rightMargin: 6
+					anchors.verticalCenter: parent.verticalCenter
+					visible: issueField.value >= 0 && !docroot.timeTracker.isTracking
 					onClicked: issueField.value = -1
 				}
 			}
 		}
 
 		LabeledField {
+			Layout.alignment: Qt.AlignBottom
 			Layout.fillWidth: true
+			Layout.horizontalStretchFactor: 3
+			Layout.preferredWidth: 300
+			Layout.minimumWidth: 140
 			label: qsTr("Comment")
-			RowLayout {
+			TextField {
+				id: commentsField
 				Layout.fillWidth: true
-				spacing: 5
-				TextField {
-					id: commentsField
-					Layout.fillWidth: true
-					Layout.preferredHeight: 40
-					font.pixelSize: 13
-				}
-				ToolButton {
-					Layout.preferredWidth: 40
-					Layout.preferredHeight: 40
-					icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/xmark.svg"
-					onClicked: commentsField.text = ""
+				Layout.preferredHeight: docroot.controlHeight
+				rightPadding: commentClearButton.width + 12
+				font.pixelSize: 13
+
+				ClearButton {
+					id: commentClearButton
+					anchors.right: parent.right
+					anchors.rightMargin: 6
+					anchors.verticalCenter: parent.verticalCenter
+					visible: commentsField.text.length > 0
+					onClicked: commentsField.clear()
 				}
 			}
 		}
 
 		LabeledField {
+			Layout.alignment: Qt.AlignBottom
+			Layout.fillWidth: true
+			Layout.preferredWidth: 170
+			Layout.minimumWidth: 120
+			Layout.maximumWidth: 240
 			label: qsTr("Activity")
 			ComboBox {
 				id: activityCombo
-				Layout.preferredWidth: 140
-				Layout.preferredHeight: 40
+				Layout.fillWidth: true
+				Layout.preferredHeight: docroot.controlHeight
+				topInset: 0
+				bottomInset: 0
 				font.pixelSize: 13
 				model: docroot.activitiesModel.timeEntryActivities
 				textRole: "name"
 				valueRole: "id"
-				background: Item {}
-				indicator: Image {
-					x: activityCombo.width - width - activityCombo.rightPadding
-					y: activityCombo.topPadding + (activityCombo.availableHeight - height) / 2
-					source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/chevron-up.svg"
-					sourceSize.width: 12
-					sourceSize.height: 12
-				}
-				onActivated: docroot.selectedActivityId = activityCombo.currentValue
+				// Submit the activity that is shown, including the preselected first one; 0 (Redmine's
+				// default activity) while none are loaded yet.
+				onCurrentValueChanged: docroot.selectedActivityId = currentValue !== undefined ? currentValue : 0
 			}
 		}
 
 		//! Known non-functional placeholder: empty model, nothing reads its selection. Not
-		//! rendered by MobileTrackingBar, which otherwise mirrors this bar's fields.
+		//! rendered by MobileTrackingBar, which otherwise mirrors this bar's fields, and hidden here
+		//! below compactWidth.
 		LabeledField {
+			Layout.alignment: Qt.AlignBottom
+			Layout.fillWidth: true
+			Layout.preferredWidth: 150
+			Layout.minimumWidth: 110
+			Layout.maximumWidth: 200
+			visible: docroot.width >= docroot.compactWidth
 			label: qsTr("Special")
 			ComboBox {
 				id: specialCombo
-				Layout.preferredWidth: 120
-				Layout.preferredHeight: 40
+				Layout.fillWidth: true
+				Layout.preferredHeight: docroot.controlHeight
+				topInset: 0
+				bottomInset: 0
 				font.pixelSize: 13
 				model: []
-				background: Item {}
-				indicator: Image {
-					x: specialCombo.width - width - specialCombo.rightPadding
-					y: specialCombo.topPadding + (specialCombo.availableHeight - height) / 2
-					source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/chevron-up.svg"
-					sourceSize.width: 12
-					sourceSize.height: 12
-				}
 			}
 		}
 
 		RoundButton {
+			Layout.alignment: Qt.AlignBottom
+			Layout.preferredWidth: docroot.controlHeight
+			Layout.preferredHeight: docroot.controlHeight
+			topInset: 0
+			bottomInset: 0
+			leftInset: 0
+			rightInset: 0
+			icon.width: 16
+			icon.height: 16
 			icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/plus.svg"
 			highlighted: true
 			enabled: docroot.timeTracker.isTracking

@@ -82,6 +82,7 @@ Item {
         AddTimeEntryView {
             timeTracker: docroot.timeTracker
             client: docroot.client
+            activitiesModel: docroot.activitiesModel
         }
     }
 

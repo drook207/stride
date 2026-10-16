@@ -30,6 +30,8 @@ Dialog {
 	property string comment: ""
 	property string spentOn: ""
 	property double hours: 0.0
+	//! Redmine time entry activity id; 0 lets Redmine use its default activity.
+	property int activityId: 0
 
 	onAccepted: {
 
@@ -50,7 +52,7 @@ Dialog {
 										   })
 
 		// Submit to Redmine
-		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult)
+		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult, docroot.activityId)
 	}
 
 	onRejected: {
