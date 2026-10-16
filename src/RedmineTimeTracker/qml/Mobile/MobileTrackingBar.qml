@@ -203,7 +203,9 @@ Rectangle {
                         model: docroot.activitiesModel.timeEntryActivities
                         textRole: "name"
                         valueRole: "id"
-                        onActivated: docroot.selectedActivityId = activityCombo.currentValue
+                        // Submit the activity that is shown, including the preselected first one; 0 (Redmine's
+                        // default activity) while none are loaded yet.
+                        onCurrentValueChanged: docroot.selectedActivityId = currentValue !== undefined ? currentValue : 0
                     }
                 }
 
