@@ -64,6 +64,8 @@ qt_add_qml_module(
  qml/Components/FormPage.qml
  qml/Components/PrimaryButton.qml
  qml/Components/TimeEntryDelegate.qml
+ qml/Components/DatePickerField.qml
+ qml/Components/TimePickerField.qml
  qml/Desktop/DesktopShell.qml
  qml/Mobile/MobileShell.qml
  qml/Mobile/MobileHeader.qml
@@ -90,6 +92,10 @@ qt_add_qml_module(
  qml/Assets/Icons/solid/xmark.svg
  qml/Assets/Icons/solid/chevron-down.svg
  qml/Assets/Icons/solid/chevron-up.svg
+ qml/Assets/Icons/solid/chevron-left.svg
+ qml/Assets/Icons/solid/chevron-right.svg
+ qml/Assets/Icons/solid/calendar-days.svg
+ qml/Assets/Icons/solid/clock.svg
  qml/Assets/Icons/solid/plus.svg
  qml/Assets/Icons/app-icon.svg
  qml/Assets/Icons/app-icon.ico

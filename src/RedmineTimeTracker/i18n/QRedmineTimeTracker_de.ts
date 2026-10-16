@@ -9,12 +9,12 @@
         <translation>Zeiteintrag hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Components/AddDialog.qml" line="65"/>
+        <location filename="../qml/Components/AddDialog.qml" line="67"/>
         <source>Would you like to submit this time entry?</source>
         <translation>Möchten Sie diesen Zeiteintrag übermitteln?</translation>
     </message>
     <message>
-        <location filename="../qml/Components/AddDialog.qml" line="69"/>
+        <location filename="../qml/Components/AddDialog.qml" line="71"/>
         <source>Total time: %1 spent on: %2</source>
         <translation>Gesamtzeit: %1 gebucht am: %2</translation>
     </message>
@@ -51,34 +51,62 @@
 <context>
     <name>AddTimeEntryView</name>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="48"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="68"/>
         <source>Add Time Entry</source>
         <translation>Zeiteintrag hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="55"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="75"/>
         <source>Issue</source>
         <translation>Ticket</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="81"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="102"/>
+        <source>From</source>
+        <translation>Von</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="114"/>
+        <source>To</source>
+        <translation>Bis</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="133"/>
         <source>Time spent (eg. 1,0)</source>
         <translation>Aufgewendete Zeit (z. B. 1,0)</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="107"/>
-        <source>Date (yyyy-mm-dd)</source>
-        <translation>Datum (JJJJ-MM-TT)</translation>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="159"/>
+        <source>Date</source>
+        <translation>Datum</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="125"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="178"/>
+        <source>Activity</source>
+        <translation>Aktivität</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="199"/>
+        <source>Special</source>
+        <translation>Speziell</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="213"/>
         <source>Comments</source>
         <translation>Kommentare</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="138"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="226"/>
         <source>Add</source>
         <translation>Hinzufügen</translation>
+    </message>
+</context>
+<context>
+    <name>DatePickerField</name>
+    <message>
+        <location filename="../qml/Components/DatePickerField.qml" line="199"/>
+        <source>Today</source>
+        <translation>Heute</translation>
     </message>
 </context>
 <context>
@@ -318,6 +346,19 @@
     </message>
 </context>
 <context>
+    <name>TimePickerField</name>
+    <message>
+        <location filename="../qml/Components/TimePickerField.qml" line="208"/>
+        <source>Cancel</source>
+        <translation>Abbrechen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TimePickerField.qml" line="214"/>
+        <source>OK</source>
+        <translation>OK</translation>
+    </message>
+</context>
+<context>
     <name>TrackingBar</name>
     <message>
         <location filename="../qml/Components/TrackingBar.qml" line="102"/>
@@ -340,7 +381,7 @@
         <translation>Aktivität</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="203"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="205"/>
         <source>Special</source>
         <translation>Speziell</translation>
     </message>
