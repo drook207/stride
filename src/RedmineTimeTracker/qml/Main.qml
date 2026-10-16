@@ -39,16 +39,19 @@ ApplicationWindow {
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
     }
+    // The "Instance" suffix is deliberate: the shells below have properties named timeTracker and
+    // activitiesModel, and inside `DesktopShell { activitiesModel: activitiesModel }` the right-hand
+    // side resolves to the shell's own property rather than an id here, binding it to itself.
     TimeTracker {
         id: timeTrackerInstance
     }
     TimeEntryActivitiesModel {
-        id: activitiesModel
+        id: activitiesModelInstance
     }
     Connections {
         target: redmineClient
         function onTimeEntryActivitiesReceived(value) {
-            activitiesModel.addTimeEntryActivities(value);
+            activitiesModelInstance.addTimeEntryActivities(value);
         }
     }
 
@@ -79,7 +82,7 @@ ApplicationWindow {
         DesktopShell {
             client: redmineClient
             timeTracker: timeTrackerInstance
-            activitiesModel: activitiesModel
+            activitiesModel: activitiesModelInstance
             submitDialog: subDialog
         }
     }
@@ -89,7 +92,7 @@ ApplicationWindow {
         MobileShell {
             client: redmineClient
             timeTracker: timeTrackerInstance
-            activitiesModel: activitiesModel
+            activitiesModel: activitiesModelInstance
             submitDialog: subDialog
         }
     }
