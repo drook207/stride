@@ -5,6 +5,11 @@ import QtQuick.Layouts
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief "Search Issue" view: fetches and lists every time entry already logged against a given
+ * issue, straight from the Redmine REST API (not the local cache) - useful to check what's
+ * already been recorded before adding more.
+ */
 Item {
     id: docroot
 
@@ -14,97 +19,91 @@ Item {
     ColumnLayout {
         anchors {
             fill: parent
-            margins: 15
+            margins: Metrics.pageMargin
         }
-        spacing: 15
+        spacing: Metrics.sectionSpacing
 
-        Label {
-			text: qsTr("Entries from Id")
-            font.bold: true
-            font.pixelSize: 18
-            color: Material.foreground
-        }
-
-        RowLayout {
+        PageTitle {
             Layout.fillWidth: true
-            spacing: 10
+            text: qsTr("Search Issue")
+        }
 
-            LabeledField {
+        // One card for the search row and its results, like RecentEntriesView's list card.
+        Card {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            padding: 12
+
+            RowLayout {
                 Layout.fillWidth: true
-                label: qsTr("Issue")
+                Layout.margins: 8
+                spacing: 12
 
-                IssueSearchInputField {
-                    id: issueField
+                LabeledField {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 60
-                    timeTracker: docroot.timeTracker
-                    enabled: !docroot.timeTracker.isTracking
+                    Layout.maximumWidth: 400
+                    label: qsTr("Issue")
+
+                    IssueSearchInputField {
+                        id: issueField
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        timeTracker: docroot.timeTracker
+                        enabled: !docroot.timeTracker.isTracking
+                    }
+                }
+
+                PrimaryButton {
+                    Layout.alignment: Qt.AlignBottom
+                    text: qsTr("Get")
+                    enabled: issueField.acceptableInput
+                    onClicked: docroot.client.getTimeEntries(issueField.value)
+                }
+
+                Item {
+                    Layout.fillWidth: true
                 }
             }
 
-            RoundButton {
-				Layout.alignment: Qt.AlignBottom
-				text: qsTr("Get")
-                highlighted: true
-                onClicked: docroot.client.getTimeEntries(issueField.value)
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            spacing: 5
-
-            Label {
-				text: qsTr("Time Entries")
-                font.bold: true
-                font.pixelSize: 14
-                color: Material.foreground
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Material.dividerColor
             }
 
             ListView {
                 id: entriesList
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                visible: count > 0
                 model: docroot.timeTracker.entriesFromId
                 clip: true
 
-                delegate: ItemDelegate {
-                    width: parent.width
-                    contentItem: ColumnLayout {
-                        spacing: 5
+                delegate: TimeEntryDelegate {
+                    required property var modelData
+                    required property int index
 
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Label {
-								text: qsTr("Id: %0").arg(modelData.id)
-                                font.bold: true
-                            }
-                            Label {
-								text: qsTr("Issue #%0").arg(modelData.issue.id)
-                                font.bold: true
-                            }
-                            Label {
-								text: qsTr("%0 hours").arg(modelData.hours.toFixed(2))
-                                Layout.leftMargin: 10
-                            }
-                            Label {
-								text: Qt.formatDateTime(modelData.spent_on, "yyyy-MM-dd hh:mm")
-                                Layout.fillWidth: true
-                                horizontalAlignment: Text.AlignRight
-                            }
-                        }
-
-                        Label {
-                            text: modelData.comments
-                            visible: modelData.comments !== ""
-                            wrapMode: Text.WordWrap
-                            Layout.fillWidth: true
-                        }
-                    }
+                    entryId: modelData.id
+                    issueId: modelData.issue.id
+                    hours: modelData.hours
+                    comment: modelData.comments || ""
+                    spentOn: modelData.spent_on
+                    showDivider: index < ListView.view.count - 1
                 }
 
                 ScrollBar.vertical: ScrollBar {}
+            }
+
+            // Empty state
+            Label {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: entriesList.count === 0
+                text: qsTr("Enter an issue and press Get to list its time entries.")
+                color: Material.secondaryTextColor
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                wrapMode: Text.WordWrap
             }
         }
     }

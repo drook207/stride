@@ -43,5 +43,10 @@ if(NOT qtkeychain_POPULATED)
   add_subdirectory(${qtkeychain_SOURCE_DIR} ${qtkeychain_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
+# Install everything into a single named component instead of CMake's "Unspecified" default, so the
+# Qt Installer Framework package can attach its component script to it (see the CPack section of
+# src/RedmineTimeTracker/CMakeLists.txt). Set after QtKeychain, whose install rules are excluded.
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "QRedmineTimeTracker")
+
 add_subdirectory(src)
 add_subdirectory(tests)

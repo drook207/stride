@@ -5,6 +5,13 @@ import QtQuick.Layouts
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief Root layout for the desktop UI: Header, collapsible Sidebar, a StackView holding the
+ * currently selected view, and the always-visible TrackingBar at the bottom.
+ *
+ * Instantiated by Main.qml's Loader when isMobile is false. All backend instances are owned by
+ * Main.qml and only forwarded here; this component and its children never create their own.
+ */
 Item {
     id: docroot
 
@@ -84,6 +91,7 @@ Item {
         AddTimeEntryView {
             timeTracker: docroot.timeTracker
             client: docroot.client
+            activitiesModel: docroot.activitiesModel
         }
     }
 

@@ -46,6 +46,7 @@ repos:
     hooks:
       - id: codespell
         args: ["--skip=*.gitignore"]
+        exclude: ^src/[^/]+/i18n/.*\.ts$
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.39.0
     hooks:

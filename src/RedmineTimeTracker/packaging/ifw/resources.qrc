@@ -1,0 +1,7 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <!-- Images referenced by style.qss, compiled into the installer binary. -->
+    <qresource prefix="/qredmine">
+        <file>check.png</file>
+    </qresource>
+</RCC>

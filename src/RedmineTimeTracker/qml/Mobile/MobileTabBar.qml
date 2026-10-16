@@ -3,20 +3,34 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
+/*!
+ * \brief Bottom navigation bar for the mobile UI, replacing the desktop Sidebar.
+ *
+ * Unlike Sidebar (which special-cases "Settings" as an extra item appended after
+ * buttonTitles.length), every tab here - including Settings - is a plain, uniformly indexed entry
+ * in componentsToLoad/buttonTitles/navIcons; simpler since there's no expand/collapse state to
+ * special-case around.
+ */
 Rectangle {
     id: docroot
 
+    //! StackView whose current item this tab bar swaps via select().
     required property StackView view
+    //! Component per tab, index-aligned with buttonTitles and navIcons.
     required property var componentsToLoad
+    //! Label per tab, index-aligned with componentsToLoad and navIcons.
     required property var buttonTitles
 
     property int currentIndex: 0
 
+    //! Icon filename per tab (under Assets/Icons/solid/), index-aligned with componentsToLoad and
+    //! buttonTitles. Must be kept the same length as those two.
     readonly property var navIcons: ["clock-rotate-left.svg", "circle-plus.svg", "magnifying-glass.svg", "circle-plus.svg", "gear.svg"]
 
     implicitHeight: 64
     color: Material.backgroundColor
 
+    //! Selects tab `index`: updates the highlighted tab and swaps the StackView's current item.
     function select(index) {
         docroot.currentIndex = index
         docroot.view.replaceCurrentItem(docroot.componentsToLoad[index])

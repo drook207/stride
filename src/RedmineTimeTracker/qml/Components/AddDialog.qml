@@ -4,23 +4,34 @@ import QtQuick.Controls
 import QRedmine.TimeTracker
 import QRedmine.Client
 
+/*!
+ * \brief Confirmation dialog for AddTimeEntryView's manual "Add" flow.
+ *
+ * The caller sets issueId/comment/spentOn/hours before calling open(); on accept, the entry is
+ * added to the local history and submitted to Redmine. Deliberately similar to SubmitDialog (same
+ * confirmation UX), but takes its values as plain properties rather than reading them live from
+ * TimeTracker, since this flow isn't tied to a running tracked session.
+ */
 Dialog {
 	id: docroot
 	parent: Overlay.overlay
 	width: parent.width * 0.8
 	height: content.implicitHeight + 200
 
-	title: "Add Time Entry"
+	title: qsTr("Add Time Entry")
 	standardButtons: Dialog.Yes | Dialog.No
 	x: (parent.width - width) / 2
 	y: (parent.height - height) / 2
 	modal: true
+	Overlay.modal: DialogScrim {}
 	property TimeTracker timeTracker: undefined
 	property RedmineClient client: undefined
 	property string issueId: ""
 	property string comment: ""
 	property string spentOn: ""
 	property double hours: 0.0
+	//! Redmine time entry activity id; 0 lets Redmine use its default activity.
+	property int activityId: 0
 
 	onAccepted: {
 
@@ -41,7 +52,7 @@ Dialog {
 										   })
 
 		// Submit to Redmine
-		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult)
+		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult, docroot.activityId)
 	}
 
 	onRejected: {
@@ -53,11 +64,11 @@ Dialog {
 		spacing: 10
 
 		Label {
-			text: "Would you like to submit this time entry?"
+			text: qsTr("Would you like to submit this time entry?")
 		}
 
 		Label {
-			text: "Total time: " + docroot.hours + " spent on: " + docroot.spentOn
+			text: qsTr("Total time: %1 spent on: %2").arg(docroot.hours).arg(docroot.spentOn)
 			font.bold: true
 		}
 	}

@@ -7,7 +7,7 @@ QRedmineClient
 
 qt_standard_project_setup()
 
-find_package(Qt6 REQUIRED Core Network Quick)
+find_package(Qt6 REQUIRED Core Network Quick LinguistTools)
 
 if(QT_KNOWN_POLICY_QTP0001)
   qt_policy(SET QTP0001 NEW)
@@ -29,6 +29,17 @@ qt_add_qml_module(
  OUTPUT_DIRECTORY
  ${CMAKE_BINARY_DIR}/qt/qml/QRedmine/Client
 )
+
+# Translation catalogs for the library's own user-facing strings (see i18n/README.md). Compiled to
+# .qm by lrelease on every build and embedded into the library under the :/i18n/ resource prefix;
+# applications load them via RedmineClient::installTranslations().
+qt_add_translations(
+ qredmineclient
+ TS_FILES
+ i18n/QRedmineClient_en.ts
+ i18n/QRedmineClient_de.ts
+ LUPDATE_OPTIONS
+ -no-obsolete)
 
 if(ANDROID)
   if(QT_KNOWN_POLICY_QTP0002)
