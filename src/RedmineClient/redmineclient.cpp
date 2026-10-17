@@ -659,12 +659,6 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 	mNetworkManager->get(createRequest(endpoint));
 }
 
-void RedmineClient::getCustomFields()
-{
-	setLoading(true);
-	mNetworkManager->get(createRequest(ApiResources::CUSTOM_FIELDS));
-}
-
 void RedmineClient::getTimeEntryCustomFields()
 {
 	QNetworkRequest request = createRequest(ApiResources::CUSTOM_FIELDS);
@@ -839,9 +833,6 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			}
 			if (response.contains("document_categories")) {
 				emit enumerationsReceived(response["document_categories"].toArray());
-			}
-			if (response.contains("custom_fields")) {
-				emit customFieldsReceived(response["custom_fields"].toArray());
 			}
 			if (response.contains("issue")) {
 				emit issueReceived(response["issue"].toObject());

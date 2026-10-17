@@ -599,17 +599,6 @@ TEST_F(RedmineClientIntegrationTest, GetEnumerationsTimeEntryActivitiesEmitsTime
 	EXPECT_EQ(server->requests().first().path.toStdString(), "/enumerations/time_entry_activities.json");
 }
 
-TEST_F(RedmineClientIntegrationTest, GetCustomFieldsEmitsCustomFieldsReceived)
-{
-	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"custom_fields":[{"id":1}]})" });
-
-	client->getCustomFields();
-	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::customFieldsReceived));
-
-	ASSERT_EQ(server->requests().size(), 1);
-	EXPECT_EQ(server->requests().first().path.toStdString(), "/custom_fields.json");
-}
-
 TEST_F(RedmineClientIntegrationTest, DetectApiVersionReadsHeaderAndEmitsApiVersionChanged)
 {
 	MockHttpResponse response { 200, "OK", R"({"issues":[]})" };

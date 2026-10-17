@@ -200,11 +200,6 @@ public slots:
 	void getEnumerations(EnumerationTypes enumerationType);
 
 	/*!
-	 * \brief getCustomFields
-	 */
-	void getCustomFields();
-
-	/*!
 	 * \brief getTimeEntryCustomFields Fetches the custom fields of time entries, emitting
 	 * timeEntryCustomFieldsReceived()
 	 *
@@ -383,8 +378,6 @@ signals:
 	 * \param enums
 	 */
 	void timeEntryActivitiesReceived(const QJsonArray& activities);
-
-	void customFieldsReceived(const QJsonArray& customFields);
 
 	/*!
 	 * \brief timeEntryCustomFieldsReceived Result of getTimeEntryCustomFields()
