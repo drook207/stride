@@ -22,28 +22,38 @@
 <context>
     <name>AddIssueView</name>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="20"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="28"/>
         <source>Issue #%0 created successfully</source>
         <translation>Ticket #%0 erfolgreich erstellt</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="31"/>
-        <location filename="../qml/Views/AddIssueView.qml" line="84"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="39"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="115"/>
         <source>Add Issue</source>
         <translation>Ticket hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="45"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="53"/>
+        <source>Project</source>
+        <translation>Projekt</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/AddIssueView.qml" line="65"/>
+        <source>Select a project</source>
+        <translation>Projekt auswählen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/AddIssueView.qml" line="76"/>
         <source>Project ID</source>
         <translation>Projekt-ID</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="59"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="90"/>
         <source>Subject</source>
         <translation>Betreff</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddIssueView.qml" line="71"/>
+        <location filename="../qml/Views/AddIssueView.qml" line="102"/>
         <source>Description (optional)</source>
         <translation>Beschreibung (optional)</translation>
     </message>
@@ -102,22 +112,22 @@
 <context>
     <name>DesktopShell</name>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="60"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="62"/>
         <source>Recent Entries</source>
         <translation>Letzte Einträge</translation>
     </message>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="60"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="62"/>
         <source>Add Entry</source>
         <translation>Eintrag hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="60"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="62"/>
         <source>Search Issue</source>
         <translation>Ticket suchen</translation>
     </message>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="60"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="62"/>
         <source>Add Issue</source>
         <translation>Ticket hinzufügen</translation>
     </message>
@@ -178,7 +188,7 @@
         <translation>Abrufen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="134"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="135"/>
         <source>Enter an issue and press Get to list its time entries.</source>
         <translation>Geben Sie ein Ticket ein und klicken Sie auf „Abrufen“, um seine Zeiteinträge anzuzeigen.</translation>
     </message>
@@ -202,14 +212,22 @@
     </message>
 </context>
 <context>
+    <name>IssueSearchInputField</name>
+    <message>
+        <location filename="../qml/Components/IssueSearchInputField.qml" line="143"/>
+        <source>No project</source>
+        <translation>Kein Projekt</translation>
+    </message>
+</context>
+<context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="36"/>
+        <location filename="../qml/Main.qml" line="39"/>
         <source>Error: %1</source>
         <translation>Fehler: %1</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="43"/>
+        <location filename="../qml/Main.qml" line="46"/>
         <source>Time entry created successfully</source>
         <translation>Zeiteintrag erfolgreich erstellt</translation>
     </message>
@@ -225,27 +243,27 @@
 <context>
     <name>MobileShell</name>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="72"/>
         <source>Recent</source>
         <translation>Letzte</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="72"/>
         <source>Add Entry</source>
         <translation>Eintrag hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="72"/>
         <source>Search</source>
         <translation>Suche</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="72"/>
         <source>Add Issue</source>
         <translation>Ticket hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="70"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="72"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
@@ -271,17 +289,32 @@
 <context>
     <name>RecentEntriesView</name>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="51"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="108"/>
         <source>Recent Entries</source>
         <translation>Letzte Einträge</translation>
     </message>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="107"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="128"/>
+        <source>All projects</source>
+        <translation>Alle Projekte</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="140"/>
+        <source>Group by project</source>
+        <translation>Nach Projekt gruppieren</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="177"/>
+        <source>No project</source>
+        <translation>Kein Projekt</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="226"/>
         <source>No time entries yet</source>
         <translation>Noch keine Zeiteinträge</translation>
     </message>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="115"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="234"/>
         <source>Track time with the bar below or add an entry manually.</source>
         <translation>Erfassen Sie Zeit über die Leiste unten oder fügen Sie einen Eintrag manuell hinzu.</translation>
     </message>
@@ -368,7 +401,7 @@
 <context>
     <name>TimeEntryDelegate</name>
     <message>
-        <location filename="../qml/Components/TimeEntryDelegate.qml" line="105"/>
+        <location filename="../qml/Components/TimeEntryDelegate.qml" line="115"/>
         <source>Entry %1</source>
         <translation>Eintrag %1</translation>
     </message>

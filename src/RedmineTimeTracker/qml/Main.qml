@@ -29,6 +29,9 @@ ApplicationWindow {
     //! layout rather than flip to the mobile one.
     readonly property bool isMobile: Qt.platform.os === "android" || Qt.platform.os === "ios"
 
+    //! Redmine's projects ({id, name, identifier, ...}), for picking one in Add Issue.
+    property var projects: []
+
     RedmineClient {
         id: redmineClient
 
@@ -50,6 +53,11 @@ ApplicationWindow {
         redmineClient.getEnumerations(0);
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
+        redmineClient.getProjects(100, 0);
+        // Recent entries show their issue's project, which needs the issue cached locally.
+        for (const issueId of timeTrackerInstance.issueIdsWithoutProject()) {
+            redmineClient.getIssue(issueId);
+        }
     }
     // The "Instance" suffix is deliberate: the shells below have properties named timeTracker and
     // activitiesModel, and inside `DesktopShell { activitiesModel: activitiesModel }` the right-hand
@@ -62,6 +70,9 @@ ApplicationWindow {
     }
     Connections {
         target: redmineClient
+        function onProjectsReceived(projects) {
+            window.projects = projects;
+        }
         function onTimeEntryUpdated(timeEntryId) {
             timeTrackerInstance.applyRedmineUpdate(timeEntryId);
         }
@@ -98,6 +109,7 @@ ApplicationWindow {
             client: redmineClient
             timeTracker: timeTrackerInstance
             activitiesModel: activitiesModelInstance
+            projects: window.projects
             submitDialog: subDialog
         }
     }
@@ -108,6 +120,7 @@ ApplicationWindow {
             client: redmineClient
             timeTracker: timeTrackerInstance
             activitiesModel: activitiesModelInstance
+            projects: window.projects
             submitDialog: subDialog
         }
     }

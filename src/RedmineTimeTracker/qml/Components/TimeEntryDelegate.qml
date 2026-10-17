@@ -21,6 +21,8 @@ ItemDelegate {
 	required property var spentOn
 	//! Redmine's id of the time entry itself; hidden when negative (e.g. not synced yet).
 	property int entryId: -1
+	//! Name of the issue's project; hidden when empty (e.g. the issue isn't cached yet).
+	property string projectName: ""
 	//! Draws a divider below this entry; disable it for the last one.
 	property bool showDivider: true
 	//! Whether clicking the entry edits it (the view handles `clicked`); shows a pen icon on hover.
@@ -99,6 +101,14 @@ ItemDelegate {
 					color: Material.foreground
 					font.pixelSize: 15
 					font.weight: Font.DemiBold
+				}
+				Label {
+					visible: delegate.projectName.length > 0
+					text: delegate.projectName
+					color: Material.secondaryTextColor
+					font.pixelSize: 12
+					elide: Text.ElideRight
+					Layout.maximumWidth: 220
 				}
 				Label {
 					visible: delegate.entryId >= 0

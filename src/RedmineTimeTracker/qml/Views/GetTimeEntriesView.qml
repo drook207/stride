@@ -104,6 +104,7 @@ Item {
 
                     entryId: modelData.id
                     issueId: modelData.issue.id
+                    projectName: modelData.project ? modelData.project.name : ""
                     hours: modelData.hours
                     comment: modelData.comments || ""
                     spentOn: modelData.spent_on

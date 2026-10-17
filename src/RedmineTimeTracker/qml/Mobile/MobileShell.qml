@@ -18,6 +18,8 @@ Item {
     required property RedmineClient client
     required property TimeTracker timeTracker
     required property var activitiesModel
+    //! Redmine's projects, see Main.qml.
+    property var projects: []
     required property SubmitDialog submitDialog
 
     MobileHeader {
@@ -103,6 +105,7 @@ Item {
 
         AddIssueView {
             client: docroot.client
+            projects: docroot.projects
         }
     }
 
