@@ -29,9 +29,9 @@ Item {
         // The list (and any local copies) follow once Redmine confirms the change
         // (TimeTracker.applyRedmineUpdate, wired up in Main.qml).
         onSaved: changes => {
-            docroot.timeTracker.stageRedmineUpdate(editDialog.entryId, changes)
+            const tag = docroot.timeTracker.stageRedmineUpdate(editDialog.entryId, changes)
             docroot.client.updateTimeEntry(editDialog.entryId, changes.hours, changes.comments, changes.spent_on,
-                                           changes.activity_id || 0)
+                                           changes.activity_id || 0, tag)
         }
     }
 
