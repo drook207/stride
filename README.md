@@ -14,29 +14,37 @@ See the [User Guide](docs/USER_GUIDE.md) for a full walkthrough with screenshots
 
 ### Time Tracking
 
-* Start/Stop/Pause functionality
-* Real-time elapsed time display
-* Automatic time calculation
-* Pause and resume capabilities
-* Visual tracking status indicators
+* Start/Stop/Pause functionality with real-time elapsed time display
+* The running timer survives closing the app or a crash; time the app was gone or the computer
+  was asleep can be counted or left out
+* Continue an earlier entry's work with one click, and pin favorite issues for quick access
+* Set the issue's status (e.g. to "Resolved") when submitting time
+* Keyboard shortcuts: Ctrl+Space (start/pause/resume), Ctrl+Enter (submit), Ctrl+1 .. Ctrl+6 (views)
+* System tray icon with pause/resume and favorites, optionally keeping the app running when the
+  window is closed
+* Reminders of a workday without booked time and of long-running timers
+
+### Overview and Export
+
+* Week overview: hours per day against a daily target, hours still missing, and hours per project
+* Export the time entries of a period as CSV (for spreadsheets) or PDF
 
 ### Redmine Integration
 
 * Full issue and project management (create, update, list, delete)
-* Automatic synchronization with Redmine
 * Create, update, and delete time entries directly from the app
-* View and manage existing time entries
+* View and manage existing time entries, with activities and the "Special" custom field
+* Add Issue offers only the projects you may add issues to
 * API key stored in the OS-native secure storage (Windows Credential Manager, Linux Secret Service/KWallet) - never in plain text
 * Automatic Redmine REST API version detection, so newer features can be gated on server capability
 * Error handling, connection-state indicator, and retry mechanisms
 
 ### Offline Support
 
-* SQLite database for local storage
-* Automatic sync when online
-* Track time without internet connection
-* Persistent history of time entries
-* Sync status tracking
+* Time entries are saved locally first and sent to Redmine when it's reachable - right away, or
+  once the connection comes back
+* Entries Redmine rejects are marked with the reason and sent again once changed
+* SQLite database with versioned schema migrations, in the platform's application data directory
 
 ### Localization
 

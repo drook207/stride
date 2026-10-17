@@ -35,6 +35,11 @@ Item {
 		onRangeChanged: docroot.fetch()
 	}
 
+	ExportDialog {
+		id: exportDialog
+		client: docroot.client
+	}
+
 	Connections {
 		target: docroot.client
 		function onTimeEntryReportReceived(timeEntries, from, to, purpose) {
@@ -120,6 +125,11 @@ Item {
 						}
 						Item {
 							Layout.fillWidth: true
+						}
+						Button {
+							text: qsTr("Export…")
+							flat: true
+							onClicked: exportDialog.openFor(overview.weekStart, overview.weekEnd)
 						}
 						Label {
 							text: qsTr("%1 of %2").arg(docroot.formatHours(overview.totalHours)).arg(docroot.formatHours(overview.targetHours))

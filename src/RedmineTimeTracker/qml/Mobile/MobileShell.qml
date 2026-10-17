@@ -19,6 +19,10 @@ Item {
 
     required property RedmineClient client
     required property TimeTracker timeTracker
+    //! Reminders whose settings SettingsView offers (see Main.qml).
+    required property Reminders reminders
+    //! Whether the platform offers a system tray (for SettingsView's close-to-tray option).
+    property bool trayAvailable: false
     required property var activitiesModel
     //! Redmine's projects, see Main.qml.
     property var projects: []
@@ -130,6 +134,8 @@ Item {
 
         SettingsView {
             timeTracker: docroot.timeTracker
+            reminders: docroot.reminders
+            trayAvailable: docroot.trayAvailable
             client: docroot.client
             submitDialog: docroot.submitDialog
         }

@@ -222,8 +222,10 @@ public slots:
 	 * \brief getIssue
 	 * \param issueId
 	 * \param quiet Don't report failures via errorOccurred(), for fetches the user didn't ask for
+	 * \param withAllowedStatuses Include "allowed_statuses": the statuses the user may set the issue
+	 * to (Redmine 5.0 and later; absent before)
 	 */
-	void getIssue(int issueId, bool quiet = false);
+	void getIssue(int issueId, bool quiet = false, bool withAllowedStatuses = false);
 
 	/*!
 	 * \brief getIssues List issues, optionally filtered by project or status
