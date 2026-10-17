@@ -20,13 +20,14 @@ Item {
     //! The time entry custom field "Special" (Main.qml), or null if the server has none.
     property var specialField: null
 
-    //! Value of the Special field on a time entry from Redmine ("" if empty or not there).
+    //! Value of the Special field on a time entry from Redmine: "" if empty, undefined if the entry
+    //! doesn't have the field (so editing leaves it unchanged rather than clearing it).
     function specialOf(entry) {
         if (!docroot.specialField) {
-            return ""
+            return undefined
         }
         const field = (entry.custom_fields || []).find(f => f.id === docroot.specialField.id)
-        return field && field.value ? field.value : ""
+        return field ? (field.value || "") : undefined
     }
 
     EditTimeEntryDialog {
@@ -117,7 +118,7 @@ Item {
                     entryId: modelData.id
                     issueId: modelData.issue.id
                     projectName: modelData.project ? modelData.project.name : ""
-                    special: docroot.specialOf(modelData)
+                    special: docroot.specialOf(modelData) || ""
                     hours: modelData.hours
                     comment: modelData.comments || ""
                     spentOn: modelData.spent_on

@@ -29,6 +29,10 @@ static constexpr auto PROJECTS_GENERATION_ATTRIBUTE =
 	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 2);
 //! Request attribute carrying a RedmineClient::RequestTag (routing of separately handled replies)
 static constexpr auto ROUTING_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 3);
+//! Request attribute carrying the getTimeEntryCustomFields() call (mCustomFieldsGeneration) a reply
+//! belongs to
+static constexpr auto CUSTOM_FIELDS_GENERATION_ATTRIBUTE =
+	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 4);
 //! Page size used by getAllProjects(); 100 is the most Redmine returns per request
 static constexpr int PROJECTS_PAGE_SIZE = 100;
 
@@ -584,14 +588,14 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 void RedmineClient::getCustomFields()
 {
 	setLoading(true);
-	QString endpoint = QString("custom_fields.json");
-	mNetworkManager->get(createRequest(endpoint));
+	mNetworkManager->get(createRequest(ApiResources::CUSTOM_FIELDS));
 }
 
 void RedmineClient::getTimeEntryCustomFields()
 {
-	QNetworkRequest request = createRequest(QStringLiteral("custom_fields.json"));
+	QNetworkRequest request = createRequest(ApiResources::CUSTOM_FIELDS);
 	request.setAttribute(ROUTING_ATTRIBUTE, TimeEntryCustomFieldsTag);
+	request.setAttribute(CUSTOM_FIELDS_GENERATION_ATTRIBUTE, ++mCustomFieldsGeneration);
 	mNetworkManager->get(request);
 }
 
@@ -641,10 +645,15 @@ static QJsonArray timeEntryCustomFieldsFromEntries(const QJsonArray& entries)
 
 void RedmineClient::handleTimeEntryCustomFieldsReply(QNetworkReply* reply, RequestTag tag)
 {
+	// Answers for an API key that has changed since (see getTimeEntryCustomFields()).
+	const int generation = reply->request().attribute(CUSTOM_FIELDS_GENERATION_ATTRIBUTE).toInt();
+	if (generation != mCustomFieldsGeneration) {
+		return;
+	}
 	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
 
 	if (reply->error() != QNetworkReply::NoError) {
-		if (tag == TimeEntryCustomFieldsTag) {
+		if (tag == TimeEntryCustomFieldsTag && reply->error() == QNetworkReply::ContentAccessDenied) {
 			// Typically 403: only admins may list custom fields. Look at recent time entries instead.
 			qCDebug(lcRedmineClient) << "Custom fields not listable (" << reply->errorString()
 									 << "), deriving them from time entries";
@@ -652,6 +661,7 @@ void RedmineClient::handleTimeEntryCustomFieldsReply(QNetworkReply* reply, Reque
 			query.addQueryItem("limit", "100");
 			QNetworkRequest request = createRequest(ApiResources::TIME_ENTRIES, query);
 			request.setAttribute(ROUTING_ATTRIBUTE, TimeEntryCustomFieldsFallbackTag);
+			request.setAttribute(CUSTOM_FIELDS_GENERATION_ATTRIBUTE, generation);
 			mNetworkManager->get(request);
 		} else {
 			qCWarning(lcRedmineClient) << "Could not determine time entry custom fields:" << reply->errorString();
@@ -673,6 +683,22 @@ void RedmineClient::handleTimeEntryCustomFieldsReply(QNetworkReply* reply, Reque
 	}
 }
 
+void RedmineClient::updateConnectionStateFromReply(QNetworkReply* reply)
+{
+	if (reply->error() == QNetworkReply::NoError) {
+		activatePeriodicConnectionCheck();
+		setConnectionState(ConnectionState::ONLINE);
+		return;
+	}
+	if (REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {
+		toggleConnectionState(ConnectionState::OFFLINE);
+		if (reply->error() == QNetworkReply::HostNotFoundError ||
+			reply->error() == QNetworkReply::AuthenticationRequiredError) {
+			mConnectionCheckTimer.stop();
+		}
+	}
+}
+
 void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 {
 	reply->deleteLater();
@@ -683,6 +709,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	// (the fallback's time entries must not show up as e.g. timeEntriesReceived()).
 	const auto tag = static_cast<RequestTag>(reply->request().attribute(ROUTING_ATTRIBUTE).toInt());
 	if (tag == TimeEntryCustomFieldsTag || tag == TimeEntryCustomFieldsFallbackTag) {
+		updateConnectionStateFromReply(reply);
 		handleTimeEntryCustomFieldsReply(reply, tag);
 		return;
 	}
@@ -706,19 +733,11 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 				resourceIdFromPath(reply->url().path()), reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt());
 		}
 
-		if (REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {
-			toggleConnectionState(ConnectionState::OFFLINE);
-			if (reply->error() == QNetworkReply::HostNotFoundError ||
-				reply->error() == QNetworkReply::AuthenticationRequiredError) {
-				mConnectionCheckTimer.stop();
-			}
-		}
-
+		updateConnectionStateFromReply(reply);
 		return;
 	}
 
-	activatePeriodicConnectionCheck();
-	setConnectionState(ConnectionState::ONLINE);
+	updateConnectionStateFromReply(reply);
 
 	QByteArray data = reply->readAll();
 	QJsonDocument doc = QJsonDocument::fromJson(data);

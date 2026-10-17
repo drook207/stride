@@ -67,8 +67,18 @@ ApplicationWindow {
         }
     }
 
-    // Projects depend on the API key, and fetching them fails while offline: fetch them again
-    // after the key changed (once typing pauses) and when the connection comes back without them.
+    // Projects and the time entry custom fields depend on the API key (the keychain may also deliver
+    // it only after startup's requests), and fetching projects fails while offline: fetch them again
+    // after the key changed, once typing pauses, and projects when the connection comes back
+    // without them.
+    Timer {
+        id: apiKeyRefetchTimer
+        interval: 1000
+        onTriggered: {
+            redmineClient.getAllProjects();
+            redmineClient.getTimeEntryCustomFields();
+        }
+    }
     Timer {
         id: projectsRefetchTimer
         interval: 1000
@@ -77,7 +87,7 @@ ApplicationWindow {
     Connections {
         target: redmineClient
         function onApiKeyChanged() {
-            projectsRefetchTimer.restart();
+            apiKeyRefetchTimer.restart();
         }
         function onConnectionStateChanged() {
             if (redmineClient.connectionState === RedmineClient.ONLINE && window.projects.length === 0) {
@@ -98,11 +108,6 @@ ApplicationWindow {
         target: redmineClient
         function onTimeEntryCustomFieldsReceived(fields) {
             window.specialField = fields.find(field => field.name.toLowerCase() === "special") || null;
-        }
-        // The API key is read from the keychain asynchronously, possibly after startup's requests;
-        // the custom fields depend on who is asking (see getTimeEntryCustomFields), so ask again.
-        function onApiKeyChanged() {
-            redmineClient.getTimeEntryCustomFields();
         }
         function onProjectsReceived(projects) {
             // Closed and archived projects don't take new issues.

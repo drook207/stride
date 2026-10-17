@@ -30,17 +30,28 @@ ComboBox {
 	//! Selects an activity by id; nothing is selected if it isn't offered.
 	function selectActivity(id) {
 		combo.pickedId = id
-		combo.currentIndex = combo.indexOfValue(id)
+		combo.currentIndex = combo.indexOfActivity(id)
+	}
+
+	//! Index of an activity in the offered ones, or -1. A project that overrides a shared activity
+	//! may list it under the override's own id, so it's also looked up by the shared one's name.
+	function indexOfActivity(id) {
+		const index = combo.indexOfValue(id)
+		if (index >= 0 || id <= 0 || !combo.activitiesModel || !combo.model) {
+			return index
+		}
+		const shared = Array.from(combo.activitiesModel.timeEntryActivities).find(activity => activity.id === id)
+		return shared ? Array.from(combo.model).findIndex(activity => activity.name === shared.name) : -1
 	}
 
 	function syncSelection() {
 		if (!combo.selectDefault) {
-			combo.currentIndex = combo.pickedId > 0 ? combo.indexOfValue(combo.pickedId) : -1
+			combo.currentIndex = combo.pickedId > 0 ? combo.indexOfActivity(combo.pickedId) : -1
 			return
 		}
-		let index = combo.pickedId > 0 ? combo.indexOfValue(combo.pickedId) : -1
+		let index = combo.pickedId > 0 ? combo.indexOfActivity(combo.pickedId) : -1
 		if (index < 0 && combo.activitiesModel) {
-			index = combo.indexOfValue(combo.activitiesModel.defaultActivityId)
+			index = combo.indexOfActivity(combo.activitiesModel.defaultActivityId)
 		}
 		combo.currentIndex = index >= 0 ? index : (combo.count > 0 ? 0 : -1)
 	}

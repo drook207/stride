@@ -31,6 +31,7 @@ namespace ApiResources {
 	static const QString ISSUES = QStringLiteral("issues.json");
 	static const QString PROJECT = QStringLiteral("projects/%0.json"); // arg[0] == id
 	static const QString PROJECTS = QStringLiteral("projects.json");
+	static const QString CUSTOM_FIELDS = QStringLiteral("custom_fields.json");
 	static const QString TIME_ENTRY = QStringLiteral("time_entries/%0.json"); // arg[0] == id
 	static const QString TIME_ENTRIES = QStringLiteral("time_entries.json");
 }
@@ -461,6 +462,11 @@ private:
 	enum RequestTag { NoTag, TimeEntryCustomFieldsTag, TimeEntryCustomFieldsFallbackTag };
 
 	void handleTimeEntryCustomFieldsReply(QNetworkReply* reply, RequestTag tag);
+	//! Counts getTimeEntryCustomFields() calls, so replies of a superseded call are ignored.
+	int mCustomFieldsGeneration = 0;
+
+	//! Sets the connection state a reply shows: ONLINE on success, OFFLINE on connection loss.
+	void updateConnectionStateFromReply(QNetworkReply* reply);
 
 	/*!
 	 * \brief setLoading

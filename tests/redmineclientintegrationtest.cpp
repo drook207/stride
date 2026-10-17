@@ -466,6 +466,38 @@ TEST_F(RedmineClientIntegrationTest, TimeEntryCustomFieldsFallBackToTimeEntriesW
 	EXPECT_EQ(fields[1].toObject()["field_format"].toString().toStdString(), "bool");
 }
 
+TEST_F(RedmineClientIntegrationTest, TimeEntryCustomFieldsDontFallBackOnServerErrors)
+{
+	// Only "not allowed to list them" (403) is worth asking the time entries; other failures would
+	// fail there too.
+	server->enqueueResponse(MockHttpResponse { 500, "Internal Server Error", "" });
+
+	bool fieldsFired = false;
+	QObject::connect(
+		client.get(), &RedmineClient::timeEntryCustomFieldsReceived, [&](const QJsonArray&) { fieldsFired = true; });
+
+	client->getTimeEntryCustomFields();
+	ASSERT_TRUE(waitUntil([&]() { return server->requests().size() == 1; }));
+	waitUntil([]() { return false; }, 300); // time for the reply and a fallback request
+
+	EXPECT_EQ(server->requests().size(), 1);
+	EXPECT_FALSE(fieldsFired);
+}
+
+TEST_F(RedmineClientIntegrationTest, UpdateTimeEntryRequestTagIsNotMistakenForCustomFieldsRouting)
+{
+	// Request tags share no attribute with the routing of getTimeEntryCustomFields().
+	server->enqueueResponse(MockHttpResponse { 204, "No Content", "" });
+
+	int updatedTag = -1;
+	QObject::connect(client.get(), &RedmineClient::timeEntryUpdated, [&](int, int tag) { updatedTag = tag; });
+
+	client->updateTimeEntry(9, 1.0, "", "", 0, {}, 1);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryUpdated));
+
+	EXPECT_EQ(updatedTag, 1);
+}
+
 TEST_F(RedmineClientIntegrationTest, CreateAndUpdateTimeEntrySendCustomFields)
 {
 	const QVariantList customFields { QVariantMap { { "id", 1 }, { "value", "Overtime" } } };

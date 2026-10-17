@@ -6,7 +6,7 @@ import QtQuick.Controls
  *
  * Offers "None" plus the field's possible values. customFieldValues is what to send to Redmine
  * with a time entry (RedmineClient::createTimeEntry/updateTimeEntry). Disabled while the server
- * has no such field.
+ * has no such field, or only one without values to choose from (e.g. a text field).
  */
 ComboBox {
 	id: combo
@@ -17,8 +17,12 @@ ComboBox {
 	//! whose value should stay as it is unless changed.
 	property bool allowUnchanged: false
 
+	//! Whether field has values to offer: Redmine lists possible_values only for list-like formats
+	//! (list, key/value list, boolean), not e.g. for string or text fields.
+	readonly property bool usable: !!combo.field && Array.isArray(combo.field.possible_values)
+
 	//! [{id, value}] for the selected value ("" for None), or [] if nothing is selected.
-	readonly property var customFieldValues: combo.field && combo.currentIndex >= 0
+	readonly property var customFieldValues: combo.usable && combo.currentIndex >= 0
 											 ? [{
 													 "id": combo.field.id,
 													 "value": combo.currentValue
@@ -44,14 +48,14 @@ ComboBox {
 	model: [{
 			"label": qsTr("None"),
 			"value": ""
-		}].concat(combo.field ? combo.field.possible_values.map(possible => ({
+		}].concat(combo.usable ? combo.field.possible_values.map(possible => ({
 																		  "label": possible.label || possible.value,
 																		  "value": possible.value
 																	  })) : [])
 	textRole: "label"
 	valueRole: "value"
 	displayText: combo.currentIndex < 0 ? qsTr("Unchanged") : combo.currentText
-	enabled: combo.field !== null
+	enabled: combo.usable
 
 	implicitHeight: Metrics.controlHeight
 	topInset: 0
