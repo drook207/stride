@@ -38,6 +38,54 @@ Rectangle {
         }
     }
 
+    //! Whether the fields show the tracker's details yet; until then their changes aren't stored in
+    //! timeTracker, so starting up can't overwrite the restored ones.
+    property bool detailsRestored: false
+
+    // A tracker restored from the previous run (see TimeTracker::restoreTrackingState) brings its
+    // issue, comment and activity back into the fields.
+    Component.onCompleted: {
+        if (docroot.timeTracker.isTracking) {
+            issueField.value = docroot.timeTracker.currentIssueId
+            commentsField.text = docroot.timeTracker.trackingComment
+            if (docroot.timeTracker.trackingActivityId > 0) {
+                activityCombo.selectActivity(docroot.timeTracker.trackingActivityId)
+            }
+        }
+        docroot.detailsRestored = true
+    }
+
+    Connections {
+        target: commentsField
+        function onTextChanged() {
+            if (docroot.detailsRestored) {
+                docroot.timeTracker.trackingComment = commentsField.text
+            }
+        }
+    }
+    // The tracker can also be started elsewhere (e.g. continuing a recent entry): show what it tracks.
+    Connections {
+        target: docroot.timeTracker
+        function onCurrentIssueChanged() {
+            if (docroot.timeTracker.isTracking && issueField.value !== docroot.timeTracker.currentIssueId) {
+                issueField.value = docroot.timeTracker.currentIssueId
+            }
+        }
+        function onTrackingDetailsChanged() {
+            if (commentsField.text !== docroot.timeTracker.trackingComment) {
+                commentsField.text = docroot.timeTracker.trackingComment
+            }
+            if (docroot.timeTracker.trackingActivityId > 0 && docroot.selectedActivityId !== docroot.timeTracker.trackingActivityId) {
+                activityCombo.selectActivity(docroot.timeTracker.trackingActivityId)
+            }
+        }
+    }
+    onSelectedActivityIdChanged: {
+        if (docroot.detailsRestored) {
+            docroot.timeTracker.trackingActivityId = docroot.selectedActivityId
+        }
+    }
+
     Timer {
         id: inputValidatorTimer
         interval: 500

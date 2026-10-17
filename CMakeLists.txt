@@ -13,6 +13,10 @@ find_package(Qt6 REQUIRED Core)
 
 qt_standard_project_setup()
 
+# All QML modules go below one directory, so tools like qmllint and qmlls find each module's imports
+# (e.g. QRedmine.TimeTracker using QRedmine.Client) there.
+set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qt/qml)
+
 if(${CMAKE_SOURCE_DIR} EQUAL ${CMAKE_BINARY_DIR})
   message(FATAL_ERROR "Insource builds are not allowed")
 endif()

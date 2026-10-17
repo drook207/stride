@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
@@ -17,6 +19,10 @@ Item {
 
     required property RedmineClient client
     required property TimeTracker timeTracker
+    //! Reminders whose settings SettingsView offers (see Main.qml).
+    required property Reminders reminders
+    //! Whether the platform offers a system tray (for SettingsView's close-to-tray option).
+    property bool trayAvailable: false
     required property var activitiesModel
     //! Redmine's projects, see Main.qml.
     property var projects: []
@@ -60,8 +66,18 @@ Item {
 
                 view: stackView
                 timeTracker: docroot.timeTracker
-                componentsToLoad: [recentEntriesView, addTimeEntryView, getTimeEntriesView, addIssueView, settingsView]
-                buttonTitles: [qsTr("Recent Entries"), qsTr("Add Entry"), qsTr("Search Issue"), qsTr("Add Issue")]
+                componentsToLoad: [recentEntriesView, overviewView, addTimeEntryView, getTimeEntriesView, addIssueView, settingsView]
+                buttonTitles: [qsTr("Recent Entries"), qsTr("Overview"), qsTr("Add Entry"), qsTr("Search Issue"), qsTr("Add Issue")]
+            }
+
+            // Ctrl+1 .. Ctrl+n switch to the sidebar's views, Settings last.
+            Instantiator {
+                model: sidebar.componentsToLoad.length
+                delegate: Shortcut {
+                    required property int index
+                    sequence: "Ctrl+" + (index + 1)
+                    onActivated: sidebar.select(index)
+                }
             }
 
             StackView {
@@ -92,6 +108,14 @@ Item {
             timeTracker: docroot.timeTracker
             client: docroot.client
             activitiesModel: docroot.activitiesModel
+        }
+    }
+
+    Component {
+        id: overviewView
+        OverviewView {
+            timeTracker: docroot.timeTracker
+            client: docroot.client
         }
     }
 
@@ -131,6 +155,8 @@ Item {
 
         SettingsView {
             timeTracker: docroot.timeTracker
+            reminders: docroot.reminders
+            trayAvailable: docroot.trayAvailable
             client: docroot.client
             submitDialog: docroot.submitDialog
         }

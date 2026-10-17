@@ -1,8 +1,10 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import QtQuick.Window
+import QtCore
 import QRedmine.TimeTracker
 import QRedmine.Client
 
@@ -33,22 +35,20 @@ ApplicationWindow {
     property var allProjects: []
     //! Projects to pick from in Add Issue: active ones the user may add issues to.
     readonly property var projects: projectAccess.issueProjects
-    //! Whether the user's own time entries were fetched for linking since the last API key change.
-    property bool entriesLinked: false
     //! Whether reconnectRefetchTimer already caught up since the last server or API key change. Only
     //! once: with an invalid key, a server allowing anonymous access flips between online (anonymous
     //! requests) and offline (the user's), which would otherwise retry endlessly.
     property bool caughtUp: false
 
-    //! Asks Redmine for the user's time entries on the days of recent entries that aren't linked to
-    //! one (e.g. saved before linking existed), so TimeTracker can link them and they can be edited
-    //! on Redmine (see TimeTracker::linkExistingTimeEntries).
-    function linkUnlinkedEntries() {
+    //! Brings the local entries in line with Redmine: asks for the user's time entries on the days
+    //! of entries that aren't linked to one or are still to be sent, links the ones Redmine has
+    //! (e.g. saved before linking existed, or sent although the app didn't hear back), then sends
+    //! the rest (onOwnTimeEntriesReceived). Linking first every time keeps entries from being sent
+    //! twice.
+    function syncWithRedmine() {
         const range = timeTrackerInstance.unlinkedEntriesRange();
         if (range.from) {
             redmineClient.getOwnTimeEntries(range.from, range.to);
-        } else {
-            window.entriesLinked = true;
         }
     }
 
@@ -65,11 +65,15 @@ ApplicationWindow {
         }
 
         onTimeEntryCreated: function (timeEntry, requestTag) {
-            // Lets the local entry be edited on Redmine later: the dialogs pass its local id as the
-            // tag, see TimeTracker::linkCreatedTimeEntry.
-            timeTrackerInstance.linkCreatedTimeEntry(timeEntry, requestTag);
-            messageDialog.text = qsTr("Time entry created successfully");
-            messageDialog.open();
+            // Links the local entry (its id is the tag, see TimeTracker::submitTimeEntry) so it can be
+            // edited on Redmine later. Entries sent again in the background don't need a message.
+            if (timeTrackerInstance.linkCreatedTimeEntry(timeEntry, requestTag)) {
+                messageDialog.text = qsTr("Time entry created successfully");
+                messageDialog.open();
+            }
+        }
+        onTimeEntryCreateFailed: function (requestTag, httpStatus, error) {
+            timeTrackerInstance.submissionFailed(requestTag, httpStatus, error);
         }
     }
 
@@ -78,10 +82,13 @@ ApplicationWindow {
         redmineClient.getEnumerations(0);
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
+        if (!isNaN(timeTrackerInstance.interruptedAt.getTime())) {
+            interruptionDialog.open();
+        }
         redmineClient.getAllProjects();
         projectAccess.refresh();
         redmineClient.getTimeEntryCustomFields();
-        window.linkUnlinkedEntries();
+        window.syncWithRedmine();
         // Recent entries show their issue's project, which needs the issue cached locally. Quietly:
         // the user didn't ask for these, and one they can't fetch (e.g. no access any more) would
         // otherwise report an error on every launch.
@@ -97,12 +104,11 @@ ApplicationWindow {
         id: apiKeyRefetchTimer
         interval: 1000
         onTriggered: {
-            window.entriesLinked = false;
             window.caughtUp = false;
             redmineClient.getAllProjects();
             projectAccess.refresh();
             redmineClient.getTimeEntryCustomFields();
-            window.linkUnlinkedEntries();
+            window.syncWithRedmine();
         }
     }
     // Fetching fails quietly while offline: when the connection comes back, catch up once on what's
@@ -121,9 +127,6 @@ ApplicationWindow {
             if (!projectAccess.userKnown) {
                 projectAccess.refresh();
             }
-            if (!window.entriesLinked) {
-                window.linkUnlinkedEntries();
-            }
         }
     }
     Connections {
@@ -137,6 +140,25 @@ ApplicationWindow {
         function onConnectionStateChanged() {
             if (redmineClient.connectionState === RedmineClient.ONLINE) {
                 reconnectRefetchTimer.restart();
+                syncTimer.restart();
+            }
+        }
+    }
+    // Entries to send when the connection comes back, once the flurry of reconnecting settled.
+    Timer {
+        id: syncTimer
+        interval: 1000
+        onTriggered: window.syncWithRedmine()
+    }
+    // Entries can also fail while the connection stays up (e.g. a server error): try again now and
+    // then.
+    Timer {
+        interval: 2 * 60 * 1000
+        repeat: true
+        running: redmineClient.connectionState === RedmineClient.ONLINE
+        onTriggered: {
+            if (timeTrackerInstance.hasPendingEntries()) {
+                window.syncWithRedmine();
             }
         }
     }
@@ -150,6 +172,16 @@ ApplicationWindow {
     // side resolves to the shell's own property rather than an id here, binding it to itself.
     TimeTracker {
         id: timeTrackerInstance
+
+        onSubmitTimeEntry: function (localId, issueId, hours, comments, spentOn, activityId, customFields) {
+            redmineClient.createTimeEntry(issueId, hours, comments, spentOn, activityId, customFields, localId);
+        }
+        onSetIssueStatus: function (issueId, statusId) {
+            redmineClient.updateIssue(issueId, "", "", statusId);
+        }
+        onUpdateTimeEntryOnRedmine: function (redmineId, hours, comments, spentOn, activityId, customFields, tag) {
+            redmineClient.updateTimeEntry(redmineId, hours, comments, spentOn, activityId, customFields, tag);
+        }
     }
     TimeEntryActivitiesModel {
         id: activitiesModelInstance
@@ -164,14 +196,21 @@ ApplicationWindow {
             activitiesModelInstance.setProjectActivities(projects);
         }
         function onOwnTimeEntriesReceived(timeEntries) {
-            window.entriesLinked = true;
             timeTrackerInstance.linkExistingTimeEntries(timeEntries);
+            timeTrackerInstance.submitPendingEntries();
         }
         function onTimeEntryUpdated(timeEntryId, requestTag) {
             timeTrackerInstance.applyRedmineUpdate(timeEntryId, requestTag);
         }
         function onTimeEntryUpdateFailed(timeEntryId, requestTag) {
             timeTrackerInstance.discardRedmineUpdate(timeEntryId, requestTag);
+        }
+        // Refreshes the cached issue, e.g. after its status was set with a time entry.
+        function onIssueUpdated(issueId) {
+            redmineClient.getIssue(issueId, true);
+        }
+        function onTimeEntryDeleted(timeEntryId) {
+            timeTrackerInstance.removeDeletedTimeEntry(timeEntryId);
         }
         function onTimeEntryActivitiesReceived(value) {
             activitiesModelInstance.addTimeEntryActivities(value);
@@ -205,6 +244,8 @@ ApplicationWindow {
         DesktopShell {
             client: redmineClient
             timeTracker: timeTrackerInstance
+            reminders: remindersInstance
+            trayAvailable: trayIcon.available
             activitiesModel: activitiesModelInstance
             projects: window.projects
             specialField: window.specialField
@@ -217,6 +258,8 @@ ApplicationWindow {
         MobileShell {
             client: redmineClient
             timeTracker: timeTrackerInstance
+            reminders: remindersInstance
+            trayAvailable: trayIcon.available
             activitiesModel: activitiesModelInstance
             projects: window.projects
             specialField: window.specialField
@@ -241,6 +284,83 @@ ApplicationWindow {
 
     MessageDialog {
         id: messageDialog
+    }
+
+    TrayIcon {
+        id: trayIcon
+        timeTracker: timeTrackerInstance
+        window: window
+    }
+
+    Reminders {
+        id: remindersInstance
+        timeTracker: timeTrackerInstance
+        client: redmineClient
+        // As a system notification where there's a tray, else in the window.
+        onReminder: (title, message) => {
+            if (trayIcon.available) {
+                trayIcon.showMessage(title, message);
+            } else {
+                messageDialog.text = message;
+                messageDialog.open();
+            }
+        }
+    }
+
+    // Settings shared with SettingsView (same keys); read when needed, since that view writes them.
+    Settings {
+        id: appSettings
+    }
+
+    // Closing the window can leave the app running in the tray (an option in the settings), e.g. so
+    // the tracker keeps going without a window in the way.
+    onClosing: close => {
+        if (trayIcon.available && String(appSettings.value("tray/closeToTray", false)) === "true") {
+            close.accepted = false;
+            window.hide();
+        }
+    }
+
+    // The tracker kept running while the app was closed (or crashed) or the computer was asleep: ask
+    // whether that time counts.
+    Dialog {
+        id: interruptionDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        // Set when opened rather than bound to the window's width, which makes Material's Dialog
+        // report a binding loop with the wrapping label (see EditTimeEntryDialog).
+        width: 520
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        Overlay.modal: DialogScrim {}
+        title: qsTr("Timer still running")
+        standardButtons: Dialog.Yes | Dialog.No
+
+        Label {
+            width: parent.width
+            wrapMode: Text.WordWrap
+            text: (timeTrackerInstance.interruptedBySleep
+                   ? qsTr("The computer was asleep since %2 while the timer for #%1 was running. Should that time count?")
+                   : qsTr("The timer for #%1 was running when the app was last used, on %2. Should the time since then count?"))
+                .arg(timeTrackerInstance.currentIssueId)
+                .arg(timeTrackerInstance.interruptedAt.toLocaleString(Qt.locale(), Locale.ShortFormat))
+        }
+
+        onAboutToShow: {
+            width = Math.min(parent.width - 32, 520);
+            standardButton(Dialog.Yes).text = qsTr("Count it");
+            standardButton(Dialog.No).text = timeTrackerInstance.interruptedBySleep ? qsTr("Leave it out") : qsTr("Stop it then");
+        }
+        onAccepted: timeTrackerInstance.resolveInterruption(true)
+        onRejected: timeTrackerInstance.resolveInterruption(false)
+    }
+    Connections {
+        target: timeTrackerInstance
+        function onInterruptedAtChanged() {
+            if (!isNaN(timeTrackerInstance.interruptedAt.getTime())) {
+                interruptionDialog.open();
+            }
+        }
     }
 
     SubmitDialog {
