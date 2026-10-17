@@ -83,6 +83,14 @@ cmake --build --preset linux-debug --target qredminetesting
 ./build/linux-debug/tests/qredminetesting
 ```
 
+They cover the Redmine client and the app's storage and tracking logic (on an in-memory
+database). GitLab CI (`.gitlab-ci.yml`) runs them for every merge request and on `main`, together
+with the pre-commit hooks and qmllint, which must report no warnings:
+
+```bash
+cmake --build --preset linux-debug --target all_qmllint
+```
+
 For manual testing against a real server, a disposable local Redmine instance
 (with demo projects/issues/users/time entries) is available via Docker - see
 [docker/README.md](docker/README.md).
