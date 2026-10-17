@@ -38,8 +38,6 @@ Item {
 	ExportDialog {
 		id: exportDialog
 		client: docroot.client
-		// Its request for Redmine's entries replaces the overview's; ask again afterwards.
-		onFinished: docroot.fetch()
 	}
 
 	Connections {
