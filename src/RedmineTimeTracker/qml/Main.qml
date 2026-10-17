@@ -91,6 +91,9 @@ ApplicationWindow {
         redmineClient.getEnumerations(0);
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
+        if (!isNaN(timeTrackerInstance.interruptedAt.getTime())) {
+            interruptionDialog.open();
+        }
         redmineClient.getAllProjects();
         projectAccess.refresh();
         redmineClient.getTimeEntryCustomFields();
@@ -260,6 +263,41 @@ ApplicationWindow {
 
     MessageDialog {
         id: messageDialog
+    }
+
+    // The tracker kept running while the app was closed (or crashed): ask whether that time counts.
+    Dialog {
+        id: interruptionDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        width: Math.min(parent.width - 32, 520)
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        Overlay.modal: DialogScrim {}
+        title: qsTr("Timer still running")
+        standardButtons: Dialog.Yes | Dialog.No
+
+        contentItem: Label {
+            wrapMode: Text.WordWrap
+            text: qsTr("The timer for #%1 was running when the app was last used, on %2. Should the time since then count?")
+                .arg(timeTrackerInstance.currentIssueId)
+                .arg(timeTrackerInstance.interruptedAt.toLocaleString(Qt.locale(), Locale.ShortFormat))
+        }
+
+        Component.onCompleted: {
+            standardButton(Dialog.Yes).text = qsTr("Count it");
+            standardButton(Dialog.No).text = qsTr("Stop it then");
+        }
+        onAccepted: timeTrackerInstance.resolveInterruption(true)
+        onRejected: timeTrackerInstance.resolveInterruption(false)
+    }
+    Connections {
+        target: timeTrackerInstance
+        function onInterruptedAtChanged() {
+            if (!isNaN(timeTrackerInstance.interruptedAt.getTime())) {
+                interruptionDialog.open();
+            }
+        }
     }
 
     SubmitDialog {

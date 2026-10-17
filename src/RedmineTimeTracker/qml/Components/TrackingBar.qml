@@ -37,6 +37,37 @@ Rectangle {
 	// Same corner radius as the Sidebar, which shares this surface color.
 	radius: Metrics.panelRadius
 
+	//! Whether the fields show the tracker's details yet; until then their changes aren't stored in
+	//! timeTracker, so starting up can't overwrite the restored ones.
+	property bool detailsRestored: false
+
+	// A tracker restored from the previous run (see TimeTracker::restoreTrackingState) brings its
+	// issue, comment and activity back into the fields.
+	Component.onCompleted: {
+		if (docroot.timeTracker.isTracking) {
+			issueField.value = docroot.timeTracker.currentIssueId
+			commentsField.text = docroot.timeTracker.trackingComment
+			if (docroot.timeTracker.trackingActivityId > 0) {
+				activityCombo.selectActivity(docroot.timeTracker.trackingActivityId)
+			}
+		}
+		docroot.detailsRestored = true
+	}
+
+	Connections {
+		target: commentsField
+		function onTextChanged() {
+			if (docroot.detailsRestored) {
+				docroot.timeTracker.trackingComment = commentsField.text
+			}
+		}
+	}
+	onSelectedActivityIdChanged: {
+		if (docroot.detailsRestored) {
+			docroot.timeTracker.trackingActivityId = docroot.selectedActivityId
+		}
+	}
+
 	Timer {
 		id: inputValidatorTimer
 		interval: 500

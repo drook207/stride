@@ -25,12 +25,37 @@ class TimeTracker : public QObject {
 	Q_PROPERTY(QString elapsedTime READ elapsedTime NOTIFY elapsedTimeChanged)
 	Q_PROPERTY(QVariantList recentEntries READ recentEntries NOTIFY recentEntriesChanged)
 	Q_PROPERTY(QVariantList entriesFromId READ entriesFromId WRITE setEntriesFromId NOTIFY entriesFromIdChanged FINAL)
+	//! Comment and activity entered for the tracked time; kept with the tracker across restarts.
+	Q_PROPERTY(
+		QString trackingComment READ trackingComment WRITE setTrackingComment NOTIFY trackingDetailsChanged FINAL)
+	Q_PROPERTY(
+		int trackingActivityId READ trackingActivityId WRITE setTrackingActivityId NOTIFY trackingDetailsChanged FINAL)
+	//! When the app was last seen running while the restored tracker kept running (it was closed or
+	//! crashed meanwhile); invalid otherwise. See resolveInterruption().
+	Q_PROPERTY(QDateTime interruptedAt READ interruptedAt NOTIFY interruptedAtChanged FINAL)
 public:
+	//! A restored running tracker whose app was gone for longer than this asks whether to count the
+	//! time in between (interruptedAt); shorter gaps (e.g. a quick restart) just count.
+	static constexpr int INTERRUPTION_THRESHOLD_SECONDS = 120;
+
 	/*!
 	 * \brief TimeTracker
 	 * \param parent
 	 */
 	explicit TimeTracker(QObject* parent = nullptr);
+	~TimeTracker() override;
+
+	QString trackingComment() const;
+	void setTrackingComment(const QString& comment);
+	int trackingActivityId() const;
+	void setTrackingActivityId(int activityId);
+	QDateTime interruptedAt() const;
+
+	/*!
+	 * \brief resolveInterruption Decides about the time the app was gone (interruptedAt): count it,
+	 * or stop the tracker as it was when the app was last seen (it's paused then)
+	 */
+	Q_INVOKABLE void resolveInterruption(bool countTimeAway);
 
 	/*!
 	 * \brief isTracking
@@ -229,6 +254,8 @@ signals:
 	void entriesFromIdChanged();
 
 	void issueAddedOrUpdated();
+	void trackingDetailsChanged();
+	void interruptedAtChanged();
 
 	/*!
 	 * \brief submitTimeEntry Asks to create a local entry on Redmine; connect it to
@@ -250,6 +277,11 @@ private:
 	 */
 	void loadRecentEntries();
 
+	//! Saves the tracker to the database (or clears it there when not tracking).
+	void saveTrackingState();
+	//! Restores a tracker saved by a previous run.
+	void restoreTrackingState();
+
 	//! Emits submitTimeEntry() for an entry (as from Database::getTimeEntry()) not being sent yet.
 	void submitEntry(const QJsonObject& entry);
 
@@ -269,5 +301,10 @@ private:
 	QSet<int> mSubmitting;
 	//! Local ids of entries the user just added, whose creation on Redmine is worth a message.
 	QSet<int> mInteractiveSubmissions;
+	QString mTrackingComment;
+	int mTrackingActivityId = 0;
+	QDateTime mInterruptedAt;
+	//! Seconds since the saved tracker's last_seen was last updated.
+	int mSecondsSinceTouch = 0;
 };
 }

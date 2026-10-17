@@ -1,6 +1,7 @@
 #include "timetracker.h"
 #include "database.h"
 #include <QJsonDocument>
+#include <QSqlQuery>
 #include <gtest/gtest.h>
 
 using QRedmineClient::Database;
@@ -156,4 +157,53 @@ TEST_F(TimeTrackerTest, RejectedEntriesWaitUntilChanged)
 	tracker->updateRecentEntry(local, { { "hours", 1.0 }, { "comments", "Other issue" }, { "spent_on", day(1) } });
 	EXPECT_EQ(sent, 2);
 	EXPECT_EQ(tracker->recentEntries().first().toMap()["sync_status"].toInt(), Database::Pending);
+}
+
+TEST_F(TimeTrackerTest, RunningTrackerIsRestoredWithItsDetails)
+{
+	tracker->startTracking(42);
+	tracker->setTrackingComment("Reviewing");
+	tracker->setTrackingActivityId(9);
+
+	TimeTracker restored;
+	EXPECT_TRUE(restored.isTracking());
+	EXPECT_FALSE(restored.isPaused());
+	EXPECT_EQ(restored.currentIssueId(), 42);
+	EXPECT_EQ(restored.trackingComment().toStdString(), "Reviewing");
+	EXPECT_EQ(restored.trackingActivityId(), 9);
+	EXPECT_FALSE(restored.interruptedAt().isValid()); // the app was gone only briefly
+}
+
+TEST_F(TimeTrackerTest, PausedTrackerKeepsItsTimeAndStoppedOneIsForgotten)
+{
+	ASSERT_TRUE(
+		Database::saveTrackingState({ { "issue_id", 7 }, { "started_at", QDateTime() }, { "elapsed_seconds", 5400 } }));
+	{
+		TimeTracker restored;
+		EXPECT_TRUE(restored.isPaused());
+		EXPECT_EQ(restored.elapsedTime().toStdString(), "01:30:00");
+		restored.stopTracking();
+	}
+	TimeTracker afterStop;
+	EXPECT_FALSE(afterStop.isTracking());
+}
+
+TEST_F(TimeTrackerTest, TimeWhileTheAppWasGoneCanBeLeftOut)
+{
+	const QDateTime now = QDateTime::currentDateTime();
+	ASSERT_TRUE(Database::saveTrackingState(
+		{ { "issue_id", 7 }, { "started_at", now.addSecs(-3 * 3600) }, { "elapsed_seconds", 600 } }));
+	// The app was last seen two hours ago, one hour into the running stretch.
+	QSqlQuery query;
+	query.prepare("UPDATE tracking_state SET last_seen = ?");
+	query.addBindValue(now.addSecs(-2 * 3600));
+	ASSERT_TRUE(query.exec());
+
+	TimeTracker restored;
+	ASSERT_TRUE(restored.interruptedAt().isValid());
+	restored.resolveInterruption(false);
+
+	EXPECT_FALSE(restored.interruptedAt().isValid());
+	EXPECT_TRUE(restored.isPaused());
+	EXPECT_EQ(restored.elapsedTime().toStdString(), "01:10:00");
 }

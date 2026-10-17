@@ -124,7 +124,8 @@ bool Database::execute(const QString& sql)
 // has been released, since existing databases have already run it.
 const QList<bool (*)()>& Database::migrations()
 {
-	static const QList<bool (*)()> list { &Database::migrateToVersion1, &Database::migrateToVersion2 };
+	static const QList<bool (*)()> list { &Database::migrateToVersion1, &Database::migrateToVersion2,
+		&Database::migrateToVersion3 };
 	return list;
 }
 
@@ -179,6 +180,49 @@ bool Database::migrateToVersion2()
 {
 	return execute(SqlQueries::ADD_ACTIVITY_ID_COLUMN) && execute(SqlQueries::ADD_CUSTOM_FIELDS_COLUMN) &&
 		execute(SqlQueries::ADD_SYNC_ERROR_COLUMN) && execute(SqlQueries::MARK_UNLINKED_UNCONFIRMED);
+}
+
+bool Database::migrateToVersion3() { return execute(SqlQueries::CREATE_TRACKING_STATE_TABLE); }
+
+bool Database::saveTrackingState(const QVariantMap& state)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::SAVE_TRACKING_STATE, query)) {
+		return false;
+	}
+	const QDateTime startedAt = state["started_at"].toDateTime();
+	query.addBindValue(state["issue_id"].toInt());
+	query.addBindValue(startedAt.isValid() ? QVariant(startedAt) : QVariant(QMetaType::fromType<QDateTime>()));
+	query.addBindValue(state["elapsed_seconds"].toLongLong());
+	query.addBindValue(state["comment"].toString());
+	query.addBindValue(state["activity_id"].toInt());
+	query.addBindValue(QDateTime::currentDateTime());
+	return evaluateQueryExec(query);
+}
+
+QVariantMap Database::loadTrackingState()
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_TRACKING_STATE, query) || !evaluateQueryExec(query) || !query.next()) {
+		return {};
+	}
+	return { { "issue_id", query.value("issue_id").toInt() },
+		{ "started_at", query.value("started_at").isNull() ? QDateTime() : query.value("started_at").toDateTime() },
+		{ "elapsed_seconds", query.value("elapsed_seconds").toLongLong() },
+		{ "comment", query.value("comment").toString() }, { "activity_id", query.value("activity_id").toInt() },
+		{ "last_seen", query.value("last_seen").toDateTime() } };
+}
+
+bool Database::clearTrackingState() { return execute(SqlQueries::CLEAR_TRACKING_STATE); }
+
+bool Database::touchTrackingState()
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::TOUCH_TRACKING_STATE, query)) {
+		return false;
+	}
+	query.addBindValue(QDateTime::currentDateTime());
+	return evaluateQueryExec(query);
 }
 
 QList<int> Database::issueIdsWithoutProject(int limit)

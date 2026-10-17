@@ -58,6 +58,23 @@ namespace SqlQueries {
 	STATIC_CONST_QSTRING(ADD_ACTIVITY_ID_COLUMN, "ALTER TABLE time_entries ADD COLUMN activity_id INTEGER");
 	STATIC_CONST_QSTRING(ADD_CUSTOM_FIELDS_COLUMN, "ALTER TABLE time_entries ADD COLUMN custom_fields TEXT");
 	STATIC_CONST_QSTRING(ADD_SYNC_ERROR_COLUMN, "ALTER TABLE time_entries ADD COLUMN sync_error TEXT");
+	// Schema version 3: the running (or paused) tracker, so it survives closing the app. One row at most.
+	STATIC_CONST_QSTRING(CREATE_TRACKING_STATE_TABLE,
+		"CREATE TABLE tracking_state ("
+		"id INTEGER PRIMARY KEY CHECK (id = 1), "
+		"issue_id INTEGER NOT NULL, "
+		"started_at DATETIME, " // start of the current running stretch; NULL while paused
+		"elapsed_seconds INTEGER NOT NULL, " // tracked before started_at
+		"comment TEXT, "
+		"activity_id INTEGER, "
+		"last_seen DATETIME NOT NULL)"); // when the app last ran with this state
+	STATIC_CONST_QSTRING(SAVE_TRACKING_STATE,
+		"REPLACE INTO tracking_state (id, issue_id, started_at, elapsed_seconds, comment, activity_id, last_seen) "
+		"VALUES (1, ?, ?, ?, ?, ?, ?)");
+	STATIC_CONST_QSTRING(GET_TRACKING_STATE, "SELECT * FROM tracking_state WHERE id = 1");
+	STATIC_CONST_QSTRING(CLEAR_TRACKING_STATE, "DELETE FROM tracking_state");
+	STATIC_CONST_QSTRING(TOUCH_TRACKING_STATE, "UPDATE tracking_state SET last_seen = ?");
+
 	STATIC_CONST_QSTRING(MARK_UNLINKED_UNCONFIRMED,
 		"UPDATE time_entries SET sync_status = 2 WHERE redmine_id IS NULL OR redmine_id = 0");
 
@@ -181,6 +198,17 @@ public:
 	 */
 	static bool setSyncStatus(int id, SyncStatus status, const QString& error = QString());
 
+	/*!
+	 * \brief saveTrackingState Remembers the tracker: "issue_id", "started_at" (QDateTime, invalid
+	 * while paused), "elapsed_seconds", "comment", "activity_id"; last_seen is set to now
+	 */
+	static bool saveTrackingState(const QVariantMap& state);
+	//! The remembered tracker (fields as for saveTrackingState(), plus "last_seen"); empty if none.
+	static QVariantMap loadTrackingState();
+	static bool clearTrackingState();
+	//! Records that the app is still running with the remembered tracker.
+	static bool touchTrackingState();
+
 	static QJsonArray getRecentEntries(int limit = 50);
 
 	/*!
@@ -209,6 +237,7 @@ private:
 	static const QList<bool (*)()>& migrations();
 	static bool migrateToVersion1();
 	static bool migrateToVersion2();
+	static bool migrateToVersion3();
 	//! An entry row as a JSON object (see getRecentEntries()).
 	static QJsonObject entryFromQuery(const QSqlQuery& query);
 	static bool execute(const QString& sql);

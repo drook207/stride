@@ -24,6 +24,98 @@ TimeTracker::TimeTracker(QObject* parent)
 		qCWarning(lcTimeTracker) << "Could not initialize database";
 	}
 	loadRecentEntries();
+	restoreTrackingState();
+}
+
+TimeTracker::~TimeTracker()
+{
+	if (isTracking()) {
+		Database::touchTrackingState();
+	}
+}
+
+QString TimeTracker::trackingComment() const { return mTrackingComment; }
+
+void TimeTracker::setTrackingComment(const QString& comment)
+{
+	if (mTrackingComment == comment) {
+		return;
+	}
+	mTrackingComment = comment;
+	emit trackingDetailsChanged();
+	if (isTracking()) {
+		saveTrackingState();
+	}
+}
+
+int TimeTracker::trackingActivityId() const { return mTrackingActivityId; }
+
+void TimeTracker::setTrackingActivityId(int activityId)
+{
+	if (mTrackingActivityId == activityId) {
+		return;
+	}
+	mTrackingActivityId = activityId;
+	emit trackingDetailsChanged();
+	if (isTracking()) {
+		saveTrackingState();
+	}
+}
+
+QDateTime TimeTracker::interruptedAt() const { return mInterruptedAt; }
+
+void TimeTracker::saveTrackingState()
+{
+	if (!isTracking()) {
+		Database::clearTrackingState();
+		return;
+	}
+	Database::saveTrackingState({ { "issue_id", mCurrentIssueId },
+		{ "started_at", mTimer.isActive() ? mStartTime : QDateTime() }, { "elapsed_seconds", mTotalElapsedTime },
+		{ "comment", mTrackingComment }, { "activity_id", mTrackingActivityId } });
+	mSecondsSinceTouch = 0;
+}
+
+void TimeTracker::restoreTrackingState()
+{
+	const QVariantMap state = Database::loadTrackingState();
+	if (state.isEmpty()) {
+		return;
+	}
+	mCurrentIssueId = state["issue_id"].toInt();
+	mTotalElapsedTime = state["elapsed_seconds"].toLongLong();
+	mTrackingComment = state["comment"].toString();
+	mTrackingActivityId = state["activity_id"].toInt();
+	mStartTime = state["started_at"].toDateTime();
+	mIsPaused = !mStartTime.isValid();
+	if (!mIsPaused) {
+		mTimer.start();
+		const QDateTime lastSeen = state["last_seen"].toDateTime();
+		if (lastSeen.isValid() && lastSeen.secsTo(QDateTime::currentDateTime()) > INTERRUPTION_THRESHOLD_SECONDS) {
+			mInterruptedAt = lastSeen;
+		}
+	}
+	qCInfo(lcTimeTracker) << "Restored the tracker for issue" << mCurrentIssueId
+						  << (mIsPaused ? "(paused)" : "(running)");
+}
+
+void TimeTracker::resolveInterruption(bool countTimeAway)
+{
+	if (!mInterruptedAt.isValid()) {
+		return;
+	}
+	if (!countTimeAway && mTimer.isActive()) {
+		// Stop the clock where it was when the app was last seen.
+		mTotalElapsedTime += std::max<qint64>(0, mStartTime.secsTo(mInterruptedAt));
+		mTimer.stop();
+		mIsPaused = true;
+		emit pausedChanged();
+		emit trackingChanged();
+		emit elapsedTimeChanged();
+	}
+	mInterruptedAt = QDateTime();
+	emit interruptedAtChanged();
+	saveTrackingState();
 }
 
 bool TimeTracker::isTracking() const { return mTimer.isActive() || mIsPaused; }
@@ -74,6 +166,7 @@ void TimeTracker::startTracking(int issueId)
 	mTotalElapsedTime = 0;
 	mIsPaused = false;
 	mTimer.start();
+	saveTrackingState();
 
 	emit trackingChanged();
 	emit currentIssueChanged();
@@ -88,6 +181,11 @@ void TimeTracker::stopTracking()
 		}
 		mTimer.stop();
 		mIsPaused = false;
+		saveTrackingState();
+		if (mInterruptedAt.isValid()) {
+			mInterruptedAt = QDateTime();
+			emit interruptedAtChanged();
+		}
 		emit trackingChanged();
 		emit pausedChanged();
 	}
@@ -99,6 +197,7 @@ void TimeTracker::pauseTracking()
 		mTotalElapsedTime += mStartTime.secsTo(QDateTime::currentDateTime());
 		mTimer.stop();
 		mIsPaused = true;
+		saveTrackingState();
 		emit pausedChanged();
 		emit trackingChanged();
 	}
@@ -110,6 +209,7 @@ void TimeTracker::resumeTracking()
 		mStartTime = QDateTime::currentDateTime();
 		mTimer.start();
 		mIsPaused = false;
+		saveTrackingState();
 		emit pausedChanged();
 		emit trackingChanged();
 	}
@@ -451,5 +551,13 @@ bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId
 	return interactive;
 }
 
-void TimeTracker::updateElapsedTime() { emit elapsedTimeChanged(); }
+void TimeTracker::updateElapsedTime()
+{
+	// Lets a restart tell how long the app was gone (see restoreTrackingState()).
+	if (++mSecondsSinceTouch >= 30) {
+		mSecondsSinceTouch = 0;
+		Database::touchTrackingState();
+	}
+	emit elapsedTimeChanged();
+}
 }
