@@ -35,31 +35,20 @@ ApplicationWindow {
     property var allProjects: []
     //! Projects to pick from in Add Issue: active ones the user may add issues to.
     readonly property var projects: projectAccess.issueProjects
-    //! Whether the user's own time entries were fetched for linking since the last API key change.
-    property bool entriesLinked: false
     //! Whether reconnectRefetchTimer already caught up since the last server or API key change. Only
     //! once: with an invalid key, a server allowing anonymous access flips between online (anonymous
     //! requests) and offline (the user's), which would otherwise retry endlessly.
     property bool caughtUp: false
 
-    //! Asks Redmine for the user's time entries on the days of recent entries that aren't linked to
-    //! one (e.g. saved before linking existed), so TimeTracker can link them and they can be edited
-    //! on Redmine (see TimeTracker::linkExistingTimeEntries).
-    function linkUnlinkedEntries() {
+    //! Brings the local entries in line with Redmine: asks for the user's time entries on the days
+    //! of entries that aren't linked to one or are still to be sent, links the ones Redmine has
+    //! (e.g. saved before linking existed, or sent although the app didn't hear back), then sends
+    //! the rest (onOwnTimeEntriesReceived). Linking first every time keeps entries from being sent
+    //! twice.
+    function syncWithRedmine() {
         const range = timeTrackerInstance.unlinkedEntriesRange();
         if (range.from) {
             redmineClient.getOwnTimeEntries(range.from, range.to);
-        } else {
-            window.entriesLinked = true;
-            window.sendPendingEntries();
-        }
-    }
-
-    //! Sends the entries saved while Redmine wasn't reachable. Only after linking, which finds ones
-    //! that did reach Redmine although the app didn't hear back, so they aren't sent twice.
-    function sendPendingEntries() {
-        if (window.entriesLinked) {
-            timeTrackerInstance.submitPendingEntries();
         }
     }
 
@@ -99,7 +88,7 @@ ApplicationWindow {
         redmineClient.getAllProjects();
         projectAccess.refresh();
         redmineClient.getTimeEntryCustomFields();
-        window.linkUnlinkedEntries();
+        window.syncWithRedmine();
         // Recent entries show their issue's project, which needs the issue cached locally. Quietly:
         // the user didn't ask for these, and one they can't fetch (e.g. no access any more) would
         // otherwise report an error on every launch.
@@ -115,12 +104,11 @@ ApplicationWindow {
         id: apiKeyRefetchTimer
         interval: 1000
         onTriggered: {
-            window.entriesLinked = false;
             window.caughtUp = false;
             redmineClient.getAllProjects();
             projectAccess.refresh();
             redmineClient.getTimeEntryCustomFields();
-            window.linkUnlinkedEntries();
+            window.syncWithRedmine();
         }
     }
     // Fetching fails quietly while offline: when the connection comes back, catch up once on what's
@@ -139,9 +127,6 @@ ApplicationWindow {
             if (!projectAccess.userKnown) {
                 projectAccess.refresh();
             }
-            if (!window.entriesLinked) {
-                window.linkUnlinkedEntries();
-            }
         }
     }
     Connections {
@@ -155,7 +140,25 @@ ApplicationWindow {
         function onConnectionStateChanged() {
             if (redmineClient.connectionState === RedmineClient.ONLINE) {
                 reconnectRefetchTimer.restart();
-                window.sendPendingEntries();
+                syncTimer.restart();
+            }
+        }
+    }
+    // Entries to send when the connection comes back, once the flurry of reconnecting settled.
+    Timer {
+        id: syncTimer
+        interval: 1000
+        onTriggered: window.syncWithRedmine()
+    }
+    // Entries can also fail while the connection stays up (e.g. a server error): try again now and
+    // then.
+    Timer {
+        interval: 2 * 60 * 1000
+        repeat: true
+        running: redmineClient.connectionState === RedmineClient.ONLINE
+        onTriggered: {
+            if (timeTrackerInstance.hasPendingEntries()) {
+                window.syncWithRedmine();
             }
         }
     }
@@ -173,6 +176,9 @@ ApplicationWindow {
         onSubmitTimeEntry: function (localId, issueId, hours, comments, spentOn, activityId, customFields) {
             redmineClient.createTimeEntry(issueId, hours, comments, spentOn, activityId, customFields, localId);
         }
+        onUpdateTimeEntryOnRedmine: function (redmineId, hours, comments, spentOn, activityId, customFields, tag) {
+            redmineClient.updateTimeEntry(redmineId, hours, comments, spentOn, activityId, customFields, tag);
+        }
     }
     TimeEntryActivitiesModel {
         id: activitiesModelInstance
@@ -187,9 +193,8 @@ ApplicationWindow {
             activitiesModelInstance.setProjectActivities(projects);
         }
         function onOwnTimeEntriesReceived(timeEntries) {
-            window.entriesLinked = true;
             timeTrackerInstance.linkExistingTimeEntries(timeEntries);
-            window.sendPendingEntries();
+            timeTrackerInstance.submitPendingEntries();
         }
         function onTimeEntryUpdated(timeEntryId, requestTag) {
             timeTrackerInstance.applyRedmineUpdate(timeEntryId, requestTag);

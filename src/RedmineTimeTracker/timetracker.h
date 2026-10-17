@@ -113,12 +113,15 @@ public:
 	Q_INVOKABLE QVariantList issueIdsWithoutProject() const;
 
 	/*!
-	 * \brief unlinkedEntriesRange Days spanned by the recent entries of the last month that aren't
-	 * linked to a Redmine time entry, e.g. entries saved before linking existed or whose link was missed
+	 * \brief unlinkedEntriesRange Days spanned by the entries to link (see linkCandidates()): recent
+	 * unlinked ones of the last month, e.g. saved before linking existed, and all still to be sent
 	 * \return {"from", "to"} as "yyyy-MM-dd" for RedmineClient::getOwnTimeEntries(), or an empty
 	 * map if all recent entries are linked
 	 */
 	Q_INVOKABLE QVariantMap unlinkedEntriesRange() const;
+
+	//! Whether there are entries to send to Redmine (Database::Pending).
+	Q_INVOKABLE bool hasPendingEntries() const;
 
 	/*!
 	 * \brief stageRedmineUpdate Remembers changes sent to Redmine for one of its time entries, to be
@@ -278,6 +281,14 @@ signals:
 	void submitTimeEntry(int localId, int issueId, double hours, const QString& comments, const QString& spentOn,
 		int activityId, const QVariantList& customFields);
 
+	/*!
+	 * \brief updateTimeEntryOnRedmine Asks to update a time entry on Redmine with values changed while
+	 * it was being created; connect it to RedmineClient::updateTimeEntry() (the tag is staged, see
+	 * stageRedmineUpdate())
+	 */
+	void updateTimeEntryOnRedmine(int redmineId, double hours, const QString& comments, const QString& spentOn,
+		int activityId, const QVariantList& customFields, int tag);
+
 private slots:
 	/*!
 	 * \brief updateElapsedTime
@@ -294,6 +305,8 @@ private:
 	void saveTrackingState();
 	//! Restores a tracker saved by a previous run.
 	void restoreTrackingState();
+	//! Entries linkExistingTimeEntries() tries to link, see unlinkedEntriesRange().
+	QVariantList linkCandidates() const;
 
 	//! Emits submitTimeEntry() for an entry (as from Database::getTimeEntry()) not being sent yet.
 	void submitEntry(const QJsonObject& entry);
@@ -319,5 +332,7 @@ private:
 	QDateTime mInterruptedAt;
 	//! Seconds since the saved tracker's last_seen was last updated.
 	int mSecondsSinceTouch = 0;
+	//! Local ids of entries changed while being sent, see linkCreatedTimeEntry().
+	QSet<int> mEditedWhileSubmitting;
 };
 }
