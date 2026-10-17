@@ -44,6 +44,8 @@ qt_add_qml_module(
   QRedmine.TimeTracker
  VERSION
  1.0
+ DEPENDENCIES
+ QRedmine.Client
  QML_FILES
  qml/Main.qml
  qml/Header.qml

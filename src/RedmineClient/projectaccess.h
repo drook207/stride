@@ -27,7 +27,7 @@ namespace QRedmineClient {
 class QT_REDMINECLIENT_EXPORT ProjectAccess : public QObject {
 	Q_OBJECT
 	QML_ELEMENT
-	Q_PROPERTY(RedmineClient* client READ client WRITE setClient NOTIFY clientChanged FINAL)
+	Q_PROPERTY(QRedmineClient::RedmineClient* client READ client WRITE setClient NOTIFY clientChanged FINAL)
 	Q_PROPERTY(QJsonArray projects READ projects WRITE setProjects NOTIFY projectsChanged FINAL)
 	Q_PROPERTY(QVariantList issueProjects READ issueProjects NOTIFY issueProjectsChanged FINAL)
 	Q_PROPERTY(bool userKnown READ userKnown NOTIFY userKnownChanged FINAL)

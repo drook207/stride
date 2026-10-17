@@ -7,12 +7,6 @@ import QRedmine.Client
 
 /*!
  * \brief Connection settings: Redmine URL, API key, and SSL toggle.
- *
- * Note: the fields below bind to the bare id `redmineClient`, not to the `client` property
- * declared here - that id is declared in Main.qml and resolves through the ambient QML context
- * chain (Main.qml -> [Desktop|Mobile]Shell -> StackView -> this view), which happens to work but
- * is fragile: it would silently break if this view were ever instantiated outside that chain. The
- * `client` property is unused; prefer `docroot.client` for any new bindings here.
  */
 Item {
     id: docroot
@@ -35,16 +29,16 @@ Item {
                 TextField {
                     Layout.fillWidth: true
                     Layout.preferredHeight: Metrics.controlHeight
-                    text: redmineClient.baseUrl
+                    text: docroot.client.baseUrl
                     validator: RegularExpressionValidator {
                         regularExpression: /^https?:\/\/[^\s\/$.?#].[^\s]*$/
                     }
                     onAccepted: {
                         console.log("Valid URL entered: " + text);
                         if (text.endsWith("/")) {
-                            redmineClient.baseUrl = text;
+                            docroot.client.baseUrl = text;
                         } else {
-                            redmineClient.baseUrl = text + "/";
+                            docroot.client.baseUrl = text + "/";
                         }
                     }
                 }
@@ -57,8 +51,8 @@ Item {
                 TextField {
                     Layout.fillWidth: true
                     Layout.preferredHeight: Metrics.controlHeight
-                    text: redmineClient.apiKey
-                    onTextChanged: redmineClient.apiKey = text
+                    text: docroot.client.apiKey
+                    onTextChanged: docroot.client.apiKey = text
                     echoMode: TextInput.Password
                 }
             }
@@ -66,8 +60,8 @@ Item {
             CheckBox {
                 Layout.leftMargin: -8
                 text: qsTr("Use SSL")
-                checked: redmineClient.useSSL
-                onCheckedChanged: redmineClient.useSSL = checked
+                checked: docroot.client.useSSL
+                onCheckedChanged: docroot.client.useSSL = checked
             }
         }
 
