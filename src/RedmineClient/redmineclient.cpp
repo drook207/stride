@@ -20,6 +20,8 @@ namespace QRedmineClient {
 // be (insecurely) persisted under before it was migrated to the OS-native secure storage.
 static const QString API_KEY_KEYCHAIN_KEY = QStringLiteral("apiKey");
 static const QString LEGACY_API_KEY_SETTING = QStringLiteral("client/apiKey");
+//! Request attribute carrying the requestTag of createTimeEntry()/updateTimeEntry() to the reply
+static constexpr auto REQUEST_TAG_ATTRIBUTE = QNetworkRequest::User;
 
 // Service identifier the API key is stored under in the OS-native secure storage (see securestorage.h).
 // Derived from the application name rather than a fixed literal so that, e.g., the test binary
@@ -294,7 +296,7 @@ void RedmineClient::toggleConnectionState(ConnectionState newConnectionState)
 }
 
 void RedmineClient::createTimeEntry(
-	int issueId, double hours, const QString& comments, const QString& spentOn, int activityId)
+	int issueId, double hours, const QString& comments, const QString& spentOn, int activityId, int requestTag)
 {
 	setLoading(true);
 
@@ -317,11 +319,13 @@ void RedmineClient::createTimeEntry(
 	QJsonDocument doc(timeEntryData);
 	QByteArray data = doc.toJson();
 
-	mNetworkManager->post(createRequest(ApiResources::TIME_ENTRIES), data);
+	QNetworkRequest request = createRequest(ApiResources::TIME_ENTRIES);
+	request.setAttribute(REQUEST_TAG_ATTRIBUTE, requestTag);
+	mNetworkManager->post(request, data);
 }
 
 void RedmineClient::updateTimeEntry(
-	int timeEntryId, double hours, const QString& comments, const QString& spentOn, int activityId)
+	int timeEntryId, double hours, const QString& comments, const QString& spentOn, int activityId, int requestTag)
 {
 	setLoading(true);
 
@@ -340,8 +344,9 @@ void RedmineClient::updateTimeEntry(
 	QJsonDocument doc(timeEntryData);
 	QByteArray data = doc.toJson();
 
-	QString endpoint = ApiResources::TIME_ENTRY.arg(timeEntryId);
-	mNetworkManager->put(createRequest(endpoint), data);
+	QNetworkRequest request = createRequest(ApiResources::TIME_ENTRY.arg(timeEntryId));
+	request.setAttribute(REQUEST_TAG_ATTRIBUTE, requestTag);
+	mNetworkManager->put(request, data);
 }
 
 void RedmineClient::getTimeEntries(int issueId)
@@ -544,6 +549,12 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		qWarning(lcRedmineClient) << QStringLiteral("[%0] %1: ").arg(reply->error()).arg(reply->errorString())
 								  << QJsonDocument(response).toJson(QJsonDocument::Compact);
 
+		if (reply->operation() == QNetworkAccessManager::PutOperation &&
+			reply->url().path().contains("/time_entries/")) {
+			emit timeEntryUpdateFailed(
+				resourceIdFromPath(reply->url().path()), reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt());
+		}
+
 		if (REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {
 			toggleConnectionState(ConnectionState::OFFLINE);
 			if (reply->error() == QNetworkReply::HostNotFoundError ||
@@ -600,7 +611,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			path = reply->url().path();
 			id = resourceIdFromPath(path);
 			if (path.contains("/time_entries/")) {
-				emit timeEntryUpdated(id);
+				emit timeEntryUpdated(id, reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt());
 			} else if (path.contains("/issues/")) {
 				emit issueUpdated(id);
 			} else if (path.contains("/projects/")) {
@@ -610,7 +621,8 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 
 		case QNetworkAccessManager::PostOperation:
 			if (response.contains("time_entry")) {
-				emit timeEntryCreated(response["time_entry"].toObject());
+				emit timeEntryCreated(
+					response["time_entry"].toObject(), reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt());
 			}
 			if (response.contains("issue")) {
 				emit issueCreated(response["issue"].toObject());

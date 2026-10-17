@@ -82,9 +82,11 @@ public:
 	 * applied locally by applyRedmineUpdate() once Redmine confirms them, so the local data never
 	 * shows changes Redmine rejected
 	 * \param redmineId Redmine's id of the time entry
-	 * \param changes As for updateRecentEntry(), plus an optional "activity_id"
+	 * \param changes As for updateRecentEntry(), plus optional "activity_id" and "activity_name"
+	 * \return Tag to pass to RedmineClient::updateTimeEntry(), which hands it back to
+	 * applyRedmineUpdate() or discardRedmineUpdate()
 	 */
-	Q_INVOKABLE void stageRedmineUpdate(int redmineId, const QVariantMap& changes);
+	Q_INVOKABLE int stageRedmineUpdate(int redmineId, const QVariantMap& changes);
 
 public slots:
 	/*!
@@ -111,8 +113,10 @@ public slots:
 	/*!
 	 * \brief addRecentEntry
 	 * \param entry
+	 * \return The new entry's local id, to pass to RedmineClient::createTimeEntry() as requestTag
+	 * so linkCreatedTimeEntry() can link it; -1 if it couldn't be saved
 	 */
-	void addRecentEntry(const QVariantMap& entry);
+	int addRecentEntry(const QVariantMap& entry);
 
 	/*!
 	 * \brief addEntriesFromId
@@ -130,15 +134,24 @@ public slots:
 	 * \brief applyRedmineUpdate Applies the changes staged for a Redmine time entry (see
 	 * stageRedmineUpdate()) to the local entries linked to it and to entriesFromId. Connected to
 	 * RedmineClient::timeEntryUpdated.
+	 * \param tag As returned by stageRedmineUpdate()
 	 */
-	void applyRedmineUpdate(int redmineId);
+	void applyRedmineUpdate(int redmineId, int tag);
+
+	/*!
+	 * \brief discardRedmineUpdate Forgets changes Redmine rejected (see stageRedmineUpdate()).
+	 * Connected to RedmineClient::timeEntryUpdateFailed.
+	 * \param tag As returned by stageRedmineUpdate()
+	 */
+	void discardRedmineUpdate(int redmineId, int tag);
 
 	/*!
 	 * \brief linkCreatedTimeEntry Links the local entry a time entry just created on Redmine was
 	 * made from to that time entry, so it can be edited on Redmine later. Connected to
 	 * RedmineClient::timeEntryCreated.
+	 * \param localId The local entry's id, as returned by addRecentEntry(); ignored if not positive
 	 */
-	void linkCreatedTimeEntry(const QJsonObject& timeEntry);
+	void linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId);
 
 signals:
 	/*!
@@ -189,7 +202,10 @@ private:
 	qint64 mTotalElapsedTime;
 	QVariantList mRecentEntries;
 	QVariantList mEntriesFromId;
-	//! Changes sent to Redmine but not confirmed yet, by Redmine time entry id
+	//! Changes sent to Redmine but not confirmed yet, by the tag stageRedmineUpdate() returned. Kept
+	//! per request rather than per time entry, so a confirmation applies exactly the changes it
+	//! confirms even while another update of the same entry is under way.
 	QHash<int, QVariantMap> mPendingRedmineUpdates;
+	int mLastRedmineUpdateTag = 0;
 };
 }

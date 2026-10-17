@@ -37,9 +37,10 @@ ApplicationWindow {
             messageDialog.open();
         }
 
-        onTimeEntryCreated: function (timeEntry) {
-            // Lets the local entry be edited on Redmine later, see TimeTracker::linkCreatedTimeEntry.
-            timeTrackerInstance.linkCreatedTimeEntry(timeEntry);
+        onTimeEntryCreated: function (timeEntry, requestTag) {
+            // Lets the local entry be edited on Redmine later: the dialogs pass its local id as the
+            // tag, see TimeTracker::linkCreatedTimeEntry.
+            timeTrackerInstance.linkCreatedTimeEntry(timeEntry, requestTag);
             messageDialog.text = qsTr("Time entry created successfully");
             messageDialog.open();
         }
@@ -62,8 +63,11 @@ ApplicationWindow {
     }
     Connections {
         target: redmineClient
-        function onTimeEntryUpdated(timeEntryId) {
-            timeTrackerInstance.applyRedmineUpdate(timeEntryId);
+        function onTimeEntryUpdated(timeEntryId, requestTag) {
+            timeTrackerInstance.applyRedmineUpdate(timeEntryId, requestTag);
+        }
+        function onTimeEntryUpdateFailed(timeEntryId, requestTag) {
+            timeTrackerInstance.discardRedmineUpdate(timeEntryId, requestTag);
         }
         function onTimeEntryActivitiesReceived(value) {
             activitiesModelInstance.addTimeEntryActivities(value);

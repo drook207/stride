@@ -151,10 +151,13 @@ public slots:
 	 * \param comments
 	 * \param spentOn
 	 * \param activityId
+	 * \param requestTag Passed on unchanged with timeEntryCreated(), e.g. to tell which local entry
+	 * the time entry was made from
 	 */
 	void createTimeEntry(int issueId, double hours, const QString& comments,
 		const QString& spentOn = QDateTime::currentDateTime().toString("yyyy-MM-dd"),
-		int activityId = 4); // 4 is often "Development"
+		int activityId = 4, // 4 is often "Development"
+		int requestTag = 0);
 
 	// Update an existing time entry
 	/*!
@@ -164,9 +167,11 @@ public slots:
 	 * \param comments
 	 * \param spentOn New date as "yyyy-MM-dd", left unchanged if empty
 	 * \param activityId New activity, left unchanged if not positive
+	 * \param requestTag Passed on unchanged with timeEntryUpdated() or timeEntryUpdateFailed(), to
+	 * tell which of several updates of the same time entry was confirmed or rejected
 	 */
-	void updateTimeEntry(
-		int timeEntryId, double hours, const QString& comments, const QString& spentOn = QString(), int activityId = 0);
+	void updateTimeEntry(int timeEntryId, double hours, const QString& comments, const QString& spentOn = QString(),
+		int activityId = 0, int requestTag = 0);
 
 	// Get time entries for an issue
 	/*!
@@ -288,14 +293,24 @@ signals:
 	/*!
 	 * \brief timeEntryCreated
 	 * \param timeEntry
+	 * \param requestTag As passed to createTimeEntry()
 	 */
-	void timeEntryCreated(const QJsonObject& timeEntry);
+	void timeEntryCreated(const QJsonObject& timeEntry, int requestTag);
 
 	/*!
 	 * \brief timeEntryUpdated
 	 * \param timeEntryId
+	 * \param requestTag As passed to updateTimeEntry()
 	 */
-	void timeEntryUpdated(int timeEntryId);
+	void timeEntryUpdated(int timeEntryId, int requestTag);
+
+	/*!
+	 * \brief timeEntryUpdateFailed Emitted when Redmine rejects an update of a time entry, or it
+	 * can't be reached; errorOccurred() reports the reason
+	 * \param timeEntryId
+	 * \param requestTag As passed to updateTimeEntry()
+	 */
+	void timeEntryUpdateFailed(int timeEntryId, int requestTag);
 
 	/*!
 	 * \brief timeEntriesReceived

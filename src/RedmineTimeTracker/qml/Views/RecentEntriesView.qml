@@ -30,9 +30,9 @@ Item {
 			if (redmineId > 0) {
 				// Linked to a Redmine time entry: change it there; the local copy follows once Redmine
 				// confirms (TimeTracker.applyRedmineUpdate, wired up in Main.qml).
-				docroot.timeTracker.stageRedmineUpdate(redmineId, changes)
+				const tag = docroot.timeTracker.stageRedmineUpdate(redmineId, changes)
 				docroot.client.updateTimeEntry(redmineId, changes.hours, changes.comments, changes.spent_on,
-											   changes.activity_id || 0)
+											   changes.activity_id || 0, tag)
 			} else {
 				docroot.timeTracker.updateRecentEntry(editDialog.entry.id, changes)
 			}
