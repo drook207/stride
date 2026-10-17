@@ -35,6 +35,8 @@ qt_add_executable(QRedmineTimeTracker main.cpp ${APP_ICON_RESOURCE_WINDOWS})
 
 # Shared layout sizes, used as a QML singleton (see qml/Components/Metrics.qml).
 set_source_files_properties(qml/Components/Metrics.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+# Hours parsing/formatting for the time fields, a QML singleton too (see qml/Components/HoursFormat.qml).
+set_source_files_properties(qml/Components/HoursFormat.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_qml_module(
  QRedmineTimeTracker
@@ -59,6 +61,7 @@ qt_add_qml_module(
  qml/Components/DialogScrim.qml
  qml/Components/ClearButton.qml
  qml/Components/Metrics.qml
+ qml/Components/HoursFormat.qml
  qml/Components/Card.qml
  qml/Components/PageTitle.qml
  qml/Components/FormPage.qml
@@ -66,6 +69,10 @@ qt_add_qml_module(
  qml/Components/TimeEntryDelegate.qml
  qml/Components/DatePickerField.qml
  qml/Components/TimePickerField.qml
+ qml/Components/TimeRangeRow.qml
+ qml/Components/EditTimeEntryDialog.qml
+ qml/Components/ActivityComboBox.qml
+ qml/Components/SpecialFieldComboBox.qml
  qml/Desktop/DesktopShell.qml
  qml/Mobile/MobileShell.qml
  qml/Mobile/MobileHeader.qml
@@ -96,6 +103,7 @@ qt_add_qml_module(
  qml/Assets/Icons/solid/chevron-right.svg
  qml/Assets/Icons/solid/calendar-days.svg
  qml/Assets/Icons/solid/clock.svg
+ qml/Assets/Icons/solid/pen.svg
  qml/Assets/Icons/solid/plus.svg
  qml/Assets/Icons/app-icon.svg
  qml/Assets/Icons/app-icon.ico

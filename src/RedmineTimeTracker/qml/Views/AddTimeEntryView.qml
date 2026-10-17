@@ -21,37 +21,21 @@ Item {
     property RedmineClient client: undefined
     //! TimeEntryActivitiesModel providing the activities for the Activity combo box.
     property var activitiesModel: undefined
+    //! The time entry custom field "Special" (Main.qml), or null if the server has none.
+    property var specialField: null
     property AddDialog addDialog: AddDialog {
         client: docroot.client
         timeTracker: docroot.timeTracker
     }
-    //! Copies the current field values into addDialog. Note: timeSpentField is always parsed with
-    //! the "de_DE" locale (decimal comma, e.g. "1,5") regardless of the user's actual system
-    //! locale - matches the field's "eg. 1,0" placeholder, but means it won't accept "1.5".
+    //! Copies the current field values into addDialog. timeSpentField is parsed by HoursFormat
+    //! (decimal comma, e.g. "1,5"); hours that don't parse are left as they were.
     function saveInput() {
         docroot.addDialog.spentOn = spentOnField.isoDate
         docroot.addDialog.issueId = issueField.value
-        var german = Qt.locale("de_DE")
-        const number = Number.fromLocaleString(german, timeSpentField.text)
-        docroot.addDialog.hours = number
-    }
-
-    //! Fills timeSpentField from the From/To range once both are set. An end before the start is
-    //! taken as spanning midnight (e.g. 22:00-01:00 = 3 hours). Redmine only stores the hours, so
-    //! the range itself isn't submitted.
-    function applyTimeRange() {
-        if (!fromField.hasTime || !toField.hasTime) {
-            return
+        const number = HoursFormat.parse(timeSpentField.text)
+        if (!isNaN(number)) {
+            docroot.addDialog.hours = number
         }
-        let minutes = toField.totalMinutes - fromField.totalMinutes
-        if (minutes < 0) {
-            minutes += 24 * 60
-        }
-        if (minutes === 0) {
-            return
-        }
-        // Same "de_DE" decimal comma format saveInput() parses, see there.
-        timeSpentField.text = (minutes / 60).toLocaleString(Qt.locale("de_DE"), 'f', 2)
     }
 
     Timer {
@@ -92,36 +76,11 @@ Item {
                 }
             }
 
-            // Optional helper: picking a time range fills in "Time spent".
-            RowLayout {
+            // Optional helper: picking a time range fills in "Time spent". Redmine only stores
+            // the hours, so the range itself isn't submitted.
+            TimeRangeRow {
                 Layout.fillWidth: true
-                spacing: 12
-
-                LabeledField {
-                    Layout.fillWidth: true
-                    label: qsTr("From")
-
-                    TimePickerField {
-                        id: fromField
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Metrics.controlHeight
-                        onTimePicked: docroot.applyTimeRange()
-                    }
-                }
-
-                LabeledField {
-                    Layout.fillWidth: true
-                    label: qsTr("To")
-
-                    TimePickerField {
-                        id: toField
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Metrics.controlHeight
-                        // Suggest one hour after the start time.
-                        initialMinutes: fromField.hasTime ? fromField.totalMinutes + 60 : -1
-                        onTimePicked: docroot.applyTimeRange()
-                    }
-                }
+                onDurationPicked: hours => timeSpentField.text = HoursFormat.format(hours)
             }
 
             RowLayout {
@@ -143,9 +102,7 @@ Item {
                         }
                         onAccepted: {
                             if (acceptableInput) {
-                                var german = Qt.locale("de_DE")
-                                const number = Number.fromLocaleString(german, text)
-                                docroot.addDialog.hours = number
+                                docroot.addDialog.hours = HoursFormat.parse(text)
                             }
                         }
                         onTextChanged: {
@@ -177,33 +134,30 @@ Item {
                     Layout.fillWidth: true
                     label: qsTr("Activity")
 
-                    ComboBox {
+                    ActivityComboBox {
                         id: activityCombo
                         Layout.fillWidth: true
                         Layout.preferredHeight: Metrics.controlHeight
-                        topInset: 0
-                        bottomInset: 0
-                        model: docroot.activitiesModel ? docroot.activitiesModel.timeEntryActivities : []
-                        textRole: "name"
-                        valueRole: "id"
-                        // Submit the activity that is shown, including the preselected first one;
-                        // 0 (Redmine's default activity) while none are loaded yet.
-                        onCurrentValueChanged: docroot.addDialog.activityId = currentValue !== undefined ? currentValue : 0
+                        activitiesModel: docroot.activitiesModel
+                        projectId: issueField.projectId
+                        // Submit the activity that is shown; 0 (Redmine's default) while none are loaded yet.
+                        onActivityIdChanged: docroot.addDialog.activityId = activityId
+                        Component.onCompleted: docroot.addDialog.activityId = activityId
                     }
                 }
 
-                //! Known non-functional placeholder, mirroring the TrackingBar's: empty model,
-                //! nothing reads its selection.
+                // Redmine's "Special" time entry custom field; hidden while the server has none.
                 LabeledField {
                     Layout.fillWidth: true
+                    visible: docroot.specialField !== null
                     label: qsTr("Special")
 
-                    ComboBox {
+                    SpecialFieldComboBox {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Metrics.controlHeight
-                        topInset: 0
-                        bottomInset: 0
-                        model: []
+                        field: docroot.specialField
+                        onCustomFieldValuesChanged: docroot.addDialog.customFields = customFieldValues
+                        Component.onCompleted: docroot.addDialog.customFields = customFieldValues
                     }
                 }
             }

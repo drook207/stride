@@ -32,6 +32,8 @@ Dialog {
 	property double hours: 0.0
 	//! Redmine time entry activity id; 0 lets Redmine use its default activity.
 	property int activityId: 0
+	//! Custom field values to submit ([{id, value}]), see SpecialFieldComboBox.
+	property var customFields: []
 
 	onAccepted: {
 
@@ -43,8 +45,8 @@ Dialog {
 		console.log("Add dialog issueId value: ", issueIdResult)
 		console.log("Add dialog comment value: ", commentsResult)
 		console.log("Add dialog spentOn value: ", spentOnResult)
-		// Add to local history
-		docroot.timeTracker.addRecentEntry({
+		// Add to local history; its id lets the entry be linked to the created time entry.
+		const localId = docroot.timeTracker.addRecentEntry({
 											   "issueId": issueIdResult,
 											   "hours": hoursResult,
 											   "comments": commentsResult,
@@ -52,7 +54,7 @@ Dialog {
 										   })
 
 		// Submit to Redmine
-		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult, docroot.activityId)
+		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult, docroot.activityId, docroot.customFields, localId)
 	}
 
 	onRejected: {

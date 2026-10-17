@@ -20,8 +20,11 @@ Rectangle {
 	required property RedmineClient client
 	required property SubmitDialog submitDialog
 	required property var activitiesModel
+	//! The time entry custom field "Special" (Main.qml), or null if the server has none.
+	property var specialField: null
 
-	property int selectedActivityId: 0
+	//! Activity to submit with the tracked time; 0 lets Redmine use its default.
+	readonly property int selectedActivityId: activityCombo.activityId
 
 	//! Height of every control in the bar (buttons, fields, combo boxes), so they line up.
 	readonly property int controlHeight: Metrics.controlHeight
@@ -176,41 +179,32 @@ Rectangle {
 			Layout.minimumWidth: 120
 			Layout.maximumWidth: 240
 			label: qsTr("Activity")
-			ComboBox {
+			ActivityComboBox {
 				id: activityCombo
 				Layout.fillWidth: true
 				Layout.preferredHeight: docroot.controlHeight
-				topInset: 0
-				bottomInset: 0
 				font.pixelSize: 13
-				model: docroot.activitiesModel.timeEntryActivities
-				textRole: "name"
-				valueRole: "id"
-				// Submit the activity that is shown, including the preselected first one; 0 (Redmine's
-				// default activity) while none are loaded yet.
-				onCurrentValueChanged: docroot.selectedActivityId = currentValue !== undefined ? currentValue : 0
+				activitiesModel: docroot.activitiesModel
+				projectId: issueField.projectId
 			}
 		}
 
-		//! Known non-functional placeholder: empty model, nothing reads its selection. Not
-		//! rendered by MobileTrackingBar, which otherwise mirrors this bar's fields, and hidden here
-		//! below compactWidth.
+		//! Redmine's "Special" time entry custom field. Hidden while the server has none, and below
+		//! compactWidth; MobileTrackingBar doesn't offer it.
 		LabeledField {
 			Layout.alignment: Qt.AlignBottom
 			Layout.fillWidth: true
 			Layout.preferredWidth: 150
 			Layout.minimumWidth: 110
 			Layout.maximumWidth: 200
-			visible: docroot.width >= docroot.compactWidth
+			visible: docroot.specialField !== null && docroot.width >= docroot.compactWidth
 			label: qsTr("Special")
-			ComboBox {
+			SpecialFieldComboBox {
 				id: specialCombo
 				Layout.fillWidth: true
 				Layout.preferredHeight: docroot.controlHeight
-				topInset: 0
-				bottomInset: 0
 				font.pixelSize: 13
-				model: []
+				field: docroot.specialField
 			}
 		}
 
@@ -231,6 +225,8 @@ Rectangle {
 				docroot.submitDialog.comment = commentsField.text
 				docroot.submitDialog.issueId = issueField.value
 				docroot.submitDialog.activityId = docroot.selectedActivityId
+				// Only sent while the field is shown, so a hidden selection never ends up on an entry.
+				docroot.submitDialog.customFields = specialCombo.visible ? specialCombo.customFieldValues : []
 				docroot.submitDialog.open()
 			}
 		}

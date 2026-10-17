@@ -101,11 +101,45 @@ bool Database::createIssuesDatabase()
 		return false;
 	}
 
+	// Migrate databases created before the project_name column existed.
+	QSqlQuery columns;
+	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUES_COLUMNS, columns) || !evaluateQueryExec(columns)) {
+		return false;
+	}
+	bool hasProjectName = false;
+	while (columns.next()) {
+		hasProjectName = hasProjectName || columns.value("name").toString() == QStringLiteral("project_name");
+	}
+	if (!hasProjectName) {
+		QSqlQuery migration;
+		if (!evaluateQueryPrepare(SqlQueries::ADD_ISSUES_PROJECT_NAME_COLUMN, migration) ||
+			!evaluateQueryExec(migration)) {
+			return false;
+		}
+	}
+
 	return true;
 }
 
-bool Database::addIssue(int issueId, const QString& subject, int projectId, int statusId, const QString& description,
-	const QDateTime& createdOn, const QDateTime& updatedOn)
+QList<int> Database::issueIdsWithoutProject(int limit)
+{
+	QList<int> ids;
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUE_IDS_WITHOUT_PROJECT, query)) {
+		return ids;
+	}
+	query.addBindValue(limit);
+	if (!evaluateQueryExec(query)) {
+		return ids;
+	}
+	while (query.next()) {
+		ids.append(query.value(0).toInt());
+	}
+	return ids;
+}
+
+bool Database::addIssue(int issueId, const QString& subject, int projectId, const QString& projectName, int statusId,
+	const QString& description, const QDateTime& createdOn, const QDateTime& updatedOn)
 {
 	QSqlQuery query;
 	// INSERT OR REPLACE
@@ -116,6 +150,7 @@ bool Database::addIssue(int issueId, const QString& subject, int projectId, int 
 	query.bindValue(":id", issueId);
 	query.bindValue(":subject", subject);
 	query.bindValue(":project_id", projectId);
+	query.bindValue(":project_name", projectName);
 	query.bindValue(":status_id", statusId);
 	query.bindValue(":description", description);
 	query.bindValue(":created_on", createdOn);
@@ -141,11 +176,11 @@ QSqlQuery Database::getIssues()
 	return query;
 }
 
-bool Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
+int Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
 {
 	QSqlQuery query;
 	if (!evaluateQueryPrepare(SqlQueries::ADD_TIME_ENTRY, query)) {
-		return false;
+		return -1;
 	}
 
 	QDateTime now = QDateTime::currentDateTime();
@@ -157,9 +192,40 @@ bool Database::addTimeEntry(int issueId, double hours, const QString& comments, 
 	query.addBindValue(now);
 
 	if (!evaluateQueryExec(query)) {
-		return false;
+		return -1;
 	}
-	return true;
+	return query.lastInsertId().toInt();
+}
+
+int Database::updateTimeEntry(int id, double hours, const QString& comments, const QDateTime& spentOn)
+{
+	return updateTimeEntries(QStringLiteral("id"), id, hours, comments, spentOn);
+}
+
+int Database::updateTimeEntriesByRedmineId(
+	int redmineId, double hours, const QString& comments, const QDateTime& spentOn)
+{
+	return updateTimeEntries(QStringLiteral("redmine_id"), redmineId, hours, comments, spentOn);
+}
+
+int Database::updateTimeEntries(
+	const QString& keyColumn, int key, double hours, const QString& comments, const QDateTime& spentOn)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::UPDATE_TIME_ENTRIES_WHERE + keyColumn + QStringLiteral(" = ?"), query)) {
+		return -1;
+	}
+
+	query.addBindValue(hours);
+	query.addBindValue(comments);
+	query.addBindValue(spentOn);
+	query.addBindValue(QDateTime::currentDateTime());
+	query.addBindValue(key);
+
+	if (!evaluateQueryExec(query)) {
+		return -1;
+	}
+	return query.numRowsAffected();
 }
 
 bool Database::updateSyncStatus(int id, int redmineId)
@@ -252,6 +318,8 @@ QJsonArray Database::getRecentEntries(int limit)
 		entry["spent_on"] = query.value("spent_on").toString();
 		entry["sync_status"] = query.value("sync_status").toInt();
 		entry["redmine_id"] = query.value("redmine_id").toInt();
+		entry["project_id"] = query.value("project_id").toInt();
+		entry["project_name"] = query.value("project_name").toString();
 		entries.append(entry);
 	}
 

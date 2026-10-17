@@ -21,8 +21,14 @@ ItemDelegate {
 	required property var spentOn
 	//! Redmine's id of the time entry itself; hidden when negative (e.g. not synced yet).
 	property int entryId: -1
+	//! Name of the issue's project; hidden when empty (e.g. the issue isn't cached yet).
+	property string projectName: ""
+	//! Value of the Special custom field (e.g. "Overtime"), shown as a small label; hidden when empty.
+	property string special: ""
 	//! Draws a divider below this entry; disable it for the last one.
 	property bool showDivider: true
+	//! Whether clicking the entry edits it (the view handles `clicked`); shows a pen icon on hover.
+	property bool editable: false
 
 	//! Formats a decimal hour count (e.g. 1.5) as "HH:MM:SS" (e.g. "01:30:00").
 	function formatDuration(hours) {
@@ -37,6 +43,10 @@ ItemDelegate {
 	}
 
 	width: ListView.view ? ListView.view.width : implicitWidth
+
+	HoverHandler {
+		cursorShape: delegate.editable ? Qt.PointingHandCursor : Qt.ArrowCursor
+	}
 	topPadding: 12
 	bottomPadding: 12
 	leftPadding: 12
@@ -95,6 +105,28 @@ ItemDelegate {
 					font.weight: Font.DemiBold
 				}
 				Label {
+					visible: delegate.projectName.length > 0
+					text: delegate.projectName
+					color: Material.secondaryTextColor
+					font.pixelSize: 12
+					elide: Text.ElideRight
+					Layout.maximumWidth: 220
+				}
+				Label {
+					visible: delegate.special.length > 0
+					text: delegate.special
+					color: Material.foreground
+					font.pixelSize: 11
+					leftPadding: 6
+					rightPadding: 6
+					topPadding: 1
+					bottomPadding: 1
+					background: Rectangle {
+						radius: 4
+						color: Qt.rgba(1, 1, 1, 0.12)
+					}
+				}
+				Label {
 					visible: delegate.entryId >= 0
 					text: qsTr("Entry %1").arg(delegate.entryId)
 					color: Material.hintTextColor
@@ -116,6 +148,22 @@ ItemDelegate {
 				text: delegate.comment
 				color: Material.secondaryTextColor
 				wrapMode: Text.WordWrap
+			}
+		}
+
+		IconImage {
+			Layout.alignment: Qt.AlignVCenter
+			visible: delegate.editable
+			opacity: delegate.hovered || delegate.visualFocus ? 1 : 0
+			source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/pen.svg"
+			sourceSize.width: 14
+			sourceSize.height: 14
+			color: Material.secondaryTextColor
+
+			Behavior on opacity {
+				NumberAnimation {
+					duration: 100
+				}
 			}
 		}
 

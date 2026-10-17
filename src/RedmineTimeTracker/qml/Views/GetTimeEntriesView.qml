@@ -15,6 +15,38 @@ Item {
 
     required property TimeTracker timeTracker
     required property RedmineClient client
+    //! TimeEntryActivitiesModel for the edit dialog's Activity combo box.
+    required property var activitiesModel
+    //! The time entry custom field "Special" (Main.qml), or null if the server has none.
+    property var specialField: null
+
+    //! Value of the Special field on a time entry from Redmine: "" if empty, undefined if the entry
+    //! doesn't have the field (so editing leaves it unchanged rather than clearing it).
+    function specialOf(entry) {
+        if (!docroot.specialField) {
+            return undefined
+        }
+        const field = (entry.custom_fields || []).find(f => f.id === docroot.specialField.id)
+        return field ? (field.value || "") : undefined
+    }
+
+    EditTimeEntryDialog {
+        id: editDialog
+
+        //! Redmine id of the time entry being edited.
+        property int entryId: -1
+
+        activitiesModel: docroot.activitiesModel
+        specialField: docroot.specialField
+
+        // The list (and any local copies) follow once Redmine confirms the change
+        // (TimeTracker.applyRedmineUpdate, wired up in Main.qml).
+        onSaved: changes => {
+            const tag = docroot.timeTracker.stageRedmineUpdate(editDialog.entryId, changes)
+            docroot.client.updateTimeEntry(editDialog.entryId, changes.hours, changes.comments, changes.spent_on,
+                                           changes.activity_id || 0, changes.custom_fields || [], tag)
+        }
+    }
 
     ColumnLayout {
         anchors {
@@ -85,10 +117,27 @@ Item {
 
                     entryId: modelData.id
                     issueId: modelData.issue.id
+                    projectName: modelData.project ? modelData.project.name : ""
+                    special: docroot.specialOf(modelData) || ""
                     hours: modelData.hours
                     comment: modelData.comments || ""
                     spentOn: modelData.spent_on
                     showDivider: index < ListView.view.count - 1
+                    editable: true
+
+                    onClicked: {
+                        editDialog.entryId = modelData.id
+                        editDialog.openFor({
+                                               "issueId": modelData.issue.id,
+                                               "projectId": modelData.project ? modelData.project.id : -1,
+                                               "hours": modelData.hours,
+                                               "comments": modelData.comments,
+                                               "spentOn": modelData.spent_on,
+                                               "activityId": modelData.activity ? modelData.activity.id : 0,
+                                               "special": docroot.specialOf(modelData),
+                                               "localOnly": false
+                                           })
+                    }
                 }
 
                 ScrollBar.vertical: ScrollBar {}

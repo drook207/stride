@@ -1,5 +1,8 @@
 #include "issuemodel.h"
 
+#include <QCollator>
+#include <algorithm>
+
 namespace QRedmineClient {
 
 void IssueModel::updateIssueList()
@@ -10,12 +13,23 @@ void IssueModel::updateIssueList()
 	QSqlQuery query = Database::getIssues();
 
 	while (query.next()) {
-		Issue issue = { query.value("id").toInt(), query.value("subject").toString(),
-			query.value("project_id").toInt(), query.value("status_id").toInt(),
+		Issue issue = { query.value("id").toInt(), query.value("subject").toString(), query.value("project_id").toInt(),
+			query.value("project_name").toString(), query.value("status_id").toInt(),
 			query.value("description").toString(), query.value("created_on").toDateTime(),
 			query.value("updated_on").toDateTime() };
 		mIssues.append(issue);
 	}
+
+	// Grouped by project for the suggestions: alphabetically like Recent Entries' groups (locale
+	// aware, ignoring case), issues without a project last; by id within a project (see GET_ISSUES).
+	QCollator collator;
+	collator.setCaseSensitivity(Qt::CaseInsensitive);
+	std::stable_sort(mIssues.begin(), mIssues.end(), [&collator](const Issue& a, const Issue& b) {
+		if (a.projectName.isEmpty() || b.projectName.isEmpty()) {
+			return !a.projectName.isEmpty() && b.projectName.isEmpty();
+		}
+		return collator.compare(a.projectName, b.projectName) < 0;
+	});
 
 	endResetModel();
 }
@@ -46,6 +60,8 @@ QVariant IssueModel::data(const QModelIndex& index, int role) const
 			return issue.subject;
 		case ProjectIdRole:
 			return issue.projectId;
+		case ProjectNameRole:
+			return issue.projectName;
 		case StatusIdRole:
 			return issue.statusId;
 		case DescriptionRole:
@@ -65,6 +81,13 @@ bool IssueModel::hasIssue(int issue)
 	return it != mIssues.end();
 }
 
+int IssueModel::projectIdOf(int issueId) const
+{
+	const auto it =
+		std::find_if(mIssues.cbegin(), mIssues.cend(), [issueId](const Issue& issue) { return issue.id == issueId; });
+	return it != mIssues.cend() ? it->projectId : -1;
+}
+
 QHash<int, QByteArray> IssueModel::roleNames() const
 {
 	QHash<int, QByteArray> roles;
@@ -72,6 +95,7 @@ QHash<int, QByteArray> IssueModel::roleNames() const
 	roles[IdAndSubjectRole] = "idAndSubject";
 	roles[SubjectRole] = "subject";
 	roles[ProjectIdRole] = "projectId";
+	roles[ProjectNameRole] = "projectName";
 	roles[StatusIdRole] = "statusId";
 	roles[DescriptionRole] = "description";
 	roles[CreatedOnRole] = "createdOn";

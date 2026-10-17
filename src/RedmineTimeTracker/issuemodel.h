@@ -18,6 +18,7 @@ public:
 		IdAndSubjectRole,
 		SubjectRole,
 		ProjectIdRole,
+		ProjectNameRole,
 		StatusIdRole,
 		DescriptionRole,
 		CreatedOnRole,
@@ -33,6 +34,12 @@ public:
 	QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 
 	Q_INVOKABLE bool hasIssue(int issue);
+
+	/*!
+	 * \brief projectIdOf Project of a cached issue
+	 * \return The project id, or -1 if the issue isn't cached
+	 */
+	Q_INVOKABLE int projectIdOf(int issueId) const;
 public slots:
 	void updateIssueList();
 
@@ -44,6 +51,7 @@ private:
 		int id;
 		QString subject;
 		int projectId;
+		QString projectName;
 		int statusId;
 		QString description;
 		QDateTime createdOn;
