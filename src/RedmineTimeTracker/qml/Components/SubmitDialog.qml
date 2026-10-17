@@ -41,8 +41,8 @@ Dialog {
 		const comments = docroot.comment
 		const spentOn = docroot.spentOn === "" ? new Date() : Date.fromLocaleDateString(spentOn)
 		console.log("Issue ID: " + issueId)
-		// Add to local history
-		docroot.timeTracker.addRecentEntry({
+		// Add to local history; its id lets the entry be linked to the created time entry.
+		const localId = docroot.timeTracker.addRecentEntry({
 											   "issueId": issueId,
 											   "hours": hours,
 											   "comments": comments,
@@ -50,7 +50,7 @@ Dialog {
 										   })
 
 		// Submit to Redmine
-		docroot.client.createTimeEntry(issueId, hours, comments, docroot.spentOn === "" ? Qt.formatDate(new Date(), "yyyy-MM-dd") : docroot.spentOn, docroot.activityId, docroot.customFields)
+		docroot.client.createTimeEntry(issueId, hours, comments, docroot.spentOn === "" ? Qt.formatDate(new Date(), "yyyy-MM-dd") : docroot.spentOn, docroot.activityId, docroot.customFields, localId)
 		docroot.comment = ""
 	}
 

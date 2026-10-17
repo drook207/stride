@@ -185,6 +185,31 @@ TEST_F(RedmineClientIntegrationTest, GetProjectsWithPaginationSendsQueryParamete
 	EXPECT_EQ(request.query.queryItemValue("include").toStdString(), "time_entry_activities");
 }
 
+TEST_F(RedmineClientIntegrationTest, GetAllProjectsRequestsEveryPageAndEmitsThemOnce)
+{
+	server->enqueueResponse(
+		MockHttpResponse { 200, "OK", R"({"projects":[{"id":1},{"id":2}],"total_count":3,"offset":0,"limit":100})" });
+	server->enqueueResponse(
+		MockHttpResponse { 200, "OK", R"({"projects":[{"id":3}],"total_count":3,"offset":2,"limit":100})" });
+
+	int emitted = 0;
+	QJsonArray received;
+	QObject::connect(client.get(), &RedmineClient::projectsReceived, [&](const QJsonArray& projects) {
+		++emitted;
+		received = projects;
+	});
+
+	client->getAllProjects();
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::projectsReceived));
+
+	ASSERT_EQ(server->requests().size(), 2);
+	EXPECT_EQ(server->requests().at(0).query.queryItemValue("offset").toStdString(), "0");
+	EXPECT_EQ(server->requests().at(1).query.queryItemValue("offset").toStdString(), "2");
+	EXPECT_EQ(emitted, 1);
+	ASSERT_EQ(received.size(), 3);
+	EXPECT_EQ(received.at(2).toObject()["id"].toInt(), 3);
+}
+
 TEST_F(RedmineClientIntegrationTest, CreateProjectSendsPostBodyAndEmitsProjectCreated)
 {
 	server->enqueueResponse(MockHttpResponse { 201, "Created", R"({"project":{"id":8,"identifier":"proj"}})" });
@@ -251,10 +276,13 @@ TEST_F(RedmineClientIntegrationTest, CreateTimeEntrySendsPostBodyAndEmitsTimeEnt
 	server->enqueueResponse(MockHttpResponse { 201, "Created", R"({"time_entry":{"id":55,"hours":2.5}})" });
 
 	QJsonObject received;
-	QObject::connect(
-		client.get(), &RedmineClient::timeEntryCreated, [&](const QJsonObject& timeEntry) { received = timeEntry; });
+	int receivedTag = -1;
+	QObject::connect(client.get(), &RedmineClient::timeEntryCreated, [&](const QJsonObject& timeEntry, int tag) {
+		received = timeEntry;
+		receivedTag = tag;
+	});
 
-	client->createTimeEntry(42, 2.5, "Worked", "2024-01-01");
+	client->createTimeEntry(42, 2.5, "Worked", "2024-01-01", 4, {}, 17);
 	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryCreated));
 
 	ASSERT_EQ(server->requests().size(), 1);
@@ -269,6 +297,7 @@ TEST_F(RedmineClientIntegrationTest, CreateTimeEntrySendsPostBodyAndEmitsTimeEnt
 	EXPECT_EQ(timeEntry["spent_on"].toString().toStdString(), "2024-01-01");
 
 	EXPECT_EQ(received["id"].toInt(), 55);
+	EXPECT_EQ(receivedTag, 17);
 }
 
 TEST_F(RedmineClientIntegrationTest, GetTimeEntriesSendsIssueIdQueryParameterAndEmitsTimeEntriesReceived)
@@ -304,9 +333,13 @@ TEST_F(RedmineClientIntegrationTest, UpdateTimeEntrySendsChangedFieldsAndEmitsTi
 	server->enqueueResponse(MockHttpResponse { 204, "No Content", "" });
 
 	int updatedId = -1;
-	QObject::connect(client.get(), &RedmineClient::timeEntryUpdated, [&](int id) { updatedId = id; });
+	int updatedTag = -1;
+	QObject::connect(client.get(), &RedmineClient::timeEntryUpdated, [&](int id, int tag) {
+		updatedId = id;
+		updatedTag = tag;
+	});
 
-	client->updateTimeEntry(9, 2.5, "Reworked", "2026-10-15", 8);
+	client->updateTimeEntry(9, 2.5, "Reworked", "2026-10-15", 8, {}, 3);
 	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryUpdated));
 
 	ASSERT_EQ(server->requests().size(), 1);
@@ -321,6 +354,29 @@ TEST_F(RedmineClientIntegrationTest, UpdateTimeEntrySendsChangedFieldsAndEmitsTi
 	EXPECT_EQ(timeEntry["activity_id"].toInt(), 8);
 
 	EXPECT_EQ(updatedId, 9);
+	EXPECT_EQ(updatedTag, 3);
+}
+
+TEST_F(RedmineClientIntegrationTest, RejectedUpdateTimeEntryEmitsTimeEntryUpdateFailed)
+{
+	server->enqueueResponse(
+		MockHttpResponse { 422, "Unprocessable Entity", R"({"errors":["Activity is not included in the list"]})" });
+
+	int failedId = -1;
+	int failedTag = -1;
+	bool updated = false;
+	QObject::connect(client.get(), &RedmineClient::timeEntryUpdateFailed, [&](int id, int tag) {
+		failedId = id;
+		failedTag = tag;
+	});
+	QObject::connect(client.get(), &RedmineClient::timeEntryUpdated, [&]() { updated = true; });
+
+	client->updateTimeEntry(9, 2.5, "Reworked", "2026-10-15", 99, {}, 5);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryUpdateFailed));
+
+	EXPECT_EQ(failedId, 9);
+	EXPECT_EQ(failedTag, 5);
+	EXPECT_FALSE(updated);
 }
 
 TEST_F(RedmineClientIntegrationTest, UpdateTimeEntryLeavesDateAndActivityUnchangedWhenNotGiven)
@@ -481,6 +537,20 @@ TEST_F(RedmineClientIntegrationTest, NotFoundResponseDoesNotEmitErrorOccurred)
 	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
 
 	client->getIssue(999);
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	EXPECT_FALSE(errorFired);
+	EXPECT_EQ(server->requests().size(), 1);
+}
+
+TEST_F(RedmineClientIntegrationTest, QuietGetIssueDoesNotEmitErrorOccurred)
+{
+	server->enqueueResponse(MockHttpResponse { 403, "Forbidden", "" });
+
+	bool errorFired = false;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
+
+	client->getIssue(7, true);
 	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
 
 	EXPECT_FALSE(errorFired);

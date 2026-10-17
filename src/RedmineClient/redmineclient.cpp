@@ -20,6 +20,17 @@ namespace QRedmineClient {
 // be (insecurely) persisted under before it was migrated to the OS-native secure storage.
 static const QString API_KEY_KEYCHAIN_KEY = QStringLiteral("apiKey");
 static const QString LEGACY_API_KEY_SETTING = QStringLiteral("client/apiKey");
+//! Request attribute carrying the requestTag of createTimeEntry()/updateTimeEntry() to the reply
+static constexpr auto REQUEST_TAG_ATTRIBUTE = QNetworkRequest::User;
+//! Request attribute marking a getIssue() whose failure isn't reported via errorOccurred()
+static constexpr auto QUIET_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1);
+//! Request attribute carrying the getAllProjects() call (mProjectsGeneration) a page belongs to
+static constexpr auto PROJECTS_GENERATION_ATTRIBUTE =
+	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 2);
+//! Request attribute carrying a RedmineClient::RequestTag (routing of separately handled replies)
+static constexpr auto ROUTING_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 3);
+//! Page size used by getAllProjects(); 100 is the most Redmine returns per request
+static constexpr int PROJECTS_PAGE_SIZE = 100;
 
 // Service identifier the API key is stored under in the OS-native secure storage (see securestorage.h).
 // Derived from the application name rather than a fixed literal so that, e.g., the test binary
@@ -294,7 +305,7 @@ void RedmineClient::toggleConnectionState(ConnectionState newConnectionState)
 }
 
 void RedmineClient::createTimeEntry(int issueId, double hours, const QString& comments, const QString& spentOn,
-	int activityId, const QVariantList& customFields)
+	int activityId, const QVariantList& customFields, int requestTag)
 {
 	setLoading(true);
 
@@ -320,11 +331,13 @@ void RedmineClient::createTimeEntry(int issueId, double hours, const QString& co
 	QJsonDocument doc(timeEntryData);
 	QByteArray data = doc.toJson();
 
-	mNetworkManager->post(createRequest(ApiResources::TIME_ENTRIES), data);
+	QNetworkRequest request = createRequest(ApiResources::TIME_ENTRIES);
+	request.setAttribute(REQUEST_TAG_ATTRIBUTE, requestTag);
+	mNetworkManager->post(request, data);
 }
 
 void RedmineClient::updateTimeEntry(int timeEntryId, double hours, const QString& comments, const QString& spentOn,
-	int activityId, const QVariantList& customFields)
+	int activityId, const QVariantList& customFields, int requestTag)
 {
 	setLoading(true);
 
@@ -346,8 +359,9 @@ void RedmineClient::updateTimeEntry(int timeEntryId, double hours, const QString
 	QJsonDocument doc(timeEntryData);
 	QByteArray data = doc.toJson();
 
-	QString endpoint = ApiResources::TIME_ENTRY.arg(timeEntryId);
-	mNetworkManager->put(createRequest(endpoint), data);
+	QNetworkRequest request = createRequest(ApiResources::TIME_ENTRY.arg(timeEntryId));
+	request.setAttribute(REQUEST_TAG_ATTRIBUTE, requestTag);
+	mNetworkManager->put(request, data);
 }
 
 void RedmineClient::getTimeEntries(int issueId)
@@ -364,10 +378,12 @@ void RedmineClient::deleteTimeEntry(int timeEntryId)
 	mNetworkManager->deleteResource(createRequest(ApiResources::TIME_ENTRY.arg(timeEntryId)));
 }
 
-void RedmineClient::getIssue(int issueId)
+void RedmineClient::getIssue(int issueId, bool quiet)
 {
 	setLoading(true);
-	mNetworkManager->get(createRequest(ApiResources::ISSUE.arg(QString::number(issueId))));
+	QNetworkRequest request = createRequest(ApiResources::ISSUE.arg(QString::number(issueId)));
+	request.setAttribute(QUIET_ATTRIBUTE, quiet);
+	mNetworkManager->get(request);
 }
 
 void RedmineClient::getIssues(int projectId, int statusId, int limit, int offset)
@@ -460,6 +476,44 @@ void RedmineClient::getProjects(int limit, int offset)
 	mNetworkManager->get(createRequest(ApiResources::PROJECTS, query));
 }
 
+void RedmineClient::getAllProjects()
+{
+	++mProjectsGeneration;
+	mCollectedProjects = QJsonArray();
+	requestProjectsPage(0);
+}
+
+void RedmineClient::requestProjectsPage(int offset)
+{
+	setLoading(true);
+
+	QUrlQuery query;
+	query.addQueryItem("limit", QString::number(PROJECTS_PAGE_SIZE));
+	query.addQueryItem("offset", QString::number(offset));
+	// As in getProjects(): the activities each project allows.
+	query.addQueryItem("include", "time_entry_activities");
+
+	QNetworkRequest request = createRequest(ApiResources::PROJECTS, query);
+	request.setAttribute(PROJECTS_GENERATION_ATTRIBUTE, mProjectsGeneration);
+	mNetworkManager->get(request);
+}
+
+void RedmineClient::collectProjectsPage(const QJsonObject& response)
+{
+	const QJsonArray page = response["projects"].toArray();
+	for (const QJsonValue& project : page) {
+		mCollectedProjects.append(project);
+	}
+
+	const int nextOffset = response["offset"].toInt() + page.size();
+	if (!page.isEmpty() && nextOffset < response["total_count"].toInt()) {
+		requestProjectsPage(nextOffset);
+		return;
+	}
+	emit projectsReceived(mCollectedProjects);
+	mCollectedProjects = QJsonArray();
+}
+
 void RedmineClient::createProject(const QString& name, const QString& identifier, const QString& description)
 {
 	setLoading(true);
@@ -537,7 +591,7 @@ void RedmineClient::getCustomFields()
 void RedmineClient::getTimeEntryCustomFields()
 {
 	QNetworkRequest request = createRequest(QStringLiteral("custom_fields.json"));
-	request.setAttribute(QNetworkRequest::User, TimeEntryCustomFieldsTag);
+	request.setAttribute(ROUTING_ATTRIBUTE, TimeEntryCustomFieldsTag);
 	mNetworkManager->get(request);
 }
 
@@ -597,7 +651,7 @@ void RedmineClient::handleTimeEntryCustomFieldsReply(QNetworkReply* reply, Reque
 			QUrlQuery query;
 			query.addQueryItem("limit", "100");
 			QNetworkRequest request = createRequest(ApiResources::TIME_ENTRIES, query);
-			request.setAttribute(QNetworkRequest::User, TimeEntryCustomFieldsFallbackTag);
+			request.setAttribute(ROUTING_ATTRIBUTE, TimeEntryCustomFieldsFallbackTag);
 			mNetworkManager->get(request);
 		} else {
 			qCWarning(lcRedmineClient) << "Could not determine time entry custom fields:" << reply->errorString();
@@ -627,7 +681,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 
 	// Requests answered separately: kept out of the error reporting and the generic routing below
 	// (the fallback's time entries must not show up as e.g. timeEntriesReceived()).
-	const auto tag = static_cast<RequestTag>(reply->request().attribute(QNetworkRequest::User).toInt());
+	const auto tag = static_cast<RequestTag>(reply->request().attribute(ROUTING_ATTRIBUTE).toInt());
 	if (tag == TimeEntryCustomFieldsTag || tag == TimeEntryCustomFieldsFallbackTag) {
 		handleTimeEntryCustomFieldsReply(reply, tag);
 		return;
@@ -638,12 +692,19 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();
 
-		if (reply->error() != QNetworkReply::ContentNotFoundError) {
+		if (reply->error() != QNetworkReply::ContentNotFoundError &&
+			!reply->request().attribute(QUIET_ATTRIBUTE).toBool()) {
 			emit errorOccurred(userErrorMessage(reply, response));
 		}
 
 		qWarning(lcRedmineClient) << QStringLiteral("[%0] %1: ").arg(reply->error()).arg(reply->errorString())
 								  << QJsonDocument(response).toJson(QJsonDocument::Compact);
+
+		if (reply->operation() == QNetworkAccessManager::PutOperation &&
+			reply->url().path().contains("/time_entries/")) {
+			emit timeEntryUpdateFailed(
+				resourceIdFromPath(reply->url().path()), reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt());
+		}
 
 		if (REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {
 			toggleConnectionState(ConnectionState::OFFLINE);
@@ -694,14 +755,19 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 				emit projectReceived(response["project"].toObject());
 			}
 			if (response.contains("projects")) {
-				emit projectsReceived(response["projects"].toArray());
+				const QVariant generation = reply->request().attribute(PROJECTS_GENERATION_ATTRIBUTE);
+				if (!generation.isValid()) {
+					emit projectsReceived(response["projects"].toArray());
+				} else if (generation.toInt() == mProjectsGeneration) {
+					collectProjectsPage(response);
+				}
 			}
 			break;
 		case QNetworkAccessManager::PutOperation:
 			path = reply->url().path();
 			id = resourceIdFromPath(path);
 			if (path.contains("/time_entries/")) {
-				emit timeEntryUpdated(id);
+				emit timeEntryUpdated(id, reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt());
 			} else if (path.contains("/issues/")) {
 				emit issueUpdated(id);
 			} else if (path.contains("/projects/")) {
@@ -711,7 +777,8 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 
 		case QNetworkAccessManager::PostOperation:
 			if (response.contains("time_entry")) {
-				emit timeEntryCreated(response["time_entry"].toObject());
+				emit timeEntryCreated(
+					response["time_entry"].toObject(), reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt());
 			}
 			if (response.contains("issue")) {
 				emit issueCreated(response["issue"].toObject());

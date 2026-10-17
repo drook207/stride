@@ -121,11 +121,15 @@ bool Database::createIssuesDatabase()
 	return true;
 }
 
-QList<int> Database::issueIdsWithoutProject()
+QList<int> Database::issueIdsWithoutProject(int limit)
 {
 	QList<int> ids;
 	QSqlQuery query;
-	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUE_IDS_WITHOUT_PROJECT, query) || !evaluateQueryExec(query)) {
+	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUE_IDS_WITHOUT_PROJECT, query)) {
+		return ids;
+	}
+	query.addBindValue(limit);
+	if (!evaluateQueryExec(query)) {
 		return ids;
 	}
 	while (query.next()) {
@@ -193,55 +197,35 @@ int Database::addTimeEntry(int issueId, double hours, const QString& comments, c
 	return query.lastInsertId().toInt();
 }
 
-bool Database::updateTimeEntry(int id, double hours, const QString& comments, const QDateTime& spentOn)
+int Database::updateTimeEntry(int id, double hours, const QString& comments, const QDateTime& spentOn)
 {
-	QSqlQuery query;
-	if (!evaluateQueryPrepare(SqlQueries::UPDATE_TIME_ENTRY, query)) {
-		return false;
-	}
-
-	query.addBindValue(hours);
-	query.addBindValue(comments);
-	query.addBindValue(spentOn);
-	query.addBindValue(QDateTime::currentDateTime());
-	query.addBindValue(id);
-
-	return evaluateQueryExec(query);
+	return updateTimeEntries(QStringLiteral("id"), id, hours, comments, spentOn);
 }
 
-bool Database::updateTimeEntriesByRedmineId(
+int Database::updateTimeEntriesByRedmineId(
 	int redmineId, double hours, const QString& comments, const QDateTime& spentOn)
 {
+	return updateTimeEntries(QStringLiteral("redmine_id"), redmineId, hours, comments, spentOn);
+}
+
+int Database::updateTimeEntries(
+	const QString& keyColumn, int key, double hours, const QString& comments, const QDateTime& spentOn)
+{
 	QSqlQuery query;
-	if (!evaluateQueryPrepare(SqlQueries::UPDATE_TIME_ENTRIES_BY_REDMINE_ID, query)) {
-		return false;
+	if (!evaluateQueryPrepare(SqlQueries::UPDATE_TIME_ENTRIES_WHERE + keyColumn + QStringLiteral(" = ?"), query)) {
+		return -1;
 	}
 
 	query.addBindValue(hours);
 	query.addBindValue(comments);
 	query.addBindValue(spentOn);
 	query.addBindValue(QDateTime::currentDateTime());
-	query.addBindValue(redmineId);
+	query.addBindValue(key);
 
-	return evaluateQueryExec(query);
-}
-
-int Database::findUnsyncedMatch(int issueId, const QDate& spentOn, double hours, const QString& comments)
-{
-	QSqlQuery query;
-	if (!evaluateQueryPrepare(SqlQueries::FIND_UNSYNCED_MATCH, query)) {
+	if (!evaluateQueryExec(query)) {
 		return -1;
 	}
-
-	query.addBindValue(issueId);
-	query.addBindValue(spentOn.toString(Qt::ISODate));
-	query.addBindValue(hours);
-	query.addBindValue(comments);
-
-	if (!evaluateQueryExec(query) || !query.next()) {
-		return -1;
-	}
-	return query.value(0).toInt();
+	return query.numRowsAffected();
 }
 
 bool Database::updateSyncStatus(int id, int redmineId)

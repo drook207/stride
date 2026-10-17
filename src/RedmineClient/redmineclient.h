@@ -154,11 +154,13 @@ public slots:
 	 * \param activityId
 	 * \param customFields Custom field values as [{"id": <field id>, "value": <value>}], see
 	 * getTimeEntryCustomFields()
+	 * \param requestTag Passed on unchanged with timeEntryCreated(), e.g. to tell which local entry
+	 * the time entry was made from
 	 */
 	void createTimeEntry(int issueId, double hours, const QString& comments,
 		const QString& spentOn = QDateTime::currentDateTime().toString("yyyy-MM-dd"),
 		int activityId = 4, // 4 is often "Development"
-		const QVariantList& customFields = QVariantList());
+		const QVariantList& customFields = QVariantList(), int requestTag = 0);
 
 	// Update an existing time entry
 	/*!
@@ -170,9 +172,11 @@ public slots:
 	 * \param activityId New activity, left unchanged if not positive
 	 * \param customFields Custom field values to change, as for createTimeEntry(); fields not
 	 * listed are left unchanged
+	 * \param requestTag Passed on unchanged with timeEntryUpdated() or timeEntryUpdateFailed(), to
+	 * tell which of several updates of the same time entry was confirmed or rejected
 	 */
 	void updateTimeEntry(int timeEntryId, double hours, const QString& comments, const QString& spentOn = QString(),
-		int activityId = 0, const QVariantList& customFields = QVariantList());
+		int activityId = 0, const QVariantList& customFields = QVariantList(), int requestTag = 0);
 
 	// Get time entries for an issue
 	/*!
@@ -212,8 +216,9 @@ public slots:
 	/*!
 	 * \brief getIssue
 	 * \param issueId
+	 * \param quiet Don't report failures via errorOccurred(), for fetches the user didn't ask for
 	 */
-	void getIssue(int issueId);
+	void getIssue(int issueId, bool quiet = false);
 
 	/*!
 	 * \brief getIssues List issues, optionally filtered by project or status
@@ -265,6 +270,12 @@ public slots:
 	void getProjects(int limit = 100, int offset = 0);
 
 	/*!
+	 * \brief getAllProjects Lists all projects, requesting page after page; emits projectsReceived()
+	 * once with all of them. A new call supersedes one still in progress.
+	 */
+	void getAllProjects();
+
+	/*!
 	 * \brief createProject
 	 * \param name
 	 * \param identifier
@@ -306,14 +317,24 @@ signals:
 	/*!
 	 * \brief timeEntryCreated
 	 * \param timeEntry
+	 * \param requestTag As passed to createTimeEntry()
 	 */
-	void timeEntryCreated(const QJsonObject& timeEntry);
+	void timeEntryCreated(const QJsonObject& timeEntry, int requestTag);
 
 	/*!
 	 * \brief timeEntryUpdated
 	 * \param timeEntryId
+	 * \param requestTag As passed to updateTimeEntry()
 	 */
-	void timeEntryUpdated(int timeEntryId);
+	void timeEntryUpdated(int timeEntryId, int requestTag);
+
+	/*!
+	 * \brief timeEntryUpdateFailed Emitted when Redmine rejects an update of a time entry, or it
+	 * can't be reached; errorOccurred() reports the reason
+	 * \param timeEntryId
+	 * \param requestTag As passed to updateTimeEntry()
+	 */
+	void timeEntryUpdateFailed(int timeEntryId, int requestTag);
 
 	/*!
 	 * \brief timeEntriesReceived
@@ -436,7 +457,7 @@ private slots:
 
 private:
 	//! Marks requests whose replies are handled separately from handleNetworkReply()'s generic
-	//! routing (stored in QNetworkRequest::User).
+	//! routing (stored in a request attribute, see ROUTING_ATTRIBUTE).
 	enum RequestTag { NoTag, TimeEntryCustomFieldsTag, TimeEntryCustomFieldsFallbackTag };
 
 	void handleTimeEntryCustomFieldsReply(QNetworkReply* reply, RequestTag tag);
@@ -449,6 +470,15 @@ private:
 
 	ConnectionState mConnectionState = ConnectionState::OFFLINE;
 	QTimer mConnectionCheckTimer;
+
+	//! Requests the page of getAllProjects() starting at offset.
+	void requestProjectsPage(int offset);
+	//! Adds a page received for getAllProjects(), then requests the next one or emits them all.
+	void collectProjectsPage(const QJsonObject& response);
+	//! Projects received so far by the current getAllProjects() call.
+	QJsonArray mCollectedProjects;
+	//! Counts getAllProjects() calls, so pages of a superseded call are ignored.
+	int mProjectsGeneration = 0;
 	void setupConnectionCheckTimer();
 	void setConnectionState(RedmineClient::ConnectionState newConnectionState);
 	void toggleConnectionState(RedmineClient::ConnectionState newConnectionState);

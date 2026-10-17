@@ -26,18 +26,20 @@ Dialog {
 	property bool localOnly: false
 
 	//! Emitted on Save with "hours" (decimal hours), "comments", "spent_on" ("yyyy-MM-dd") and,
-	//! if one is selected, "activity_id".
+	//! if one is selected, "activity_id" and "activity_name".
 	signal saved(var changes)
 
-	//! Hours as entered, or NaN if the field doesn't hold a positive number. Parsed with the
-	//! "de_DE" decimal comma like AddTimeEntryView's field.
+	//! The entry's hours as passed to openFor(). The field shows them rounded to 2 decimals, so
+	//! they are saved as they were unless the field is edited.
+	property real originalHours: 0
+
+	//! Hours as entered, or NaN if the field doesn't hold a positive number.
 	readonly property real hours: {
-		try {
-			const value = Number.fromLocaleString(Qt.locale("de_DE"), hoursField.text)
-			return value > 0 ? value : NaN
-		} catch (e) {
-			return NaN
+		if (hoursField.text === HoursFormat.format(dialog.originalHours)) {
+			return dialog.originalHours
 		}
+		const value = HoursFormat.parse(hoursField.text)
+		return value > 0 ? value : NaN
 	}
 
 	//! Opens the dialog for an entry.
@@ -48,7 +50,8 @@ Dialog {
 		dialog.issueId = entry.issueId
 		dialog.projectId = entry.projectId > 0 ? entry.projectId : -1
 		dialog.localOnly = entry.localOnly
-		hoursField.text = Number(entry.hours).toLocaleString(Qt.locale("de_DE"), 'f', 2)
+		dialog.originalHours = Number(entry.hours)
+		hoursField.text = HoursFormat.format(dialog.originalHours)
 		commentsField.text = entry.comments || ""
 		const spentOn = entry.spentOn instanceof Date ? entry.spentOn : new Date(String(entry.spentOn).substring(0, 10) + "T00:00:00")
 		dateField.selectedDate = isNaN(spentOn.getTime()) ? new Date() : spentOn
@@ -77,6 +80,7 @@ Dialog {
 		}
 		if (!dialog.localOnly && activityCombo.activityId > 0) {
 			changes["activity_id"] = activityCombo.activityId
+			changes["activity_name"] = activityCombo.currentText
 		}
 		if (!dialog.localOnly && specialCombo.customFieldValues.length > 0) {
 			changes["custom_fields"] = specialCombo.customFieldValues
@@ -109,7 +113,7 @@ Dialog {
 		TimeRangeRow {
 			id: timeRange
 			Layout.fillWidth: true
-			onDurationPicked: hours => hoursField.text = hours.toLocaleString(Qt.locale("de_DE"), 'f', 2)
+			onDurationPicked: hours => hoursField.text = HoursFormat.format(hours)
 		}
 
 		RowLayout {

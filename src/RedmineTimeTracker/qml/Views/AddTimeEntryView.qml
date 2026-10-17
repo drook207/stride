@@ -27,15 +27,15 @@ Item {
         client: docroot.client
         timeTracker: docroot.timeTracker
     }
-    //! Copies the current field values into addDialog. Note: timeSpentField is always parsed with
-    //! the "de_DE" locale (decimal comma, e.g. "1,5") regardless of the user's actual system
-    //! locale - matches the field's "eg. 1,0" placeholder, but means it won't accept "1.5".
+    //! Copies the current field values into addDialog. timeSpentField is parsed by HoursFormat
+    //! (decimal comma, e.g. "1,5"); hours that don't parse are left as they were.
     function saveInput() {
         docroot.addDialog.spentOn = spentOnField.isoDate
         docroot.addDialog.issueId = issueField.value
-        var german = Qt.locale("de_DE")
-        const number = Number.fromLocaleString(german, timeSpentField.text)
-        docroot.addDialog.hours = number
+        const number = HoursFormat.parse(timeSpentField.text)
+        if (!isNaN(number)) {
+            docroot.addDialog.hours = number
+        }
     }
 
     Timer {
@@ -80,8 +80,7 @@ Item {
             // the hours, so the range itself isn't submitted.
             TimeRangeRow {
                 Layout.fillWidth: true
-                // Same "de_DE" decimal comma format saveInput() parses, see there.
-                onDurationPicked: hours => timeSpentField.text = hours.toLocaleString(Qt.locale("de_DE"), 'f', 2)
+                onDurationPicked: hours => timeSpentField.text = HoursFormat.format(hours)
             }
 
             RowLayout {
@@ -103,9 +102,7 @@ Item {
                         }
                         onAccepted: {
                             if (acceptableInput) {
-                                var german = Qt.locale("de_DE")
-                                const number = Number.fromLocaleString(german, text)
-                                docroot.addDialog.hours = number
+                                docroot.addDialog.hours = HoursFormat.parse(text)
                             }
                         }
                         onTextChanged: {
