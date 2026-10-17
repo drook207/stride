@@ -120,6 +120,22 @@ Item {
 				docroot.timeTracker.updateRecentEntry(editDialog.entry.id, changes)
 			}
 		}
+
+		onDeleteRequested: {
+			const redmineId = editDialog.entry.redmine_id
+			if (redmineId > 0) {
+				// Deleted on Redmine; the local copy goes once Redmine confirms
+				// (TimeTracker.removeDeletedTimeEntry, wired up in Main.qml).
+				docroot.client.deleteTimeEntry(redmineId)
+			} else if (!docroot.timeTracker.deleteRecentEntry(editDialog.entry.id)) {
+				deleteFailedDialog.open()
+			}
+		}
+	}
+
+	MessageDialog {
+		id: deleteFailedDialog
+		text: qsTr("The entry is being sent to Redmine right now. Please try again in a moment.")
 	}
 
 	ColumnLayout {
@@ -132,6 +148,35 @@ Item {
 		PageTitle {
 			Layout.fillWidth: true
 			text: qsTr("Recent Entries")
+		}
+
+		// Pinned issues: one click starts tracking one (while nothing is tracked).
+		Flow {
+			Layout.fillWidth: true
+			visible: docroot.timeTracker.favoriteIssues.length > 0
+			spacing: 8
+
+			Repeater {
+				model: docroot.timeTracker.favoriteIssues
+
+				Button {
+					id: favoriteButton
+					required property var modelData
+
+					text: "#" + modelData.issue_id + (modelData.subject ? " " + modelData.subject : "")
+					icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/play.svg"
+					icon.width: 12
+					icon.height: 12
+					enabled: !docroot.timeTracker.isTracking
+					flat: false
+					font.pixelSize: 13
+					onClicked: docroot.timeTracker.continueTracking(modelData.issue_id)
+					ToolTip.visible: hovered
+					ToolTip.text: favoriteButton.modelData.project_name
+								  ? qsTr("Start tracking (%1)").arg(favoriteButton.modelData.project_name)
+								  : qsTr("Start tracking")
+				}
+			}
 		}
 
 		RowLayout {
@@ -219,6 +264,13 @@ Item {
 						special: docroot.specialOf(modelData) || ""
 						syncState: docroot.syncStateOf(modelData)
 						syncError: modelData.sync_error || ""
+						continuable: !docroot.timeTracker.isTracking
+						showFavorite: true
+						favorite: docroot.timeTracker.favoriteIssues.some(f => f.issue_id === modelData.issue_id)
+
+						onContinueRequested: docroot.timeTracker.continueTracking(modelData.issue_id, modelData.comments || "",
+																			  modelData.activity_id || 0)
+						onFavoriteToggled: docroot.timeTracker.toggleFavoriteIssue(modelData.issue_id)
 						// Not above the next group's header, which separates the groups already.
 						showDivider: index < docroot.shownEntries.length - 1
 									 && !(docroot.groupByProject

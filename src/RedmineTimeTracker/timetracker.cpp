@@ -25,6 +25,47 @@ TimeTracker::TimeTracker(QObject* parent)
 	}
 	loadRecentEntries();
 	restoreTrackingState();
+	loadFavoriteIssues();
+	// A pinned issue's subject and project may only be known once the issue is cached.
+	connect(this, &TimeTracker::issueAddedOrUpdated, this, &TimeTracker::loadFavoriteIssues);
+}
+
+bool TimeTracker::continueTracking(int issueId, const QString& comment, int activityId)
+{
+	if (isTracking() || issueId <= 0) {
+		return false;
+	}
+	setTrackingComment(comment);
+	setTrackingActivityId(activityId);
+	startTracking(issueId);
+	return true;
+}
+
+QVariantList TimeTracker::favoriteIssues() const { return mFavoriteIssues; }
+
+bool TimeTracker::isFavoriteIssue(int issueId) const
+{
+	return std::any_of(mFavoriteIssues.cbegin(), mFavoriteIssues.cend(),
+		[issueId](const QVariant& favorite) { return favorite.toMap()["issue_id"].toInt() == issueId; });
+}
+
+void TimeTracker::toggleFavoriteIssue(int issueId)
+{
+	if (issueId <= 0) {
+		return;
+	}
+	if (isFavoriteIssue(issueId) ? Database::removeFavoriteIssue(issueId) : Database::addFavoriteIssue(issueId)) {
+		loadFavoriteIssues();
+	}
+}
+
+void TimeTracker::loadFavoriteIssues()
+{
+	const QVariantList favorites = Database::getFavoriteIssues();
+	if (favorites != mFavoriteIssues) {
+		mFavoriteIssues = favorites;
+		emit favoriteIssuesChanged();
+	}
 }
 
 TimeTracker::~TimeTracker()
@@ -63,6 +104,8 @@ void TimeTracker::setTrackingActivityId(int activityId)
 }
 
 QDateTime TimeTracker::interruptedAt() const { return mInterruptedAt; }
+
+bool TimeTracker::interruptedBySleep() const { return mInterruptedBySleep; }
 
 void TimeTracker::saveTrackingState()
 {
@@ -105,15 +148,22 @@ void TimeTracker::resolveInterruption(bool countTimeAway)
 		return;
 	}
 	if (!countTimeAway && mTimer.isActive()) {
-		// Stop the clock where it was when the app was last seen.
+		// Stop the clock where it was when the app was last seen...
 		mTotalElapsedTime += std::max<qint64>(0, mStartTime.secsTo(mInterruptedAt));
-		mTimer.stop();
-		mIsPaused = true;
-		emit pausedChanged();
-		emit trackingChanged();
+		if (mInterruptedBySleep) {
+			// ...and, after sleep, go on from waking up: the user may have worked a while before
+			// answering.
+			mStartTime = mResumedAt.isValid() ? mResumedAt : QDateTime::currentDateTime();
+		} else {
+			mTimer.stop();
+			mIsPaused = true;
+			emit pausedChanged();
+			emit trackingChanged();
+		}
 		emit elapsedTimeChanged();
 	}
 	mInterruptedAt = QDateTime();
+	mInterruptedBySleep = false;
 	emit interruptedAtChanged();
 	saveTrackingState();
 }
@@ -165,6 +215,7 @@ void TimeTracker::startTracking(int issueId)
 	mStartTime = QDateTime::currentDateTime();
 	mTotalElapsedTime = 0;
 	mIsPaused = false;
+	mLastTick = QDateTime();
 	mTimer.start();
 	saveTrackingState();
 
@@ -207,6 +258,7 @@ void TimeTracker::resumeTracking()
 {
 	if (!mTimer.isActive() && mIsPaused) {
 		mStartTime = QDateTime::currentDateTime();
+		mLastTick = QDateTime();
 		mTimer.start();
 		mIsPaused = false;
 		saveTrackingState();
@@ -235,8 +287,8 @@ int TimeTracker::addRecentEntry(const QVariantMap& entry)
 	const QDate day = dateOf(entry["date"]);
 	const QDateTime spentOn(day.isValid() ? day : QDate::currentDate(), QTime(0, 0));
 
-	const int localId = Database::addTimeEntry(
-		issueId, hours, comment, spentOn, entry["activityId"].toInt(), entry["customFields"].toList());
+	const int localId = Database::addTimeEntry(issueId, hours, comment, spentOn, entry["activityId"].toInt(),
+		entry["customFields"].toList(), entry["issueStatusId"].toInt());
 	if (localId < 0) {
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return -1;
@@ -281,6 +333,34 @@ void TimeTracker::submissionFailed(int localId, int httpStatus, const QString& e
 		if (Database::setSyncStatus(localId, Database::Rejected, error)) {
 			loadRecentEntries();
 		}
+	}
+}
+
+bool TimeTracker::deleteRecentEntry(int localId)
+{
+	// Its creation on Redmine may be under way, and would then leave a Redmine entry nothing
+	// points to.
+	if (mSubmitting.contains(localId)) {
+		return false;
+	}
+	if (Database::deleteTimeEntry(localId) < 0) {
+		qCWarning(lcTimeTracker) << "Could not delete local time entry" << localId;
+		return false;
+	}
+	loadRecentEntries();
+	return true;
+}
+
+void TimeTracker::removeDeletedTimeEntry(int redmineId)
+{
+	if (Database::deleteTimeEntriesByRedmineId(redmineId) > 0) {
+		loadRecentEntries();
+	}
+	const auto removed = std::remove_if(mEntriesFromId.begin(), mEntriesFromId.end(),
+		[redmineId](const QVariant& entry) { return entry.toMap()["id"].toInt() == redmineId; });
+	if (removed != mEntriesFromId.end()) {
+		mEntriesFromId.erase(removed, mEntriesFromId.end());
+		emit entriesFromIdChanged();
 	}
 }
 
@@ -332,13 +412,14 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 
 void TimeTracker::loadRecentEntries()
 {
-	auto entries = Database::getRecentEntries();
-	if (!entries.isEmpty()) {
-		mRecentEntries.clear();
-		for (const QJsonValue& value : std::as_const(entries)) {
-			mRecentEntries.append(value.toObject().toVariantMap());
-		}
-
+	const auto entries = Database::getRecentEntries();
+	QVariantList recentEntries;
+	for (const QJsonValue& value : entries) {
+		recentEntries.append(value.toObject().toVariantMap());
+	}
+	// Also when it became empty, e.g. after deleting the last entry.
+	if (recentEntries != mRecentEntries) {
+		mRecentEntries = recentEntries;
 		emit recentEntriesChanged();
 	}
 }
@@ -441,6 +522,7 @@ void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
 		if (Database::updateSyncStatus(entry["id"].toInt(), redmineId)) {
 			taken.insert(redmineId);
 			linked = true;
+			applyIssueStatus(entry["id"].toInt());
 		}
 	}
 	if (linked) {
@@ -561,6 +643,15 @@ void TimeTracker::discardRedmineUpdate(int redmineId, int tag)
 	}
 }
 
+void TimeTracker::applyIssueStatus(int localId)
+{
+	const QJsonObject entry = Database::getTimeEntry(localId);
+	const int statusId = entry["issue_status_id"].toInt();
+	if (statusId > 0 && Database::clearIssueStatus(localId)) {
+		emit setIssueStatus(entry["issue_id"].toInt(), statusId);
+	}
+}
+
 bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId)
 {
 	mSubmitting.remove(localId);
@@ -572,6 +663,7 @@ bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId
 	if (Database::updateSyncStatus(localId, redmineId)) {
 		loadRecentEntries();
 	}
+	applyIssueStatus(localId);
 	// Changed while it was being sent: Redmine got the old values, so send the current ones.
 	if (mEditedWhileSubmitting.remove(localId)) {
 		const QJsonObject entry = Database::getTimeEntry(localId);
@@ -586,8 +678,20 @@ bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId
 	return interactive;
 }
 
-void TimeTracker::updateElapsedTime()
+void TimeTracker::updateElapsedTime() { noticeTick(QDateTime::currentDateTime()); }
+
+void TimeTracker::noticeTick(const QDateTime& now)
 {
+	// The timer ticks every second; a much longer gap means the computer was asleep (suspended or
+	// hibernated). Like time the app was gone, that may not be working time: ask (interruptedAt).
+	if (mLastTick.isValid() && mLastTick.secsTo(now) > INTERRUPTION_THRESHOLD_SECONDS && !mInterruptedAt.isValid()) {
+		mInterruptedAt = mLastTick;
+		mResumedAt = now;
+		mInterruptedBySleep = true;
+		emit interruptedAtChanged();
+	}
+	mLastTick = now;
+
 	// Lets a restart tell how long the app was gone (see restoreTrackingState()).
 	if (++mSecondsSinceTouch >= 30) {
 		mSecondsSinceTouch = 0;

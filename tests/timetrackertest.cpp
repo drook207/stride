@@ -222,6 +222,80 @@ TEST_F(TimeTrackerTest, TimeWhileTheAppWasGoneCanBeLeftOut)
 	EXPECT_EQ(restored.elapsedTime().toStdString(), "01:10:00");
 }
 
+TEST_F(TimeTrackerTest, DeletesLocalEntriesAndForgetsOnesDeletedOnRedmine)
+{
+	const int local = addEntry(10, 1.0, "Local only");
+	tracker->submissionFailed(local, 0, "offline"); // no longer being sent
+	const int linked = addEntry(11, 2.0, "On Redmine");
+	tracker->linkCreatedTimeEntry(remote(700, 11, 2.0, "On Redmine"), linked);
+	tracker->addEntriesFromId(QJsonArray { remote(700, 11, 2.0, "On Redmine"), remote(701, 11, 1.0, "Other") });
+
+	EXPECT_TRUE(tracker->deleteRecentEntry(local));
+	tracker->removeDeletedTimeEntry(700);
+
+	EXPECT_TRUE(tracker->recentEntries().isEmpty());
+	ASSERT_EQ(tracker->entriesFromId().size(), 1);
+	EXPECT_EQ(tracker->entriesFromId().first().toMap()["id"].toInt(), 701);
+}
+
+TEST_F(TimeTrackerTest, EntryBeingSentIsNotDeleted)
+{
+	const int local = addEntry(10, 1.0, "Sending");
+	EXPECT_FALSE(tracker->deleteRecentEntry(local));
+	EXPECT_EQ(tracker->recentEntries().size(), 1);
+}
+
+TEST_F(TimeTrackerTest, ContinueTrackingStartsOnlyWhenIdle)
+{
+	EXPECT_TRUE(tracker->continueTracking(42, "Same as yesterday", 9));
+	EXPECT_EQ(tracker->currentIssueId(), 42);
+	EXPECT_EQ(tracker->trackingComment().toStdString(), "Same as yesterday");
+	EXPECT_EQ(tracker->trackingActivityId(), 9);
+
+	// Already tracking: the running tracker stays.
+	EXPECT_FALSE(tracker->continueTracking(43, "Other"));
+	EXPECT_EQ(tracker->currentIssueId(), 42);
+}
+
+TEST_F(TimeTrackerTest, FavoriteIssuesAreToggledAndKept)
+{
+	ASSERT_TRUE(Database::addIssue(
+		42, "Login page", 1, "Website", 1, "", QDateTime::currentDateTime(), QDateTime::currentDateTime()));
+	tracker->toggleFavoriteIssue(42);
+	tracker->toggleFavoriteIssue(7); // not cached
+	ASSERT_EQ(tracker->favoriteIssues().size(), 2);
+	EXPECT_TRUE(tracker->isFavoriteIssue(42));
+	const QVariantList favorites = tracker->favoriteIssues();
+	const auto pinned = std::find_if(favorites.cbegin(), favorites.cend(),
+		[](const QVariant& favorite) { return favorite.toMap()["issue_id"].toInt() == 42; });
+	ASSERT_NE(pinned, favorites.cend());
+	EXPECT_EQ(pinned->toMap()["subject"].toString().toStdString(), "Login page");
+
+	tracker->toggleFavoriteIssue(42);
+	EXPECT_FALSE(tracker->isFavoriteIssue(42));
+
+	TimeTracker restarted;
+	ASSERT_EQ(restarted.favoriteIssues().size(), 1);
+	EXPECT_EQ(restarted.favoriteIssues().first().toMap()["issue_id"].toInt(), 7);
+}
+
+TEST_F(TimeTrackerTest, SleepCanBeLeftOutWhileTrackingGoesOn)
+{
+	tracker->startTracking(42);
+	const QDateTime now = QDateTime::currentDateTime();
+	tracker->noticeTick(now.addSecs(-3600)); // last tick before the computer slept for an hour
+	tracker->noticeTick(now);
+
+	ASSERT_TRUE(tracker->interruptedAt().isValid());
+	EXPECT_TRUE(tracker->interruptedBySleep());
+	tracker->resolveInterruption(false);
+
+	EXPECT_FALSE(tracker->interruptedAt().isValid());
+	EXPECT_TRUE(tracker->isTracking());
+	EXPECT_FALSE(tracker->isPaused());
+	EXPECT_LT(tracker->getElapsedHours(), 0.01); // the hour asleep isn't counted
+}
+
 TEST_F(TimeTrackerTest, PendingEntryThatReachedRedmineIsLinkedInsteadOfSentAgain)
 {
 	int sent = 0;
@@ -258,4 +332,38 @@ TEST_F(TimeTrackerTest, ChangesMadeWhileSendingAreSentAfterwards)
 
 	EXPECT_EQ(updatedId, 900);
 	EXPECT_EQ(updatedComment.toStdString(), "New");
+}
+
+TEST_F(TimeTrackerTest, TimeWorkedBetweenWakingUpAndAnsweringCounts)
+{
+	tracker->startTracking(42);
+	const QDateTime now = QDateTime::currentDateTime();
+	tracker->noticeTick(now.addSecs(-3 * 3600)); // last tick before sleeping
+	tracker->noticeTick(now.addSecs(-1800)); // woke up half an hour ago, worked since
+	ASSERT_TRUE(tracker->interruptedBySleep());
+
+	tracker->resolveInterruption(false); // answered just now
+
+	EXPECT_NEAR(tracker->getElapsedHours(), 0.5, 0.01);
+}
+
+TEST_F(TimeTrackerTest, IssueStatusIsSetOnlyOnceTheEntryIsOnRedmine)
+{
+	QList<QPair<int, int>> statuses;
+	QObject::connect(tracker.get(), &TimeTracker::setIssueStatus, [&](int issueId, int statusId) {
+		statuses.append({ issueId, statusId });
+	});
+
+	const int rejected = tracker->addRecentEntry(
+		{ { "issueId", 10 }, { "hours", 1.0 }, { "comments", "" }, { "date", day(1) }, { "issueStatusId", 3 } });
+	tracker->submissionFailed(rejected, 422, "Closed project");
+	EXPECT_TRUE(statuses.isEmpty());
+
+	const int created = tracker->addRecentEntry(
+		{ { "issueId", 11 }, { "hours", 1.0 }, { "comments", "" }, { "date", day(1) }, { "issueStatusId", 5 } });
+	tracker->linkCreatedTimeEntry(remote(950, 11, 1.0, ""), created);
+	tracker->linkCreatedTimeEntry(remote(950, 11, 1.0, ""), created); // set once only
+
+	ASSERT_EQ(statuses.size(), 1);
+	EXPECT_EQ(statuses.first(), qMakePair(11, 5));
 }

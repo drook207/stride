@@ -44,11 +44,14 @@ qt_add_qml_module(
   QRedmine.TimeTracker
  VERSION
  1.0
+ DEPENDENCIES
+ QRedmine.Client
  QML_FILES
  qml/Main.qml
  qml/Header.qml
  qml/Views/RecentEntriesView.qml
  qml/Views/GetTimeEntriesView.qml
+ qml/Views/OverviewView.qml
  qml/Views/AddTimeEntryView.qml
  qml/Views/AddIssueView.qml
  qml/Views/SettingsView.qml
@@ -71,6 +74,9 @@ qt_add_qml_module(
  qml/Components/TimePickerField.qml
  qml/Components/TimeRangeRow.qml
  qml/Components/EditTimeEntryDialog.qml
+ qml/Components/TrayIcon.qml
+ qml/Components/IssueStatusPicker.qml
+ qml/Components/ExportDialog.qml
  qml/Components/ActivityComboBox.qml
  qml/Components/SpecialFieldComboBox.qml
  qml/Desktop/DesktopShell.qml
@@ -85,6 +91,12 @@ qt_add_qml_module(
  database.cpp
  timeentryactivitiesmodel.h
  timeentryactivitiesmodel.cpp
+ timeoverview.h
+ timeoverview.cpp
+ reminders.h
+ reminders.cpp
+ timeentryexport.h
+ timeentryexport.cpp
  RESOURCES
  qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
  qml/Assets/Icons/solid/gear.svg
@@ -102,6 +114,8 @@ qt_add_qml_module(
  qml/Assets/Icons/solid/chevron-left.svg
  qml/Assets/Icons/solid/chevron-right.svg
  qml/Assets/Icons/solid/calendar-days.svg
+ qml/Assets/Icons/solid/chart-column.svg
+ qml/Assets/Icons/solid/star.svg
  qml/Assets/Icons/solid/clock.svg
  qml/Assets/Icons/solid/pen.svg
  qml/Assets/Icons/solid/plus.svg

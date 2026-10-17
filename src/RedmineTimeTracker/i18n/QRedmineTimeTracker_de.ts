@@ -9,12 +9,12 @@
         <translation>Zeiteintrag hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Components/AddDialog.qml" line="69"/>
+        <location filename="../qml/Components/AddDialog.qml" line="63"/>
         <source>Would you like to submit this time entry?</source>
         <translation>Möchten Sie diesen Zeiteintrag übermitteln?</translation>
     </message>
     <message>
-        <location filename="../qml/Components/AddDialog.qml" line="73"/>
+        <location filename="../qml/Components/AddDialog.qml" line="67"/>
         <source>Total time: %1 spent on: %2</source>
         <translation>Gesamtzeit: %1 gebucht am: %2</translation>
     </message>
@@ -71,32 +71,32 @@
         <translation>Ticket</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="93"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="92"/>
         <source>Time spent (eg. 1,0)</source>
         <translation>Aufgewendete Zeit (z. B. 1,0)</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="119"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="116"/>
         <source>Date</source>
         <translation>Datum</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="138"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="135"/>
         <source>Activity</source>
         <translation>Aktivität</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="156"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="153"/>
         <source>Special</source>
         <translation>Speziell</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="170"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="167"/>
         <source>Comments</source>
         <translation>Kommentare</translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="183"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="180"/>
         <source>Add</source>
         <translation>Hinzufügen</translation>
     </message>
@@ -104,7 +104,7 @@
 <context>
     <name>DatePickerField</name>
     <message>
-        <location filename="../qml/Components/DatePickerField.qml" line="199"/>
+        <location filename="../qml/Components/DatePickerField.qml" line="201"/>
         <source>Today</source>
         <translation>Heute</translation>
     </message>
@@ -112,88 +112,204 @@
 <context>
     <name>DesktopShell</name>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="64"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="70"/>
         <source>Recent Entries</source>
         <translation>Letzte Einträge</translation>
     </message>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="64"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="70"/>
         <source>Add Entry</source>
         <translation>Eintrag hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="64"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="70"/>
         <source>Search Issue</source>
         <translation>Ticket suchen</translation>
     </message>
     <message>
-        <location filename="../qml/Desktop/DesktopShell.qml" line="64"/>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="70"/>
         <source>Add Issue</source>
         <translation>Ticket hinzufügen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Desktop/DesktopShell.qml" line="70"/>
+        <source>Overview</source>
+        <translation>Übersicht</translation>
     </message>
 </context>
 <context>
     <name>EditTimeEntryDialog</name>
     <message>
-        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="67"/>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="79"/>
         <source>Edit time entry for #%1</source>
         <translation>Zeiteintrag für #%1 bearbeiten</translation>
     </message>
     <message>
-        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="93"/>
-        <source>This entry isn&apos;t linked to a time entry on Redmine, so the changes are only saved in the app.</source>
-        <translation>Dieser Eintrag ist mit keinem Zeiteintrag in Redmine verknüpft, die Änderungen werden daher nur in der App gespeichert.</translation>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="85"/>
+        <source>Delete</source>
+        <translation>Löschen</translation>
     </message>
     <message>
-        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="100"/>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="104"/>
+        <source>Delete time entry?</source>
+        <translation>Zeiteintrag löschen?</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="113"/>
+        <source>The time entry is deleted on Redmine, too. This can&apos;t be undone.</source>
+        <translation>Der Zeiteintrag wird auch in Redmine gelöscht. Das kann nicht rückgängig gemacht werden.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="114"/>
+        <source>The time entry is deleted from the app. This can&apos;t be undone.</source>
+        <translation>Der Zeiteintrag wird aus der App gelöscht. Das kann nicht rückgängig gemacht werden.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="153"/>
+        <source>This entry isn&apos;t on Redmine yet. It&apos;s sent with your changes once Redmine is reachable.</source>
+        <translation>Dieser Eintrag ist noch nicht in Redmine. Er wird mit Ihren Änderungen gesendet, sobald Redmine erreichbar ist.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="155"/>
+        <source>Redmine rejected this entry: %1
+Saving sends it again.</source>
+        <translation>Redmine hat diesen Eintrag abgelehnt: %1
+Beim Speichern wird er erneut gesendet.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="157"/>
+        <source>This entry was saved before the app kept track of sending entries, so it may already be on Redmine. Changes are only saved in the app, unless you send it.</source>
+        <translation>Dieser Eintrag wurde gespeichert, bevor die App das Senden von Einträgen verfolgt hat. Er ist daher möglicherweise schon in Redmine. Änderungen werden nur in der App gespeichert, es sei denn, Sie senden ihn.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="168"/>
+        <source>It&apos;s not on Redmine yet - send it when saving</source>
+        <translation>Er ist noch nicht in Redmine – beim Speichern senden</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="173"/>
         <source>Date</source>
         <translation>Datum</translation>
     </message>
     <message>
-        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="121"/>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="194"/>
         <source>Time spent (eg. 1,0)</source>
         <translation>Aufgewendete Zeit (z. B. 1,0)</translation>
     </message>
     <message>
-        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="133"/>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="205"/>
         <source>Activity</source>
         <translation>Aktivität</translation>
     </message>
     <message>
-        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="143"/>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="215"/>
         <source>Unchanged</source>
         <translation>Unverändert</translation>
     </message>
     <message>
-        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="152"/>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="224"/>
         <source>Special</source>
         <translation>Speziell</translation>
     </message>
     <message>
-        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="166"/>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="238"/>
         <source>Comments</source>
         <translation>Kommentare</translation>
     </message>
 </context>
 <context>
+    <name>ExportDialog</name>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="40"/>
+        <source>Time entries %1 – %2</source>
+        <translation>Zeiteinträge %1 – %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="44"/>
+        <source>The file couldn&apos;t be written: %1</source>
+        <translation>Die Datei konnte nicht geschrieben werden: %1</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/Components/ExportDialog.qml" line="45"/>
+        <source>Exported %n time entries.</source>
+        <translation>
+            <numerusform>%n Zeiteintrag exportiert.</numerusform>
+            <numerusform>%n Zeiteinträge exportiert.</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/Components/ExportDialog.qml" line="46"/>
+        <source>Exported %n time entries. Redmine couldn&apos;t be reached, so only the entries known in the app are included.</source>
+        <translation>
+            <numerusform>%n Zeiteintrag exportiert. Redmine war nicht erreichbar, daher sind nur die in der App bekannten Einträge enthalten.</numerusform>
+            <numerusform>%n Zeiteinträge exportiert. Redmine war nicht erreichbar, daher sind nur die in der App bekannten Einträge enthalten.</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="56"/>
+        <source>Export time entries</source>
+        <translation>Zeiteinträge exportieren</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="59"/>
+        <source>Export…</source>
+        <translation>Exportieren…</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="74"/>
+        <source>CSV files (*.csv)</source>
+        <translation>CSV-Dateien (*.csv)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="74"/>
+        <source>PDF files (*.pdf)</source>
+        <translation>PDF-Dateien (*.pdf)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="129"/>
+        <source>From</source>
+        <translation>Von</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="138"/>
+        <source>To</source>
+        <translation>Bis</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="149"/>
+        <source>Format</source>
+        <translation>Format</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="156"/>
+        <source>CSV (spreadsheets)</source>
+        <translation>CSV (Tabellenkalkulation)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/ExportDialog.qml" line="156"/>
+        <source>PDF</source>
+        <translation>PDF</translation>
+    </message>
+</context>
+<context>
     <name>GetTimeEntriesView</name>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="59"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="66"/>
         <source>Search Issue</source>
         <translation>Ticket suchen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="76"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="83"/>
         <source>Issue</source>
         <translation>Ticket</translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="89"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="96"/>
         <source>Get</source>
         <translation>Abrufen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="150"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="163"/>
         <source>Enter an issue and press Get to list its time entries.</source>
         <translation>Geben Sie ein Ticket ein und klicken Sie auf „Abrufen“, um seine Zeiteinträge anzuzeigen.</translation>
     </message>
@@ -219,22 +335,65 @@
 <context>
     <name>IssueSearchInputField</name>
     <message>
-        <location filename="../qml/Components/IssueSearchInputField.qml" line="147"/>
+        <location filename="../qml/Components/IssueSearchInputField.qml" line="153"/>
         <source>No project</source>
         <translation>Kein Projekt</translation>
     </message>
 </context>
 <context>
+    <name>IssueStatusPicker</name>
+    <message>
+        <location filename="../qml/Components/IssueStatusPicker.qml" line="54"/>
+        <source>Issue status (currently %1)</source>
+        <translation>Ticketstatus (derzeit %1)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/IssueStatusPicker.qml" line="62"/>
+        <source>Unchanged</source>
+        <translation>Unverändert</translation>
+    </message>
+</context>
+<context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="42"/>
+        <location filename="../qml/Main.qml" line="63"/>
         <source>Error: %1</source>
         <translation>Fehler: %1</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="49"/>
+        <location filename="../qml/Main.qml" line="71"/>
         <source>Time entry created successfully</source>
         <translation>Zeiteintrag erfolgreich erstellt</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="336"/>
+        <source>Timer still running</source>
+        <translation>Timer läuft noch</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="343"/>
+        <source>The computer was asleep since %2 while the timer for #%1 was running. Should that time count?</source>
+        <translation>Der Computer war seit %2 im Ruhezustand, während der Timer für #%1 lief. Soll diese Zeit zählen?</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="344"/>
+        <source>The timer for #%1 was running when the app was last used, on %2. Should the time since then count?</source>
+        <translation>Der Timer für #%1 lief, als die App zuletzt verwendet wurde (%2). Soll die Zeit seitdem zählen?</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="351"/>
+        <source>Count it</source>
+        <translation>Mitzählen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="352"/>
+        <source>Leave it out</source>
+        <translation>Weglassen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Main.qml" line="352"/>
+        <source>Stop it then</source>
+        <translation>Dort anhalten</translation>
     </message>
 </context>
 <context>
@@ -248,78 +407,233 @@
 <context>
     <name>MobileShell</name>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="74"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="80"/>
         <source>Recent</source>
         <translation>Letzte</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="74"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="80"/>
         <source>Add Entry</source>
         <translation>Eintrag hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="74"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="80"/>
         <source>Search</source>
         <translation>Suche</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="74"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="80"/>
         <source>Add Issue</source>
         <translation>Ticket hinzufügen</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileShell.qml" line="74"/>
+        <location filename="../qml/Mobile/MobileShell.qml" line="80"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Mobile/MobileShell.qml" line="80"/>
+        <source>Overview</source>
+        <translation>Übersicht</translation>
     </message>
 </context>
 <context>
     <name>MobileTrackingBar</name>
     <message>
-        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="141"/>
+        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="189"/>
         <source>Issue</source>
         <translation>Ticket</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="168"/>
+        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="216"/>
         <source>Comment</source>
         <translation>Kommentar</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="195"/>
+        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="243"/>
         <source>Activity</source>
         <translation>Aktivität</translation>
     </message>
 </context>
 <context>
+    <name>OverviewView</name>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="30"/>
+        <source>%1 h</source>
+        <translation>%1 h</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="78"/>
+        <source>Overview</source>
+        <translation>Übersicht</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="103"/>
+        <source>Previous week</source>
+        <translation>Vorherige Woche</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="106"/>
+        <source>Week %1 · %2 – %3</source>
+        <translation>KW %1 · %2 – %3</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="119"/>
+        <source>Next week</source>
+        <translation>Nächste Woche</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="122"/>
+        <source>This week</source>
+        <translation>Diese Woche</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="130"/>
+        <source>Export…</source>
+        <translation>Exportieren…</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="135"/>
+        <source>%1 of %2</source>
+        <translation>%1 von %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="211"/>
+        <source>%1 still to book on the workdays so far.</source>
+        <translation>Für die bisherigen Arbeitstage fehlen noch %1.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="218"/>
+        <source>Only the entries saved in the app are counted, since Redmine couldn&apos;t be asked.</source>
+        <translation>Es werden nur die in der App gespeicherten Einträge gezählt, da Redmine nicht abgefragt werden konnte.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="227"/>
+        <source>Target per workday</source>
+        <translation>Soll pro Arbeitstag</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="242"/>
+        <source>Projects</source>
+        <translation>Projekte</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/OverviewView.qml" line="257"/>
+        <source>No project</source>
+        <translation>Kein Projekt</translation>
+    </message>
+</context>
+<context>
+    <name>QRedmineClient::Reminders</name>
+    <message>
+        <location filename="../reminders.cpp" line="139"/>
+        <source>Timer still running</source>
+        <translation>Timer läuft noch</translation>
+    </message>
+    <message>
+        <location filename="../reminders.cpp" line="140"/>
+        <source>The timer for #%1 has been running for %2 hours. Still working on it?</source>
+        <translation>Der Timer für #%1 läuft seit %2 Stunden. Arbeiten Sie noch daran?</translation>
+    </message>
+    <message>
+        <location filename="../reminders.cpp" line="89"/>
+        <source>Nothing booked today</source>
+        <translation>Heute noch nichts gebucht</translation>
+    </message>
+    <message>
+        <location filename="../reminders.cpp" line="89"/>
+        <source>No time has been booked for today yet.</source>
+        <translation>Für heute wurde noch keine Zeit gebucht.</translation>
+    </message>
+</context>
+<context>
+    <name>QRedmineClient::TimeEntryExport</name>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Date</source>
+        <translation>Datum</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Issue</source>
+        <translation>Ticket</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Project</source>
+        <translation>Projekt</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Activity</source>
+        <translation>Aktivität</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Hours</source>
+        <translation>Stunden</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Comment</source>
+        <translation>Kommentar</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="138"/>
+        <source>Total</source>
+        <translation>Summe</translation>
+    </message>
+</context>
+<context>
     <name>RecentEntriesView</name>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="111"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="138"/>
+        <source>The entry is being sent to Redmine right now. Please try again in a moment.</source>
+        <translation>Der Eintrag wird gerade an Redmine gesendet. Bitte versuchen Sie es gleich noch einmal.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="150"/>
         <source>Recent Entries</source>
         <translation>Letzte Einträge</translation>
     </message>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="131"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="176"/>
+        <source>Start tracking (%1)</source>
+        <translation>Zeiterfassung starten (%1)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="177"/>
+        <source>Start tracking</source>
+        <translation>Zeiterfassung starten</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="199"/>
         <source>All projects</source>
         <translation>Alle Projekte</translation>
     </message>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="143"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="211"/>
         <source>Group by project</source>
         <translation>Nach Projekt gruppieren</translation>
     </message>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="180"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="248"/>
         <source>No project</source>
         <translation>Kein Projekt</translation>
     </message>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="230"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="313"/>
         <source>No time entries yet</source>
         <translation>Noch keine Zeiteinträge</translation>
     </message>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="238"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="321"/>
         <source>Track time with the bar below or add an entry manually.</source>
         <translation>Erfassen Sie Zeit über die Leiste unten oder fügen Sie einen Eintrag manuell hinzu.</translation>
     </message>
@@ -327,47 +641,77 @@
 <context>
     <name>SettingsView</name>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="25"/>
+        <location filename="../qml/Views/SettingsView.qml" line="30"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="29"/>
+        <location filename="../qml/Views/SettingsView.qml" line="34"/>
         <source>Connection Settings</source>
         <translation>Verbindungseinstellungen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="33"/>
+        <location filename="../qml/Views/SettingsView.qml" line="38"/>
         <source>Redmine URL</source>
         <translation>Redmine-URL</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="55"/>
+        <location filename="../qml/Views/SettingsView.qml" line="60"/>
         <source>API Key</source>
         <translation>API-Schlüssel</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="68"/>
+        <location filename="../qml/Views/SettingsView.qml" line="73"/>
         <source>Use SSL</source>
         <translation>SSL verwenden</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="76"/>
+        <location filename="../qml/Views/SettingsView.qml" line="81"/>
         <source>Appearance</source>
         <translation>Darstellung</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="80"/>
+        <location filename="../qml/Views/SettingsView.qml" line="85"/>
         <source>Language</source>
         <translation>Sprache</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="94"/>
+        <location filename="../qml/Views/SettingsView.qml" line="99"/>
         <source>System default</source>
         <translation>Systemstandard</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="106"/>
+        <location filename="../qml/Views/SettingsView.qml" line="111"/>
+        <source>Reminders</source>
+        <translation>Erinnerungen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="115"/>
+        <source>Remind me of unbooked time and long-running timers</source>
+        <translation>An nicht gebuchte Zeit und lange laufende Timer erinnern</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="127"/>
+        <source>Nothing booked on a workday by (HH:mm)</source>
+        <translation>Nichts gebucht an einem Arbeitstag bis (HH:mm)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="140"/>
+        <source>Timer running for (hours, 0 = never)</source>
+        <translation>Timer läuft seit (Stunden, 0 = nie)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="158"/>
+        <source>System tray</source>
+        <translation>Infobereich</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="162"/>
+        <source>Keep running in the tray when the window is closed</source>
+        <translation>Beim Schließen des Fensters im Infobereich weiterlaufen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="170"/>
         <source>Version %0</source>
         <translation>Version %0</translation>
     </message>
@@ -375,12 +719,12 @@
 <context>
     <name>Sidebar</name>
     <message>
-        <location filename="../qml/Components/Sidebar.qml" line="154"/>
+        <location filename="../qml/Components/Sidebar.qml" line="156"/>
         <source>Menu</source>
         <translation>Menü</translation>
     </message>
     <message>
-        <location filename="../qml/Components/Sidebar.qml" line="183"/>
+        <location filename="../qml/Components/Sidebar.qml" line="185"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
@@ -388,12 +732,12 @@
 <context>
     <name>SpecialFieldComboBox</name>
     <message>
-        <location filename="../qml/Components/SpecialFieldComboBox.qml" line="45"/>
+        <location filename="../qml/Components/SpecialFieldComboBox.qml" line="49"/>
         <source>None</source>
         <translation>Keine</translation>
     </message>
     <message>
-        <location filename="../qml/Components/SpecialFieldComboBox.qml" line="53"/>
+        <location filename="../qml/Components/SpecialFieldComboBox.qml" line="57"/>
         <source>Unchanged</source>
         <translation>Unverändert</translation>
     </message>
@@ -419,20 +763,50 @@
 <context>
     <name>TimeEntryDelegate</name>
     <message>
-        <location filename="../qml/Components/TimeEntryDelegate.qml" line="131"/>
+        <location filename="../qml/Components/TimeEntryDelegate.qml" line="147"/>
         <source>Entry %1</source>
         <translation>Eintrag %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TimeEntryDelegate.qml" line="175"/>
+        <source>Not on Redmine yet - sent once it&apos;s reachable</source>
+        <translation>Noch nicht in Redmine – wird gesendet, sobald es erreichbar ist</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TimeEntryDelegate.qml" line="177"/>
+        <source>Rejected by Redmine: %1</source>
+        <translation>Von Redmine abgelehnt: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TimeEntryDelegate.qml" line="179"/>
+        <source>Not linked to Redmine</source>
+        <translation>Nicht mit Redmine verknüpft</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TimeEntryDelegate.qml" line="198"/>
+        <source>Unpin issue</source>
+        <translation>Ticket lösen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TimeEntryDelegate.qml" line="198"/>
+        <source>Pin issue</source>
+        <translation>Ticket anheften</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TimeEntryDelegate.qml" line="210"/>
+        <source>Continue tracking this</source>
+        <translation>Hier weiter erfassen</translation>
     </message>
 </context>
 <context>
     <name>TimePickerField</name>
     <message>
-        <location filename="../qml/Components/TimePickerField.qml" line="213"/>
+        <location filename="../qml/Components/TimePickerField.qml" line="215"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TimePickerField.qml" line="219"/>
+        <location filename="../qml/Components/TimePickerField.qml" line="221"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>
@@ -440,12 +814,12 @@
 <context>
     <name>TimeRangeRow</name>
     <message>
-        <location filename="../qml/Components/TimeRangeRow.qml" line="41"/>
+        <location filename="../qml/Components/TimeRangeRow.qml" line="40"/>
         <source>From</source>
         <translation>Von</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TimeRangeRow.qml" line="53"/>
+        <location filename="../qml/Components/TimeRangeRow.qml" line="52"/>
         <source>To</source>
         <translation>Bis</translation>
     </message>
@@ -453,29 +827,67 @@
 <context>
     <name>TrackingBar</name>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="105"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="172"/>
         <source>Time</source>
         <translation>Zeit</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="126"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="193"/>
         <source>Issue</source>
         <translation>Ticket</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="156"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="223"/>
         <source>Comment</source>
         <translation>Kommentar</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="181"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="248"/>
         <source>Activity</source>
         <translation>Aktivität</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="201"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="268"/>
         <source>Special</source>
         <translation>Speziell</translation>
+    </message>
+</context>
+<context>
+    <name>TrayIcon</name>
+    <message>
+        <location filename="../qml/Components/TrayIcon.qml" line="30"/>
+        <source>#%1 paused at %2</source>
+        <translation>#%1 pausiert bei %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TrayIcon.qml" line="31"/>
+        <source>#%1 running: %2</source>
+        <translation>#%1 läuft: %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TrayIcon.qml" line="43"/>
+        <source>Show %1</source>
+        <translation>%1 anzeigen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TrayIcon.qml" line="49"/>
+        <source>Resume #%1</source>
+        <translation>#%1 fortsetzen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TrayIcon.qml" line="50"/>
+        <source>Pause #%1</source>
+        <translation>#%1 pausieren</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TrayIcon.qml" line="55"/>
+        <source>Start tracking</source>
+        <translation>Zeiterfassung starten</translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TrayIcon.qml" line="72"/>
+        <source>Quit</source>
+        <translation>Beenden</translation>
     </message>
 </context>
 </TS>
