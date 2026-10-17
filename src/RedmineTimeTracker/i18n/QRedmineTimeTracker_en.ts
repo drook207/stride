@@ -219,17 +219,17 @@ Saving sends it again.</source>
 <context>
     <name>ExportDialog</name>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="39"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="40"/>
         <source>Time entries %1 – %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="43"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="44"/>
         <source>The file couldn&apos;t be written: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Components/ExportDialog.qml" line="44"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="45"/>
         <source>Exported %n time entries.</source>
         <translation>
             <numerusform>Exported %n time entry.</numerusform>
@@ -237,7 +237,7 @@ Saving sends it again.</source>
         </translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/Components/ExportDialog.qml" line="45"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="46"/>
         <source>Exported %n time entries. Redmine couldn&apos;t be reached, so only the entries known in the app are included.</source>
         <translation>
             <numerusform>Exported %n time entry. Redmine couldn&apos;t be reached, so only the entries known in the app are included.</numerusform>
@@ -245,47 +245,47 @@ Saving sends it again.</source>
         </translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="55"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="56"/>
         <source>Export time entries</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="58"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="59"/>
         <source>Export…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="72"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="74"/>
         <source>CSV files (*.csv)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="72"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="74"/>
         <source>PDF files (*.pdf)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="120"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="129"/>
         <source>From</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="129"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="138"/>
         <source>To</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="140"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="149"/>
         <source>Format</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="147"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="156"/>
         <source>CSV (spreadsheets)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/ExportDialog.qml" line="147"/>
+        <location filename="../qml/Components/ExportDialog.qml" line="156"/>
         <source>PDF</source>
         <translation type="unfinished"></translation>
     </message>
@@ -342,12 +342,12 @@ Saving sends it again.</source>
 <context>
     <name>IssueStatusPicker</name>
     <message>
-        <location filename="../qml/Components/IssueStatusPicker.qml" line="61"/>
+        <location filename="../qml/Components/IssueStatusPicker.qml" line="54"/>
         <source>Issue status (currently %1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/IssueStatusPicker.qml" line="69"/>
+        <location filename="../qml/Components/IssueStatusPicker.qml" line="62"/>
         <source>Unchanged</source>
         <translation type="unfinished"></translation>
     </message>
@@ -355,42 +355,42 @@ Saving sends it again.</source>
 <context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="74"/>
+        <location filename="../qml/Main.qml" line="63"/>
         <source>Error: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="82"/>
+        <location filename="../qml/Main.qml" line="71"/>
         <source>Time entry created successfully</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="327"/>
+        <location filename="../qml/Main.qml" line="336"/>
         <source>Timer still running</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="334"/>
+        <location filename="../qml/Main.qml" line="343"/>
         <source>The computer was asleep since %2 while the timer for #%1 was running. Should that time count?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="335"/>
+        <location filename="../qml/Main.qml" line="344"/>
         <source>The timer for #%1 was running when the app was last used, on %2. Should the time since then count?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="342"/>
+        <location filename="../qml/Main.qml" line="351"/>
         <source>Count it</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="343"/>
+        <location filename="../qml/Main.qml" line="352"/>
         <source>Leave it out</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="343"/>
+        <location filename="../qml/Main.qml" line="352"/>
         <source>Stop it then</source>
         <translation type="unfinished"></translation>
     </message>
@@ -462,62 +462,62 @@ Saving sends it again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="72"/>
+        <location filename="../qml/Views/OverviewView.qml" line="78"/>
         <source>Overview</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="97"/>
+        <location filename="../qml/Views/OverviewView.qml" line="103"/>
         <source>Previous week</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="100"/>
+        <location filename="../qml/Views/OverviewView.qml" line="106"/>
         <source>Week %1 · %2 – %3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="113"/>
+        <location filename="../qml/Views/OverviewView.qml" line="119"/>
         <source>Next week</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="116"/>
+        <location filename="../qml/Views/OverviewView.qml" line="122"/>
         <source>This week</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="124"/>
+        <location filename="../qml/Views/OverviewView.qml" line="130"/>
         <source>Export…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="129"/>
+        <location filename="../qml/Views/OverviewView.qml" line="135"/>
         <source>%1 of %2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="205"/>
+        <location filename="../qml/Views/OverviewView.qml" line="211"/>
         <source>%1 still to book on the workdays so far.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="212"/>
+        <location filename="../qml/Views/OverviewView.qml" line="218"/>
         <source>Only the entries saved in the app are counted, since Redmine couldn&apos;t be asked.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="221"/>
+        <location filename="../qml/Views/OverviewView.qml" line="227"/>
         <source>Target per workday</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="236"/>
+        <location filename="../qml/Views/OverviewView.qml" line="242"/>
         <source>Projects</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="251"/>
+        <location filename="../qml/Views/OverviewView.qml" line="257"/>
         <source>No project</source>
         <translation type="unfinished"></translation>
     </message>
@@ -525,22 +525,22 @@ Saving sends it again.</source>
 <context>
     <name>QRedmineClient::Reminders</name>
     <message>
-        <location filename="../reminders.cpp" line="96"/>
+        <location filename="../reminders.cpp" line="139"/>
         <source>Timer still running</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../reminders.cpp" line="97"/>
+        <location filename="../reminders.cpp" line="140"/>
         <source>The timer for #%1 has been running for %2 hours. Still working on it?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../reminders.cpp" line="112"/>
+        <location filename="../reminders.cpp" line="89"/>
         <source>Nothing booked today</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../reminders.cpp" line="112"/>
+        <location filename="../reminders.cpp" line="89"/>
         <source>No time has been booked for today yet.</source>
         <translation type="unfinished"></translation>
     </message>
