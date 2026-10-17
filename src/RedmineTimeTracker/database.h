@@ -89,6 +89,13 @@ namespace SqlQueries {
 		"WHERE ");
 
 	// Local time entries, newest first, with the project of their issue where that issue is cached.
+	// Local time entries spent on the days from .. to, with their issue's project as for GET_RECENT_ENTRIES.
+	STATIC_CONST_QSTRING(GET_ENTRIES_BETWEEN,
+		"SELECT t.*, i.project_id AS project_id, i.project_name AS project_name "
+		"FROM time_entries t LEFT JOIN issues i ON i.id = t.issue_id "
+		"WHERE date(t.spent_on) BETWEEN ? AND ? "
+		"ORDER BY t.spent_on, t.id");
+
 	STATIC_CONST_QSTRING(GET_RECENT_ENTRIES,
 		"SELECT t.*, i.project_id AS project_id, i.project_name AS project_name "
 		"FROM time_entries t LEFT JOIN issues i ON i.id = t.issue_id "
@@ -217,6 +224,9 @@ public:
 	static bool touchTrackingState();
 
 	static QJsonArray getRecentEntries(int limit = 50);
+
+	//! Local entries spent on the days from .. to (both included), fields as for getRecentEntries().
+	static QJsonArray getEntriesBetween(const QDate& from, const QDate& to);
 
 	/*!
 	 * \brief linkedRedmineIds Redmine time entries some local entry is linked to (see updateSyncStatus())

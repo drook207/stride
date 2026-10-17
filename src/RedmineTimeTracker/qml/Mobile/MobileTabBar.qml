@@ -27,7 +27,7 @@ Rectangle {
 
     //! Icon filename per tab (under Assets/Icons/solid/), index-aligned with componentsToLoad and
     //! buttonTitles. Must be kept the same length as those two.
-    readonly property var navIcons: ["clock-rotate-left.svg", "circle-plus.svg", "magnifying-glass.svg", "circle-plus.svg", "gear.svg"]
+    readonly property var navIcons: ["clock-rotate-left.svg", "chart-column.svg", "circle-plus.svg", "magnifying-glass.svg", "circle-plus.svg", "gear.svg"]
 
     implicitHeight: 64
     color: Material.backgroundColor

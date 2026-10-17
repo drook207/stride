@@ -62,8 +62,8 @@ Item {
 
                 view: stackView
                 timeTracker: docroot.timeTracker
-                componentsToLoad: [recentEntriesView, addTimeEntryView, getTimeEntriesView, addIssueView, settingsView]
-                buttonTitles: [qsTr("Recent Entries"), qsTr("Add Entry"), qsTr("Search Issue"), qsTr("Add Issue")]
+                componentsToLoad: [recentEntriesView, overviewView, addTimeEntryView, getTimeEntriesView, addIssueView, settingsView]
+                buttonTitles: [qsTr("Recent Entries"), qsTr("Overview"), qsTr("Add Entry"), qsTr("Search Issue"), qsTr("Add Issue")]
             }
 
             StackView {
@@ -94,6 +94,14 @@ Item {
             timeTracker: docroot.timeTracker
             client: docroot.client
             activitiesModel: docroot.activitiesModel
+        }
+    }
+
+    Component {
+        id: overviewView
+        OverviewView {
+            timeTracker: docroot.timeTracker
+            client: docroot.client
         }
     }
 

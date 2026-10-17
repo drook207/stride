@@ -490,6 +490,27 @@ QJsonArray Database::getRecentEntries(int limit)
 	return entries;
 }
 
+QJsonArray Database::getEntriesBetween(const QDate& from, const QDate& to)
+{
+	QJsonArray entries;
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_ENTRIES_BETWEEN, query)) {
+		return entries;
+	}
+	query.addBindValue(from.toString(Qt::ISODate));
+	query.addBindValue(to.toString(Qt::ISODate));
+	if (!evaluateQueryExec(query)) {
+		return entries;
+	}
+	while (query.next()) {
+		QJsonObject entry = entryFromQuery(query);
+		entry["project_id"] = query.value("project_id").toInt();
+		entry["project_name"] = query.value("project_name").toString();
+		entries.append(entry);
+	}
+	return entries;
+}
+
 QSet<int> Database::linkedRedmineIds()
 {
 	QSet<int> ids;

@@ -51,6 +51,7 @@ qt_add_qml_module(
  qml/Header.qml
  qml/Views/RecentEntriesView.qml
  qml/Views/GetTimeEntriesView.qml
+ qml/Views/OverviewView.qml
  qml/Views/AddTimeEntryView.qml
  qml/Views/AddIssueView.qml
  qml/Views/SettingsView.qml
@@ -87,6 +88,8 @@ qt_add_qml_module(
  database.cpp
  timeentryactivitiesmodel.h
  timeentryactivitiesmodel.cpp
+ timeoverview.h
+ timeoverview.cpp
  RESOURCES
  qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
  qml/Assets/Icons/solid/gear.svg
@@ -104,6 +107,7 @@ qt_add_qml_module(
  qml/Assets/Icons/solid/chevron-left.svg
  qml/Assets/Icons/solid/chevron-right.svg
  qml/Assets/Icons/solid/calendar-days.svg
+ qml/Assets/Icons/solid/chart-column.svg
  qml/Assets/Icons/solid/clock.svg
  qml/Assets/Icons/solid/pen.svg
  qml/Assets/Icons/solid/plus.svg

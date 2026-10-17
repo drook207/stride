@@ -534,6 +534,15 @@ void RedmineClient::getOwnTimeEntries(const QString& from, const QString& to)
 	startPagedFetch(OwnTimeEntriesTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"), true);
 }
 
+void RedmineClient::getTimeEntryReport(const QString& from, const QString& to)
+{
+	QUrlQuery query;
+	query.addQueryItem("user_id", "me");
+	query.addQueryItem("from", from);
+	query.addQueryItem("to", to);
+	startPagedFetch(TimeEntryReportTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"), true);
+}
+
 void RedmineClient::getAllProjects()
 {
 	QUrlQuery query;
@@ -595,6 +604,8 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply, RequestTag tag)
 		emit projectsReceived(items);
 	} else if (tag == OwnTimeEntriesTag) {
 		emit ownTimeEntriesReceived(items);
+	} else if (tag == TimeEntryReportTag) {
+		emit timeEntryReportReceived(items, fetch.query.queryItemValue("from"), fetch.query.queryItemValue("to"));
 	}
 }
 
@@ -787,7 +798,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		handleTimeEntryCustomFieldsReply(reply, tag);
 		return;
 	}
-	if (tag == AllProjectsTag || tag == OwnTimeEntriesTag) {
+	if (tag == AllProjectsTag || tag == OwnTimeEntriesTag || tag == TimeEntryReportTag) {
 		updateConnectionStateFromReply(reply);
 		handlePagedReply(reply, tag);
 		return;

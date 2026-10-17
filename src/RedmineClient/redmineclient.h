@@ -305,6 +305,13 @@ public slots:
 	void getOwnTimeEntries(const QString& from, const QString& to);
 
 	/*!
+	 * \brief getTimeEntryReport Like getOwnTimeEntries(), for reports (e.g. a week's overview);
+	 * emits timeEntryReportReceived(). Separate so a report doesn't supersede the linking that
+	 * getOwnTimeEntries() serves, and vice versa.
+	 */
+	void getTimeEntryReport(const QString& from, const QString& to);
+
+	/*!
 	 * \brief createProject
 	 * \param name
 	 * \param identifier
@@ -486,6 +493,14 @@ signals:
 	void ownTimeEntriesReceived(const QJsonArray& timeEntries);
 
 	/*!
+	 * \brief timeEntryReportReceived
+	 * \param timeEntries All of the user's time entries asked for by getTimeEntryReport()
+	 * \param from The first day asked for, "yyyy-MM-dd"
+	 * \param to The last day asked for, "yyyy-MM-dd"
+	 */
+	void timeEntryReportReceived(const QJsonArray& timeEntries, const QString& from, const QString& to);
+
+	/*!
 	 * \brief projectCreated
 	 * \param project
 	 */
@@ -531,6 +546,7 @@ private:
 		TimeEntryCustomFieldsFallbackTag,
 		AllProjectsTag,
 		OwnTimeEntriesTag,
+		TimeEntryReportTag,
 		PermissionsTag
 	};
 
