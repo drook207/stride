@@ -1,5 +1,8 @@
 #include "issuemodel.h"
 
+#include <QCollator>
+#include <algorithm>
+
 namespace QRedmineClient {
 
 void IssueModel::updateIssueList()
@@ -16,6 +19,17 @@ void IssueModel::updateIssueList()
 			query.value("updated_on").toDateTime() };
 		mIssues.append(issue);
 	}
+
+	// Grouped by project for the suggestions: alphabetically like Recent Entries' groups (locale
+	// aware, ignoring case), issues without a project last; by id within a project (see GET_ISSUES).
+	QCollator collator;
+	collator.setCaseSensitivity(Qt::CaseInsensitive);
+	std::stable_sort(mIssues.begin(), mIssues.end(), [&collator](const Issue& a, const Issue& b) {
+		if (a.projectName.isEmpty() || b.projectName.isEmpty()) {
+			return !a.projectName.isEmpty() && b.projectName.isEmpty();
+		}
+		return collator.compare(a.projectName, b.projectName) < 0;
+	});
 
 	endResetModel();
 }

@@ -121,11 +121,15 @@ bool Database::createIssuesDatabase()
 	return true;
 }
 
-QList<int> Database::issueIdsWithoutProject()
+QList<int> Database::issueIdsWithoutProject(int limit)
 {
 	QList<int> ids;
 	QSqlQuery query;
-	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUE_IDS_WITHOUT_PROJECT, query) || !evaluateQueryExec(query)) {
+	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUE_IDS_WITHOUT_PROJECT, query)) {
+		return ids;
+	}
+	query.addBindValue(limit);
+	if (!evaluateQueryExec(query)) {
 		return ids;
 	}
 	while (query.next()) {

@@ -183,6 +183,31 @@ TEST_F(RedmineClientIntegrationTest, GetProjectsWithPaginationSendsQueryParamete
 	EXPECT_EQ(request.query.queryItemValue("offset").toStdString(), "50");
 }
 
+TEST_F(RedmineClientIntegrationTest, GetAllProjectsRequestsEveryPageAndEmitsThemOnce)
+{
+	server->enqueueResponse(
+		MockHttpResponse { 200, "OK", R"({"projects":[{"id":1},{"id":2}],"total_count":3,"offset":0,"limit":100})" });
+	server->enqueueResponse(
+		MockHttpResponse { 200, "OK", R"({"projects":[{"id":3}],"total_count":3,"offset":2,"limit":100})" });
+
+	int emitted = 0;
+	QJsonArray received;
+	QObject::connect(client.get(), &RedmineClient::projectsReceived, [&](const QJsonArray& projects) {
+		++emitted;
+		received = projects;
+	});
+
+	client->getAllProjects();
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::projectsReceived));
+
+	ASSERT_EQ(server->requests().size(), 2);
+	EXPECT_EQ(server->requests().at(0).query.queryItemValue("offset").toStdString(), "0");
+	EXPECT_EQ(server->requests().at(1).query.queryItemValue("offset").toStdString(), "2");
+	EXPECT_EQ(emitted, 1);
+	ASSERT_EQ(received.size(), 3);
+	EXPECT_EQ(received.at(2).toObject()["id"].toInt(), 3);
+}
+
 TEST_F(RedmineClientIntegrationTest, CreateProjectSendsPostBodyAndEmitsProjectCreated)
 {
 	server->enqueueResponse(MockHttpResponse { 201, "Created", R"({"project":{"id":8,"identifier":"proj"}})" });
@@ -430,6 +455,20 @@ TEST_F(RedmineClientIntegrationTest, NotFoundResponseDoesNotEmitErrorOccurred)
 	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
 
 	client->getIssue(999);
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	EXPECT_FALSE(errorFired);
+	EXPECT_EQ(server->requests().size(), 1);
+}
+
+TEST_F(RedmineClientIntegrationTest, QuietGetIssueDoesNotEmitErrorOccurred)
+{
+	server->enqueueResponse(MockHttpResponse { 403, "Forbidden", "" });
+
+	bool errorFired = false;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
+
+	client->getIssue(7, true);
 	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
 
 	EXPECT_FALSE(errorFired);

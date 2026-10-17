@@ -199,8 +199,9 @@ public slots:
 	/*!
 	 * \brief getIssue
 	 * \param issueId
+	 * \param quiet Don't report failures via errorOccurred(), for fetches the user didn't ask for
 	 */
-	void getIssue(int issueId);
+	void getIssue(int issueId, bool quiet = false);
 
 	/*!
 	 * \brief getIssues List issues, optionally filtered by project or status
@@ -250,6 +251,12 @@ public slots:
 	 * \param offset Skip this many projects (for pagination)
 	 */
 	void getProjects(int limit = 100, int offset = 0);
+
+	/*!
+	 * \brief getAllProjects Lists all projects, requesting page after page; emits projectsReceived()
+	 * once with all of them. A new call supersedes one still in progress.
+	 */
+	void getAllProjects();
 
 	/*!
 	 * \brief createProject
@@ -433,6 +440,15 @@ private:
 
 	ConnectionState mConnectionState = ConnectionState::OFFLINE;
 	QTimer mConnectionCheckTimer;
+
+	//! Requests the page of getAllProjects() starting at offset.
+	void requestProjectsPage(int offset);
+	//! Adds a page received for getAllProjects(), then requests the next one or emits them all.
+	void collectProjectsPage(const QJsonObject& response);
+	//! Projects received so far by the current getAllProjects() call.
+	QJsonArray mCollectedProjects;
+	//! Counts getAllProjects() calls, so pages of a superseded call are ignored.
+	int mProjectsGeneration = 0;
 	void setupConnectionCheckTimer();
 	void setConnectionState(RedmineClient::ConnectionState newConnectionState);
 	void toggleConnectionState(RedmineClient::ConnectionState newConnectionState);

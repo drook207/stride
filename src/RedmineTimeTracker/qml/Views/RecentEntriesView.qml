@@ -190,7 +190,10 @@ Item {
 						hours: modelData.hours
 						comment: modelData.comments || ""
 						spentOn: modelData.spent_on
+						// Not above the next group's header, which separates the groups already.
 						showDivider: index < docroot.shownEntries.length - 1
+									 && !(docroot.groupByProject
+										  && docroot.projectOf(docroot.shownEntries[index + 1]) !== docroot.projectOf(modelData))
 						editable: true
 
 						onClicked: {

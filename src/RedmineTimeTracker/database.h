@@ -51,12 +51,15 @@ namespace SqlQueries {
 	STATIC_CONST_QSTRING(GET_RECENT_ENTRIES,
 		"SELECT t.*, i.project_id AS project_id, i.project_name AS project_name "
 		"FROM time_entries t LEFT JOIN issues i ON i.id = t.issue_id "
-		"ORDER BY t.created_at DESC "
+		"ORDER BY t.created_at DESC, t.id DESC "
 		"LIMIT ?");
 
-	// Issues of local time entries that aren't cached with a project yet.
+	// Issues of the latest local time entries (as many as GET_RECENT_ENTRIES shows) that aren't
+	// cached with a project yet.
 	STATIC_CONST_QSTRING(GET_ISSUE_IDS_WITHOUT_PROJECT,
-		"SELECT DISTINCT t.issue_id FROM time_entries t LEFT JOIN issues i ON i.id = t.issue_id "
+		"SELECT DISTINCT t.issue_id "
+		"FROM (SELECT issue_id FROM time_entries ORDER BY created_at DESC, id DESC LIMIT ?) t "
+		"LEFT JOIN issues i ON i.id = t.issue_id "
 		"WHERE i.project_name IS NULL OR i.project_name = ''");
 
 	STATIC_CONST_QSTRING(CREATE_ISSUES_TABLE,
@@ -79,10 +82,10 @@ namespace SqlQueries {
 		"id, subject, project_id, project_name, status_id, description, created_on, updated_on) VALUES "
 		"(:id,:subject, :project_id, :project_name, :status_id,:description,:created_on,:updated_on)");
 
-	// Sorted by project, so issue suggestions can be grouped by it.
+	// Sorted by id; IssueModel groups them by project, which needs a locale aware comparison.
 	STATIC_CONST_QSTRING(GET_ISSUES,
 		"SELECT id, subject, project_id, project_name, status_id, description, created_on, updated_on FROM issues "
-		"ORDER BY project_name COLLATE NOCASE, id");
+		"ORDER BY id");
 }
 
 class Database {
@@ -120,10 +123,11 @@ public:
 		const QString& description, const QDateTime& createdOn, const QDateTime& updatedOn);
 
 	/*!
-	 * \brief issueIdsWithoutProject Issues of local time entries that aren't cached with their
-	 * project yet, so it can't be shown for those entries
+	 * \brief issueIdsWithoutProject Issues of the latest local time entries that aren't cached with
+	 * their project yet, so it can't be shown for those entries
+	 * \param limit How many of the latest entries to check, as for getRecentEntries()
 	 */
-	static QList<int> issueIdsWithoutProject();
+	static QList<int> issueIdsWithoutProject(int limit = 50);
 
 	static QSqlQuery getIssues();
 

@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
+#include <algorithm>
 
 Q_LOGGING_CATEGORY(lcTimeTracker, "qredmine.timetracker")
 
@@ -158,8 +159,16 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 		qWarning() << "Could not add issue  " << issue;
 	} else {
 		emit issueAddedOrUpdated();
-		// Recent entries show their issue's project, which may only now be known.
-		loadRecentEntries();
+		// Recent entries show their issue's project, which may only now be known or have changed.
+		// Reload only then: reloading rebuilds the list and loses its scroll position.
+		const bool shownProjectChanged =
+			std::any_of(mRecentEntries.cbegin(), mRecentEntries.cend(), [&](const QVariant& entry) {
+				const QVariantMap map = entry.toMap();
+				return map["issue_id"].toInt() == id && map["project_name"].toString() != projectName;
+			});
+		if (shownProjectChanged) {
+			loadRecentEntries();
+		}
 	}
 }
 

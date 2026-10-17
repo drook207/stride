@@ -29,7 +29,7 @@ ApplicationWindow {
     //! layout rather than flip to the mobile one.
     readonly property bool isMobile: Qt.platform.os === "android" || Qt.platform.os === "ios"
 
-    //! Redmine's projects ({id, name, identifier, ...}), for picking one in Add Issue.
+    //! Redmine's active projects ({id, name, identifier, ...}), for picking one in Add Issue.
     property var projects: []
 
     RedmineClient {
@@ -54,10 +54,31 @@ ApplicationWindow {
         redmineClient.getEnumerations(0);
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
-        redmineClient.getProjects(100, 0);
-        // Recent entries show their issue's project, which needs the issue cached locally.
+        redmineClient.getAllProjects();
+        // Recent entries show their issue's project, which needs the issue cached locally. Quietly:
+        // the user didn't ask for these, and one they can't fetch (e.g. no access any more) would
+        // otherwise report an error on every launch.
         for (const issueId of timeTrackerInstance.issueIdsWithoutProject()) {
-            redmineClient.getIssue(issueId);
+            redmineClient.getIssue(issueId, true);
+        }
+    }
+
+    // Projects depend on the API key, and fetching them fails while offline: fetch them again
+    // after the key changed (once typing pauses) and when the connection comes back without them.
+    Timer {
+        id: projectsRefetchTimer
+        interval: 1000
+        onTriggered: redmineClient.getAllProjects()
+    }
+    Connections {
+        target: redmineClient
+        function onApiKeyChanged() {
+            projectsRefetchTimer.restart();
+        }
+        function onConnectionStateChanged() {
+            if (redmineClient.connectionState === RedmineClient.ONLINE && window.projects.length === 0) {
+                projectsRefetchTimer.restart();
+            }
         }
     }
     // The "Instance" suffix is deliberate: the shells below have properties named timeTracker and
@@ -72,7 +93,8 @@ ApplicationWindow {
     Connections {
         target: redmineClient
         function onProjectsReceived(projects) {
-            window.projects = projects;
+            // Closed and archived projects don't take new issues.
+            window.projects = projects.filter(project => project.status === 1);
         }
         function onTimeEntryUpdated(timeEntryId, requestTag) {
             timeTrackerInstance.applyRedmineUpdate(timeEntryId, requestTag);
