@@ -1,5 +1,6 @@
 #pragma once
 
+#include "redmineclient.h"
 #include "timetracker.h"
 #include <QDate>
 #include <QObject>
@@ -22,6 +23,9 @@ class Reminders : public QObject {
 	QML_ELEMENT
 	Q_PROPERTY(
 		QRedmineClient::TimeTracker* timeTracker READ timeTracker WRITE setTimeTracker NOTIFY timeTrackerChanged FINAL)
+	//! Asked for the day's time entries before reminding of a day without booked time, so time
+	//! booked outside the app (e.g. in Redmine's web UI) counts too. Optional.
+	Q_PROPERTY(QRedmineClient::RedmineClient* client READ client WRITE setClient NOTIFY clientChanged FINAL)
 	Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY settingsChanged FINAL)
 	//! Time of day ("HH:mm") from which a workday without booked time is reminded of.
 	Q_PROPERTY(QString endOfDay READ endOfDay WRITE setEndOfDay NOTIFY settingsChanged FINAL)
@@ -32,6 +36,8 @@ public:
 
 	TimeTracker* timeTracker() const;
 	void setTimeTracker(TimeTracker* timeTracker);
+	RedmineClient* client() const;
+	void setClient(RedmineClient* client);
 	bool enabled() const;
 	void setEnabled(bool enabled);
 	QString endOfDay() const;
@@ -44,12 +50,18 @@ public:
 
 signals:
 	void timeTrackerChanged();
+	void clientChanged();
 	void settingsChanged();
 	//! Something to remind the user of, e.g. as a system notification.
 	void reminder(const QString& title, const QString& message);
 
 private:
 	QPointer<TimeTracker> mTimeTracker;
+	QPointer<RedmineClient> mClient;
+	//! The day whose time entries were asked for (see client), invalid while not waiting.
+	QDate mAwaitingDay;
+	//! Reminds of a day without booked time.
+	void remindNothingBooked();
 	QTimer mTimer;
 	bool mEnabled = true;
 	QTime mEndOfDay;

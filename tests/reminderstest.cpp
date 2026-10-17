@@ -1,5 +1,8 @@
 #include "reminders.h"
 #include "database.h"
+#include "mockhttpserver.h"
+#include "redmineclient.h"
+#include "testutils.h"
 #include "timetracker.h"
 #include <QSettings>
 #include <gtest/gtest.h>
@@ -76,4 +79,48 @@ TEST_F(RemindersTest, LongRunningTimerIsRemindedOncePerStretch)
 	reminders->check(morning.addSecs(60));
 	EXPECT_EQ(titles, std::vector<std::string> { "Timer still running" });
 	reminders->setTimeTracker(nullptr);
+}
+
+class RemindersWithRedmineTest : public RemindersTest {
+protected:
+	void SetUp() override
+	{
+		RemindersTest::SetUp();
+		client = std::make_unique<QRedmineClient::RedmineClient>();
+		client->setBaseUrl(server.baseUrl());
+		reminders->setClient(client.get());
+	}
+
+	void TearDown() override
+	{
+		reminders->setClient(nullptr);
+		client.reset();
+		RemindersTest::TearDown();
+	}
+
+	QRedmineTesting::MockHttpServer server;
+	std::unique_ptr<QRedmineClient::RedmineClient> client;
+};
+
+TEST_F(RemindersWithRedmineTest, TimeBookedOnRedmineCounts)
+{
+	server.enqueueResponse(QRedmineTesting::MockHttpResponse {
+		200, "OK", R"({"time_entries":[{"id":1,"hours":8}],"total_count":1,"offset":0})" });
+
+	reminders->check(wednesdayEvening);
+	QRedmineTesting::waitUntil([]() { return false; }, 300);
+
+	EXPECT_TRUE(titles.empty());
+}
+
+TEST_F(RemindersWithRedmineTest, RemindsWhenRedmineHasNothingEitherOrCantBeAsked)
+{
+	server.enqueueResponse(
+		QRedmineTesting::MockHttpResponse { 200, "OK", R"({"time_entries":[],"total_count":0,"offset":0})" });
+	reminders->check(wednesdayEvening);
+	ASSERT_TRUE(QRedmineTesting::waitUntil([this]() { return titles.size() == 1; }));
+
+	server.enqueueResponse(QRedmineTesting::MockHttpResponse { 500, "Internal Server Error", "" });
+	reminders->check(wednesdayEvening.addDays(1));
+	ASSERT_TRUE(QRedmineTesting::waitUntil([this]() { return titles.size() == 2; }));
 }

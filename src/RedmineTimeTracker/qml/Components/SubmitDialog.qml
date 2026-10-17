@@ -46,9 +46,9 @@ Dialog {
 											   "comments": comments,
 											   "date": docroot.spentOn === "" ? Qt.formatDate(new Date(), "yyyy-MM-dd") : docroot.spentOn,
 											   "activityId": docroot.activityId,
-											   "customFields": docroot.customFields
+											   "customFields": docroot.customFields,
+											   "issueStatusId": statusPicker.statusId
 										   })
-		statusPicker.apply()
 		docroot.comment = ""
 	}
 
