@@ -1,4 +1,5 @@
 #include "database.h"
+#include <QFile>
 #include <QJsonObject>
 #include <QSqlDatabase>
 #include <QSqlQuery>
@@ -97,4 +98,41 @@ TEST(DatabaseMigrationTest, DatabaseFromBeforeVersioningGetsProjectNameAndAVersi
 	ASSERT_TRUE(Database::initialize(path));
 	EXPECT_GE(Database::schemaVersion(), 1);
 	Database::close();
+}
+
+TEST(DatabaseMoveTest, MovesTheDatabaseWithItsLatestDataOrLeavesItWhereItWas)
+{
+	QTemporaryDir dir;
+	ASSERT_TRUE(dir.isValid());
+	const QString from = dir.filePath("old.db");
+	{
+		QSqlDatabase legacy = QSqlDatabase::addDatabase("QSQLITE", "legacy");
+		legacy.setDatabaseName(from);
+		ASSERT_TRUE(legacy.open());
+		QSqlQuery query(legacy);
+		ASSERT_TRUE(query.exec("PRAGMA journal_mode=WAL"));
+		ASSERT_TRUE(query.exec("CREATE TABLE t (x)"));
+		ASSERT_TRUE(query.exec("INSERT INTO t VALUES (42)"));
+		legacy.close();
+	}
+	QSqlDatabase::removeDatabase("legacy");
+
+	// A target that can't be written: nothing changes.
+	EXPECT_FALSE(Database::moveDatabaseFiles(from, dir.filePath("missing/dir/new.db")));
+	EXPECT_TRUE(QFile::exists(from));
+
+	const QString to = dir.filePath("new.db");
+	ASSERT_TRUE(Database::moveDatabaseFiles(from, to));
+	EXPECT_FALSE(QFile::exists(from));
+	{
+		QSqlDatabase moved = QSqlDatabase::addDatabase("QSQLITE", "moved");
+		moved.setDatabaseName(to);
+		ASSERT_TRUE(moved.open());
+		QSqlQuery query(moved);
+		ASSERT_TRUE(query.exec("SELECT x FROM t"));
+		ASSERT_TRUE(query.next());
+		EXPECT_EQ(query.value(0).toInt(), 42);
+		moved.close();
+	}
+	QSqlDatabase::removeDatabase("moved");
 }
