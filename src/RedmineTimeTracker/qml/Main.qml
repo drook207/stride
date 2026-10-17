@@ -38,6 +38,8 @@ ApplicationWindow {
         }
 
         onTimeEntryCreated: function (timeEntry) {
+            // Lets the local entry be edited on Redmine later, see TimeTracker::linkCreatedTimeEntry.
+            timeTrackerInstance.linkCreatedTimeEntry(timeEntry);
             messageDialog.text = qsTr("Time entry created successfully");
             messageDialog.open();
         }
@@ -60,6 +62,9 @@ ApplicationWindow {
     }
     Connections {
         target: redmineClient
+        function onTimeEntryUpdated(timeEntryId) {
+            timeTrackerInstance.applyRedmineUpdate(timeEntryId);
+        }
         function onTimeEntryActivitiesReceived(value) {
             activitiesModelInstance.addTimeEntryActivities(value);
         }

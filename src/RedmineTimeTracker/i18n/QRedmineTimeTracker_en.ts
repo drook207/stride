@@ -51,52 +51,42 @@
 <context>
     <name>AddTimeEntryView</name>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="68"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="50"/>
         <source>Add Time Entry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="75"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="57"/>
         <source>Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="102"/>
-        <source>From</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="114"/>
-        <source>To</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="133"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="91"/>
         <source>Time spent (eg. 1,0)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="159"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="117"/>
         <source>Date</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="178"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="136"/>
         <source>Activity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="199"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="157"/>
         <source>Special</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="213"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="171"/>
         <source>Comments</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/AddTimeEntryView.qml" line="226"/>
+        <location filename="../qml/Views/AddTimeEntryView.qml" line="184"/>
         <source>Add</source>
         <translation type="unfinished"></translation>
     </message>
@@ -133,24 +123,62 @@
     </message>
 </context>
 <context>
+    <name>EditTimeEntryDialog</name>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="59"/>
+        <source>Edit time entry for #%1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="82"/>
+        <source>This entry isn&apos;t linked to a time entry on Redmine, so the changes are only saved in the app.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="89"/>
+        <source>Date</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="110"/>
+        <source>Time spent (eg. 1,0)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="122"/>
+        <source>Activity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="134"/>
+        <source>Unchanged</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/EditTimeEntryDialog.qml" line="141"/>
+        <source>Comments</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>GetTimeEntriesView</name>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="28"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="47"/>
         <source>Search Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="45"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="64"/>
         <source>Issue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="58"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="77"/>
         <source>Get</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="102"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="134"/>
         <source>Enter an issue and press Get to list its time entries.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -181,7 +209,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="41"/>
+        <location filename="../qml/Main.qml" line="43"/>
         <source>Time entry created successfully</source>
         <translation type="unfinished"></translation>
     </message>
@@ -243,17 +271,17 @@
 <context>
     <name>RecentEntriesView</name>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="25"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="51"/>
         <source>Recent Entries</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="68"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="107"/>
         <source>No time entries yet</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Views/RecentEntriesView.qml" line="76"/>
+        <location filename="../qml/Views/RecentEntriesView.qml" line="115"/>
         <source>Track time with the bar below or add an entry manually.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -340,7 +368,7 @@
 <context>
     <name>TimeEntryDelegate</name>
     <message>
-        <location filename="../qml/Components/TimeEntryDelegate.qml" line="99"/>
+        <location filename="../qml/Components/TimeEntryDelegate.qml" line="105"/>
         <source>Entry %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -348,13 +376,26 @@
 <context>
     <name>TimePickerField</name>
     <message>
-        <location filename="../qml/Components/TimePickerField.qml" line="208"/>
+        <location filename="../qml/Components/TimePickerField.qml" line="213"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../qml/Components/TimePickerField.qml" line="214"/>
+        <location filename="../qml/Components/TimePickerField.qml" line="219"/>
         <source>OK</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TimeRangeRow</name>
+    <message>
+        <location filename="../qml/Components/TimeRangeRow.qml" line="41"/>
+        <source>From</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/Components/TimeRangeRow.qml" line="53"/>
+        <source>To</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

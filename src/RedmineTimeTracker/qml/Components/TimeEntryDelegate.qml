@@ -23,6 +23,8 @@ ItemDelegate {
 	property int entryId: -1
 	//! Draws a divider below this entry; disable it for the last one.
 	property bool showDivider: true
+	//! Whether clicking the entry edits it (the view handles `clicked`); shows a pen icon on hover.
+	property bool editable: false
 
 	//! Formats a decimal hour count (e.g. 1.5) as "HH:MM:SS" (e.g. "01:30:00").
 	function formatDuration(hours) {
@@ -37,6 +39,10 @@ ItemDelegate {
 	}
 
 	width: ListView.view ? ListView.view.width : implicitWidth
+
+	HoverHandler {
+		cursorShape: delegate.editable ? Qt.PointingHandCursor : Qt.ArrowCursor
+	}
 	topPadding: 12
 	bottomPadding: 12
 	leftPadding: 12
@@ -116,6 +122,22 @@ ItemDelegate {
 				text: delegate.comment
 				color: Material.secondaryTextColor
 				wrapMode: Text.WordWrap
+			}
+		}
+
+		IconImage {
+			Layout.alignment: Qt.AlignVCenter
+			visible: delegate.editable
+			opacity: delegate.hovered || delegate.visualFocus ? 1 : 0
+			source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/pen.svg"
+			sourceSize.width: 14
+			sourceSize.height: 14
+			color: Material.secondaryTextColor
+
+			Behavior on opacity {
+				NumberAnimation {
+					duration: 100
+				}
 			}
 		}
 

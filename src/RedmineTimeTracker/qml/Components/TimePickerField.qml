@@ -143,6 +143,11 @@ TextField {
 
 		contentItem: ColumnLayout {
 			spacing: 8
+			// Enter confirms the selection (Escape already cancels), so the picker works from the
+			// keyboard without tabbing to the OK button.
+			focus: true
+			Keys.onReturnPressed: field.accept()
+			Keys.onEnterPressed: field.accept()
 
 			RowLayout {
 				Layout.alignment: Qt.AlignHCenter

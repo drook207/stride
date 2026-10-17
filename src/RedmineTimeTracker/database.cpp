@@ -141,11 +141,11 @@ QSqlQuery Database::getIssues()
 	return query;
 }
 
-bool Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
+int Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
 {
 	QSqlQuery query;
 	if (!evaluateQueryPrepare(SqlQueries::ADD_TIME_ENTRY, query)) {
-		return false;
+		return -1;
 	}
 
 	QDateTime now = QDateTime::currentDateTime();
@@ -157,9 +157,60 @@ bool Database::addTimeEntry(int issueId, double hours, const QString& comments, 
 	query.addBindValue(now);
 
 	if (!evaluateQueryExec(query)) {
+		return -1;
+	}
+	return query.lastInsertId().toInt();
+}
+
+bool Database::updateTimeEntry(int id, double hours, const QString& comments, const QDateTime& spentOn)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::UPDATE_TIME_ENTRY, query)) {
 		return false;
 	}
-	return true;
+
+	query.addBindValue(hours);
+	query.addBindValue(comments);
+	query.addBindValue(spentOn);
+	query.addBindValue(QDateTime::currentDateTime());
+	query.addBindValue(id);
+
+	return evaluateQueryExec(query);
+}
+
+bool Database::updateTimeEntriesByRedmineId(
+	int redmineId, double hours, const QString& comments, const QDateTime& spentOn)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::UPDATE_TIME_ENTRIES_BY_REDMINE_ID, query)) {
+		return false;
+	}
+
+	query.addBindValue(hours);
+	query.addBindValue(comments);
+	query.addBindValue(spentOn);
+	query.addBindValue(QDateTime::currentDateTime());
+	query.addBindValue(redmineId);
+
+	return evaluateQueryExec(query);
+}
+
+int Database::findUnsyncedMatch(int issueId, const QDate& spentOn, double hours, const QString& comments)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::FIND_UNSYNCED_MATCH, query)) {
+		return -1;
+	}
+
+	query.addBindValue(issueId);
+	query.addBindValue(spentOn.toString(Qt::ISODate));
+	query.addBindValue(hours);
+	query.addBindValue(comments);
+
+	if (!evaluateQueryExec(query) || !query.next()) {
+		return -1;
+	}
+	return query.value(0).toInt();
 }
 
 bool Database::updateSyncStatus(int id, int redmineId)

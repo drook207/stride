@@ -36,24 +36,6 @@ Item {
         docroot.addDialog.hours = number
     }
 
-    //! Fills timeSpentField from the From/To range once both are set. An end before the start is
-    //! taken as spanning midnight (e.g. 22:00-01:00 = 3 hours). Redmine only stores the hours, so
-    //! the range itself isn't submitted.
-    function applyTimeRange() {
-        if (!fromField.hasTime || !toField.hasTime) {
-            return
-        }
-        let minutes = toField.totalMinutes - fromField.totalMinutes
-        if (minutes < 0) {
-            minutes += 24 * 60
-        }
-        if (minutes === 0) {
-            return
-        }
-        // Same "de_DE" decimal comma format saveInput() parses, see there.
-        timeSpentField.text = (minutes / 60).toLocaleString(Qt.locale("de_DE"), 'f', 2)
-    }
-
     Timer {
         id: inputValidatorTimer
         interval: 1000
@@ -92,36 +74,12 @@ Item {
                 }
             }
 
-            // Optional helper: picking a time range fills in "Time spent".
-            RowLayout {
+            // Optional helper: picking a time range fills in "Time spent". Redmine only stores
+            // the hours, so the range itself isn't submitted.
+            TimeRangeRow {
                 Layout.fillWidth: true
-                spacing: 12
-
-                LabeledField {
-                    Layout.fillWidth: true
-                    label: qsTr("From")
-
-                    TimePickerField {
-                        id: fromField
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Metrics.controlHeight
-                        onTimePicked: docroot.applyTimeRange()
-                    }
-                }
-
-                LabeledField {
-                    Layout.fillWidth: true
-                    label: qsTr("To")
-
-                    TimePickerField {
-                        id: toField
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Metrics.controlHeight
-                        // Suggest one hour after the start time.
-                        initialMinutes: fromField.hasTime ? fromField.totalMinutes + 60 : -1
-                        onTimePicked: docroot.applyTimeRange()
-                    }
-                }
+                // Same "de_DE" decimal comma format saveInput() parses, see there.
+                onDurationPicked: hours => timeSpentField.text = hours.toLocaleString(Qt.locale("de_DE"), 'f', 2)
             }
 
             RowLayout {

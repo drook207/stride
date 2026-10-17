@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 import QRedmine.TimeTracker
+import QRedmine.Client
 
 /*!
  * \brief Default/home view: lists locally tracked time entries (TimeTracker's local SQLite-backed
@@ -12,6 +13,31 @@ Item {
 	id: docroot
 
 	required property TimeTracker timeTracker
+	required property RedmineClient client
+	//! TimeEntryActivitiesModel for the edit dialog's Activity combo box.
+	required property var activitiesModel
+
+	EditTimeEntryDialog {
+		id: editDialog
+
+		//! The entry being edited, as listed in TimeTracker.recentEntries.
+		property var entry: ({})
+
+		activitiesModel: docroot.activitiesModel
+
+		onSaved: changes => {
+			const redmineId = editDialog.entry.redmine_id
+			if (redmineId > 0) {
+				// Linked to a Redmine time entry: change it there; the local copy follows once Redmine
+				// confirms (TimeTracker.applyRedmineUpdate, wired up in Main.qml).
+				docroot.timeTracker.stageRedmineUpdate(redmineId, changes)
+				docroot.client.updateTimeEntry(redmineId, changes.hours, changes.comments, changes.spent_on,
+											   changes.activity_id || 0)
+			} else {
+				docroot.timeTracker.updateRecentEntry(editDialog.entry.id, changes)
+			}
+		}
+	}
 
 	ColumnLayout {
 		anchors {
@@ -47,6 +73,19 @@ Item {
 					comment: modelData.comments || ""
 					spentOn: modelData.spent_on
 					showDivider: index < ListView.view.count - 1
+					editable: true
+
+					onClicked: {
+						editDialog.entry = modelData
+						editDialog.openFor({
+											   "issueId": modelData.issue_id,
+											   "hours": modelData.hours,
+											   "comments": modelData.comments,
+											   "spentOn": modelData.spent_on,
+											   "activityId": 0,
+											   "localOnly": !(modelData.redmine_id > 0)
+										   })
+					}
 				}
 
 				ScrollBar.vertical: ScrollBar {}

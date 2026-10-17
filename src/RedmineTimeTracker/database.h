@@ -40,6 +40,24 @@ namespace SqlQueries {
 
 	STATIC_CONST_QSTRING(GET_UNSYNCED_ENTRIES, "SELECT * FROM time_entries WHERE sync_status = 0");
 
+	STATIC_CONST_QSTRING(UPDATE_TIME_ENTRY,
+		"UPDATE time_entries "
+		"SET hours = ?, comments = ?, spent_on = ?, updated_at = ? "
+		"WHERE id = ?");
+
+	STATIC_CONST_QSTRING(UPDATE_TIME_ENTRIES_BY_REDMINE_ID,
+		"UPDATE time_entries "
+		"SET hours = ?, comments = ?, spent_on = ?, updated_at = ? "
+		"WHERE redmine_id = ?");
+
+	// The newest not yet synced local entry matching a time entry Redmine just created: same issue
+	// and day, hours equal up to Redmine's rounding; an identical comment is preferred.
+	STATIC_CONST_QSTRING(FIND_UNSYNCED_MATCH,
+		"SELECT id FROM time_entries "
+		"WHERE sync_status = 0 AND issue_id = ? AND date(spent_on) = ? AND abs(hours - ?) < 0.01 "
+		"ORDER BY (comments = ?) DESC, created_at DESC "
+		"LIMIT 1");
+
 	STATIC_CONST_QSTRING(GET_RECENT_ENTRIES,
 		"SELECT * FROM time_entries "
 		"ORDER BY created_at DESC "
@@ -68,8 +86,31 @@ class Database {
 public:
 	static bool initialize();
 
-	static bool addTimeEntry(
+	/*!
+	 * \brief addTimeEntry Adds a local, not yet synced time entry
+	 * \return The new entry's local id, or -1 on failure
+	 */
+	static int addTimeEntry(
 		int issueId, double hours, const QString& comments, const QDateTime& spentOn = QDateTime::currentDateTime());
+
+	/*!
+	 * \brief updateTimeEntry Changes the local time entry with the given local id
+	 */
+	static bool updateTimeEntry(int id, double hours, const QString& comments, const QDateTime& spentOn);
+
+	/*!
+	 * \brief updateTimeEntriesByRedmineId Changes the local time entries linked to the given Redmine
+	 * time entry (see updateSyncStatus()), if any
+	 */
+	static bool updateTimeEntriesByRedmineId(
+		int redmineId, double hours, const QString& comments, const QDateTime& spentOn);
+
+	/*!
+	 * \brief findUnsyncedMatch Finds the local entry a time entry just created on Redmine was made
+	 * from, see SqlQueries::FIND_UNSYNCED_MATCH
+	 * \return The local id, or -1 if there is no match
+	 */
+	static int findUnsyncedMatch(int issueId, const QDate& spentOn, double hours, const QString& comments);
 
 	static QVector<QVariantMap> getUnsyncedEntries();
 

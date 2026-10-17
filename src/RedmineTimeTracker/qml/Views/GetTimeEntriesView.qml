@@ -15,6 +15,25 @@ Item {
 
     required property TimeTracker timeTracker
     required property RedmineClient client
+    //! TimeEntryActivitiesModel for the edit dialog's Activity combo box.
+    required property var activitiesModel
+
+    EditTimeEntryDialog {
+        id: editDialog
+
+        //! Redmine id of the time entry being edited.
+        property int entryId: -1
+
+        activitiesModel: docroot.activitiesModel
+
+        // The list (and any local copies) follow once Redmine confirms the change
+        // (TimeTracker.applyRedmineUpdate, wired up in Main.qml).
+        onSaved: changes => {
+            docroot.timeTracker.stageRedmineUpdate(editDialog.entryId, changes)
+            docroot.client.updateTimeEntry(editDialog.entryId, changes.hours, changes.comments, changes.spent_on,
+                                           changes.activity_id || 0)
+        }
+    }
 
     ColumnLayout {
         anchors {
@@ -89,6 +108,19 @@ Item {
                     comment: modelData.comments || ""
                     spentOn: modelData.spent_on
                     showDivider: index < ListView.view.count - 1
+                    editable: true
+
+                    onClicked: {
+                        editDialog.entryId = modelData.id
+                        editDialog.openFor({
+                                               "issueId": modelData.issue.id,
+                                               "hours": modelData.hours,
+                                               "comments": modelData.comments,
+                                               "spentOn": modelData.spent_on,
+                                               "activityId": modelData.activity ? modelData.activity.id : 0,
+                                               "localOnly": false
+                                           })
+                    }
                 }
 
                 ScrollBar.vertical: ScrollBar {}

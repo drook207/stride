@@ -121,7 +121,8 @@ void TimeTracker::addRecentEntry(const QVariantMap& entry)
 	QDateTime spentOnAsDateTime =
 		spentOn.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromString(spentOn, "yyyy-MM-dd");
 
-	if (!Database::addTimeEntry(issueId, hours, comment, spentOnAsDateTime)) {
+	const int localId = Database::addTimeEntry(issueId, hours, comment, spentOnAsDateTime);
+	if (localId < 0) {
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return;
 	}
@@ -129,6 +130,7 @@ void TimeTracker::addRecentEntry(const QVariantMap& entry)
 	// Mirror the field names Database::getRecentEntries() produces (issue_id/spent_on, not
 	// issueId/date), since this entry is displayed immediately without waiting for a reload.
 	QVariantMap canonicalEntry;
+	canonicalEntry["id"] = localId;
 	canonicalEntry["issue_id"] = issueId;
 	canonicalEntry["hours"] = hours;
 	canonicalEntry["comments"] = comment;
@@ -195,6 +197,81 @@ void TimeTracker::setEntriesFromId(const QVariantList& newEntriesFromId)
 	}
 	mEntriesFromId = newEntriesFromId;
 	emit entriesFromIdChanged();
+}
+
+void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)
+{
+	const QDateTime spentOn(QDate::fromString(changes["spent_on"].toString(), Qt::ISODate), QTime(0, 0));
+	if (!Database::updateTimeEntry(localId, changes["hours"].toDouble(), changes["comments"].toString(), spentOn)) {
+		qCWarning(lcTimeTracker) << "Could not update local time entry" << localId;
+		return;
+	}
+	loadRecentEntries();
+}
+
+void TimeTracker::stageRedmineUpdate(int redmineId, const QVariantMap& changes)
+{
+	mPendingRedmineUpdates.insert(redmineId, changes);
+}
+
+void TimeTracker::applyRedmineUpdate(int redmineId)
+{
+	if (!mPendingRedmineUpdates.contains(redmineId)) {
+		return;
+	}
+	const QVariantMap changes = mPendingRedmineUpdates.take(redmineId);
+	const double hours = changes["hours"].toDouble();
+	const QString comments = changes["comments"].toString();
+	const QString spentOn = changes["spent_on"].toString();
+
+	if (Database::updateTimeEntriesByRedmineId(
+			redmineId, hours, comments, QDateTime(QDate::fromString(spentOn, Qt::ISODate), QTime(0, 0)))) {
+		loadRecentEntries();
+	} else {
+		qCWarning(lcTimeTracker) << "Could not update local copies of Redmine time entry" << redmineId;
+	}
+
+	// Mirror the change in the Search Issue results, so they don't need to be fetched again.
+	bool changed = false;
+	for (auto& value : mEntriesFromId) {
+		QVariantMap entry = value.toMap();
+		if (entry["id"].toInt() != redmineId) {
+			continue;
+		}
+		entry["hours"] = hours;
+		entry["comments"] = comments;
+		entry["spent_on"] = spentOn;
+		if (changes.contains("activity_id")) {
+			QVariantMap activity = entry["activity"].toMap();
+			activity["id"] = changes["activity_id"];
+			entry["activity"] = activity;
+		}
+		value = entry;
+		changed = true;
+	}
+	if (changed) {
+		emit entriesFromIdChanged();
+	}
+}
+
+void TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry)
+{
+	const int redmineId = timeEntry["id"].toInt(-1);
+	const int issueId = timeEntry["issue"].toObject()["id"].toInt(-1);
+	if (redmineId < 0 || issueId < 0) {
+		return;
+	}
+
+	const int localId =
+		Database::findUnsyncedMatch(issueId, QDate::fromString(timeEntry["spent_on"].toString(), Qt::ISODate),
+			timeEntry["hours"].toDouble(), timeEntry["comments"].toString());
+	if (localId < 0) {
+		qCDebug(lcTimeTracker) << "No local entry found for created Redmine time entry" << redmineId;
+		return;
+	}
+	if (Database::updateSyncStatus(localId, redmineId)) {
+		loadRecentEntries();
+	}
 }
 
 void TimeTracker::updateElapsedTime() { emit elapsedTimeChanged(); }

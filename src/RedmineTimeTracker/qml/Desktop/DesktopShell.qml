@@ -83,6 +83,8 @@ Item {
         id: recentEntriesView
         RecentEntriesView {
             timeTracker: docroot.timeTracker
+            client: docroot.client
+            activitiesModel: docroot.activitiesModel
         }
     }
 
@@ -101,6 +103,7 @@ Item {
         GetTimeEntriesView {
             timeTracker: docroot.timeTracker
             client: docroot.client
+            activitiesModel: docroot.activitiesModel
         }
     }
 

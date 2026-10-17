@@ -1,12 +1,14 @@
 #pragma once
 
 #include <QDateTime>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
 #include <QTimer>
 #include <QVariantList>
+#include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
 namespace QRedmineClient {
@@ -68,6 +70,22 @@ public:
 	QVariantList entriesFromId() const;
 	void setEntriesFromId(const QVariantList& newEntriesFromId);
 
+	/*!
+	 * \brief updateRecentEntry Changes a local entry that isn't linked to a Redmine time entry
+	 * \param localId The entry's "id" in recentEntries
+	 * \param changes "hours" (decimal hours), "comments" and "spent_on" ("yyyy-MM-dd")
+	 */
+	Q_INVOKABLE void updateRecentEntry(int localId, const QVariantMap& changes);
+
+	/*!
+	 * \brief stageRedmineUpdate Remembers changes sent to Redmine for one of its time entries, to be
+	 * applied locally by applyRedmineUpdate() once Redmine confirms them, so the local data never
+	 * shows changes Redmine rejected
+	 * \param redmineId Redmine's id of the time entry
+	 * \param changes As for updateRecentEntry(), plus an optional "activity_id"
+	 */
+	Q_INVOKABLE void stageRedmineUpdate(int redmineId, const QVariantMap& changes);
+
 public slots:
 	/*!
 	 * \brief startTracking
@@ -107,6 +125,20 @@ public slots:
 	 * \param issue
 	 */
 	void addIssueToDatabase(const QJsonObject& issue);
+
+	/*!
+	 * \brief applyRedmineUpdate Applies the changes staged for a Redmine time entry (see
+	 * stageRedmineUpdate()) to the local entries linked to it and to entriesFromId. Connected to
+	 * RedmineClient::timeEntryUpdated.
+	 */
+	void applyRedmineUpdate(int redmineId);
+
+	/*!
+	 * \brief linkCreatedTimeEntry Links the local entry a time entry just created on Redmine was
+	 * made from to that time entry, so it can be edited on Redmine later. Connected to
+	 * RedmineClient::timeEntryCreated.
+	 */
+	void linkCreatedTimeEntry(const QJsonObject& timeEntry);
 
 signals:
 	/*!
@@ -157,5 +189,7 @@ private:
 	qint64 mTotalElapsedTime;
 	QVariantList mRecentEntries;
 	QVariantList mEntriesFromId;
+	//! Changes sent to Redmine but not confirmed yet, by Redmine time entry id
+	QHash<int, QVariantMap> mPendingRedmineUpdates;
 };
 }
