@@ -176,6 +176,9 @@ ApplicationWindow {
         onSubmitTimeEntry: function (localId, issueId, hours, comments, spentOn, activityId, customFields) {
             redmineClient.createTimeEntry(issueId, hours, comments, spentOn, activityId, customFields, localId);
         }
+        onSetIssueStatus: function (issueId, statusId) {
+            redmineClient.updateIssue(issueId, "", "", statusId);
+        }
         onUpdateTimeEntryOnRedmine: function (redmineId, hours, comments, spentOn, activityId, customFields, tag) {
             redmineClient.updateTimeEntry(redmineId, hours, comments, spentOn, activityId, customFields, tag);
         }

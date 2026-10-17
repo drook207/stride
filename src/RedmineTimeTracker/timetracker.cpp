@@ -287,8 +287,8 @@ int TimeTracker::addRecentEntry(const QVariantMap& entry)
 	const QDate day = dateOf(entry["date"]);
 	const QDateTime spentOn(day.isValid() ? day : QDate::currentDate(), QTime(0, 0));
 
-	const int localId = Database::addTimeEntry(
-		issueId, hours, comment, spentOn, entry["activityId"].toInt(), entry["customFields"].toList());
+	const int localId = Database::addTimeEntry(issueId, hours, comment, spentOn, entry["activityId"].toInt(),
+		entry["customFields"].toList(), entry["issueStatusId"].toInt());
 	if (localId < 0) {
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return -1;
@@ -522,6 +522,7 @@ void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
 		if (Database::updateSyncStatus(entry["id"].toInt(), redmineId)) {
 			taken.insert(redmineId);
 			linked = true;
+			applyIssueStatus(entry["id"].toInt());
 		}
 	}
 	if (linked) {
@@ -642,6 +643,15 @@ void TimeTracker::discardRedmineUpdate(int redmineId, int tag)
 	}
 }
 
+void TimeTracker::applyIssueStatus(int localId)
+{
+	const QJsonObject entry = Database::getTimeEntry(localId);
+	const int statusId = entry["issue_status_id"].toInt();
+	if (statusId > 0 && Database::clearIssueStatus(localId)) {
+		emit setIssueStatus(entry["issue_id"].toInt(), statusId);
+	}
+}
+
 bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId)
 {
 	mSubmitting.remove(localId);
@@ -653,6 +663,7 @@ bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId
 	if (Database::updateSyncStatus(localId, redmineId)) {
 		loadRecentEntries();
 	}
+	applyIssueStatus(localId);
 	// Changed while it was being sent: Redmine got the old values, so send the current ones.
 	if (mEditedWhileSubmitting.remove(localId)) {
 		const QJsonObject entry = Database::getTimeEntry(localId);

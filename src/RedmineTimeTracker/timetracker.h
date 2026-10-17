@@ -181,7 +181,8 @@ public slots:
 	/*!
 	 * \brief addRecentEntry Saves a time entry locally and sends it to Redmine (submitTimeEntry())
 	 * \param entry "issueId", "hours", "comments", "date" ("yyyy-MM-dd" or a Date) and optionally
-	 * "activityId" and "customFields" ([{"id", "value"}])
+	 * "activityId", "customFields" ([{"id", "value"}]) and "issueStatusId" (to set the issue to
+	 * once the entry is on Redmine, see setIssueStatus())
 	 * \return The new entry's local id; -1 if it couldn't be saved
 	 */
 	int addRecentEntry(const QVariantMap& entry);
@@ -312,6 +313,12 @@ signals:
 	void updateTimeEntryOnRedmine(int redmineId, double hours, const QString& comments, const QString& spentOn,
 		int activityId, const QVariantList& customFields, int tag);
 
+	/*!
+	 * \brief setIssueStatus Asks to set an issue's status, chosen with a time entry that's on Redmine
+	 * now; connect it to RedmineClient::updateIssue(). Not asked for entries Redmine never took.
+	 */
+	void setIssueStatus(int issueId, int statusId);
+
 private slots:
 	/*!
 	 * \brief updateElapsedTime
@@ -328,6 +335,9 @@ private:
 	void saveTrackingState();
 	//! Restores a tracker saved by a previous run.
 	void restoreTrackingState();
+	//! Emits setIssueStatus() for an entry on Redmine now, if a status was chosen with it.
+	void applyIssueStatus(int localId);
+
 	//! Entries linkExistingTimeEntries() tries to link, see unlinkedEntriesRange().
 	QVariantList linkCandidates() const;
 

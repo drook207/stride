@@ -346,3 +346,24 @@ TEST_F(TimeTrackerTest, TimeWorkedBetweenWakingUpAndAnsweringCounts)
 
 	EXPECT_NEAR(tracker->getElapsedHours(), 0.5, 0.01);
 }
+
+TEST_F(TimeTrackerTest, IssueStatusIsSetOnlyOnceTheEntryIsOnRedmine)
+{
+	QList<QPair<int, int>> statuses;
+	QObject::connect(tracker.get(), &TimeTracker::setIssueStatus, [&](int issueId, int statusId) {
+		statuses.append({ issueId, statusId });
+	});
+
+	const int rejected = tracker->addRecentEntry(
+		{ { "issueId", 10 }, { "hours", 1.0 }, { "comments", "" }, { "date", day(1) }, { "issueStatusId", 3 } });
+	tracker->submissionFailed(rejected, 422, "Closed project");
+	EXPECT_TRUE(statuses.isEmpty());
+
+	const int created = tracker->addRecentEntry(
+		{ { "issueId", 11 }, { "hours", 1.0 }, { "comments", "" }, { "date", day(1) }, { "issueStatusId", 5 } });
+	tracker->linkCreatedTimeEntry(remote(950, 11, 1.0, ""), created);
+	tracker->linkCreatedTimeEntry(remote(950, 11, 1.0, ""), created); // set once only
+
+	ASSERT_EQ(statuses.size(), 1);
+	EXPECT_EQ(statuses.first(), qMakePair(11, 5));
+}
