@@ -22,7 +22,7 @@ static const QString API_KEY_KEYCHAIN_KEY = QStringLiteral("apiKey");
 static const QString LEGACY_API_KEY_SETTING = QStringLiteral("client/apiKey");
 //! Request attribute carrying the requestTag of createTimeEntry()/updateTimeEntry() to the reply
 static constexpr auto REQUEST_TAG_ATTRIBUTE = QNetworkRequest::User;
-//! Request attribute marking a getIssue() whose failure isn't reported via errorOccurred()
+//! Request attribute marking a request whose failure isn't reported via errorOccurred()
 static constexpr auto QUIET_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1);
 //! Request attribute carrying the getAllProjects() call (mProjectsGeneration) a page belongs to
 static constexpr auto PROJECTS_GENERATION_ATTRIBUTE =
@@ -474,10 +474,29 @@ void RedmineClient::getProjects(int limit, int offset)
 	QUrlQuery query;
 	query.addQueryItem("limit", QString::number(limit));
 	query.addQueryItem("offset", QString::number(offset));
-	// The activities each project allows, which can differ from the shared ones.
-	query.addQueryItem("include", "time_entry_activities");
+	// The activities each project allows, which can differ from the shared ones, and its modules
+	// (e.g. whether it tracks issues at all).
+	query.addQueryItem("include", "time_entry_activities,enabled_modules");
 
 	mNetworkManager->get(createRequest(ApiResources::PROJECTS, query));
+}
+
+void RedmineClient::getCurrentUser()
+{
+	setLoading(true);
+	QUrlQuery query;
+	query.addQueryItem("include", "memberships");
+	QNetworkRequest request = createRequest(ApiResources::CURRENT_USER, query);
+	request.setAttribute(QUIET_ATTRIBUTE, true);
+	mNetworkManager->get(request);
+}
+
+void RedmineClient::getRole(int roleId)
+{
+	setLoading(true);
+	QNetworkRequest request = createRequest(ApiResources::ROLE.arg(roleId));
+	request.setAttribute(QUIET_ATTRIBUTE, true);
+	mNetworkManager->get(request);
 }
 
 void RedmineClient::getAllProjects()
@@ -494,8 +513,8 @@ void RedmineClient::requestProjectsPage(int offset)
 	QUrlQuery query;
 	query.addQueryItem("limit", QString::number(PROJECTS_PAGE_SIZE));
 	query.addQueryItem("offset", QString::number(offset));
-	// As in getProjects(): the activities each project allows.
-	query.addQueryItem("include", "time_entry_activities");
+	// As in getProjects(): the activities each project allows and its modules.
+	query.addQueryItem("include", "time_entry_activities,enabled_modules");
 
 	QNetworkRequest request = createRequest(ApiResources::PROJECTS, query);
 	request.setAttribute(PROJECTS_GENERATION_ATTRIBUTE, mProjectsGeneration);
@@ -772,6 +791,12 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			}
 			if (response.contains("project")) {
 				emit projectReceived(response["project"].toObject());
+			}
+			if (response.contains("user")) {
+				emit currentUserReceived(response["user"].toObject());
+			}
+			if (response.contains("role")) {
+				emit roleReceived(response["role"].toObject());
 			}
 			if (response.contains("projects")) {
 				const QVariant generation = reply->request().attribute(PROJECTS_GENERATION_ATTRIBUTE);

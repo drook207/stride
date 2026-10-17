@@ -32,6 +32,8 @@ namespace ApiResources {
 	static const QString PROJECT = QStringLiteral("projects/%0.json"); // arg[0] == id
 	static const QString PROJECTS = QStringLiteral("projects.json");
 	static const QString CUSTOM_FIELDS = QStringLiteral("custom_fields.json");
+	static const QString CURRENT_USER = QStringLiteral("users/current.json");
+	static const QString ROLE = QStringLiteral("roles/%0.json"); // arg[0] == id
 	static const QString TIME_ENTRY = QStringLiteral("time_entries/%0.json"); // arg[0] == id
 	static const QString TIME_ENTRIES = QStringLiteral("time_entries.json");
 }
@@ -277,6 +279,18 @@ public slots:
 	void getAllProjects();
 
 	/*!
+	 * \brief getCurrentUser Fetches the user the API key belongs to, with their project memberships
+	 * and roles; emits currentUserReceived(). Failures aren't reported via errorOccurred().
+	 */
+	void getCurrentUser();
+
+	/*!
+	 * \brief getRole Fetches a role with its permissions; emits roleReceived(). Failures aren't
+	 * reported via errorOccurred().
+	 */
+	void getRole(int roleId);
+
+	/*!
 	 * \brief createProject
 	 * \param name
 	 * \param identifier
@@ -418,6 +432,18 @@ signals:
 	 * \param projects
 	 */
 	void projectsReceived(const QJsonArray& projects);
+
+	/*!
+	 * \brief currentUserReceived
+	 * \param user As returned by /users/current.json, including "memberships"
+	 */
+	void currentUserReceived(const QJsonObject& user);
+
+	/*!
+	 * \brief roleReceived
+	 * \param role As returned by /roles/:id.json, including "permissions"
+	 */
+	void roleReceived(const QJsonObject& role);
 
 	/*!
 	 * \brief projectCreated

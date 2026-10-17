@@ -182,7 +182,7 @@ TEST_F(RedmineClientIntegrationTest, GetProjectsWithPaginationSendsQueryParamete
 	EXPECT_EQ(request.query.queryItemValue("limit").toStdString(), "25");
 	EXPECT_EQ(request.query.queryItemValue("offset").toStdString(), "50");
 	// The activities each project allows come along, see TimeEntryActivitiesModel.
-	EXPECT_EQ(request.query.queryItemValue("include").toStdString(), "time_entry_activities");
+	EXPECT_EQ(request.query.queryItemValue("include").toStdString(), "time_entry_activities,enabled_modules");
 }
 
 TEST_F(RedmineClientIntegrationTest, GetAllProjectsRequestsEveryPageAndEmitsThemOnce)
@@ -208,6 +208,46 @@ TEST_F(RedmineClientIntegrationTest, GetAllProjectsRequestsEveryPageAndEmitsThem
 	EXPECT_EQ(emitted, 1);
 	ASSERT_EQ(received.size(), 3);
 	EXPECT_EQ(received.at(2).toObject()["id"].toInt(), 3);
+}
+
+TEST_F(RedmineClientIntegrationTest, GetCurrentUserRequestsMembershipsAndEmitsCurrentUserReceived)
+{
+	server->enqueueResponse(MockHttpResponse {
+		200, "OK", R"({"user":{"id":5,"login":"alice","memberships":[{"project":{"id":28},"roles":[{"id":4}]}]}})" });
+
+	QJsonObject received;
+	QObject::connect(
+		client.get(), &RedmineClient::currentUserReceived, [&](const QJsonObject& user) { received = user; });
+
+	client->getCurrentUser();
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::currentUserReceived));
+
+	const RecordedHttpRequest& request = server->requests().first();
+	EXPECT_EQ(request.path.toStdString(), "/users/current.json");
+	EXPECT_EQ(request.query.queryItemValue("include").toStdString(), "memberships");
+	EXPECT_EQ(received["login"].toString().toStdString(), "alice");
+}
+
+TEST_F(RedmineClientIntegrationTest, GetRoleEmitsRoleReceivedAndFailsQuietly)
+{
+	server->enqueueResponse(
+		MockHttpResponse { 200, "OK", R"({"role":{"id":1,"name":"Non member","permissions":["add_issues"]}})" });
+	server->enqueueResponse(MockHttpResponse { 403, "Forbidden", "" });
+
+	QJsonObject received;
+	bool errorFired = false;
+	QObject::connect(client.get(), &RedmineClient::roleReceived, [&](const QJsonObject& role) { received = role; });
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
+
+	client->getRole(1);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::roleReceived));
+	EXPECT_EQ(server->requests().first().path.toStdString(), "/roles/1.json");
+	EXPECT_EQ(received["permissions"].toArray().first().toString().toStdString(), "add_issues");
+
+	client->getRole(2);
+	ASSERT_TRUE(waitUntil([&]() { return server->requests().size() == 2; }));
+	waitUntil([]() { return false; }, 300); // time for the reply
+	EXPECT_FALSE(errorFired);
 }
 
 TEST_F(RedmineClientIntegrationTest, CreateProjectSendsPostBodyAndEmitsProjectCreated)
