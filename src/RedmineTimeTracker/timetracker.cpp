@@ -272,6 +272,7 @@ void TimeTracker::submitEntry(const QJsonObject& entry)
 void TimeTracker::submissionFailed(int localId, int httpStatus, const QString& error)
 {
 	mSubmitting.remove(localId);
+	mEditedWhileSubmitting.remove(localId); // sent again later with the current values anyway
 	mInteractiveSubmissions.remove(localId);
 	// Redmine refused the entry itself (e.g. 422 for a closed project, 403 without permission):
 	// sending it unchanged again won't help. Anything else (not reached, 401 for a key being
@@ -395,17 +396,34 @@ QVariantList TimeTracker::issueIdsWithoutProject() const
 //! so an entry that never matches doesn't make every launch fetch months of time entries.
 static constexpr int LINKING_MAX_AGE_DAYS = 31;
 
-QVariantMap TimeTracker::unlinkedEntriesRange() const
+QVariantList TimeTracker::linkCandidates() const
 {
+	// Recent unlinked entries of the last month, and every entry still to be sent (Redmine may
+	// have it although the app didn't hear back), however old.
 	const QString oldest = QDate::currentDate().addDays(-LINKING_MAX_AGE_DAYS).toString(Qt::ISODate);
-	QString from;
-	QString to;
+	QVariantList candidates;
+	QSet<int> ids;
 	for (const QVariant& value : mRecentEntries) {
 		const QVariantMap entry = value.toMap();
-		const QString day = entry["spent_on"].toString().left(10);
-		if (entry["redmine_id"].toInt() > 0 || day < oldest) {
-			continue;
+		if (entry["redmine_id"].toInt() <= 0 && entry["spent_on"].toString().left(10) >= oldest) {
+			candidates.append(entry);
+			ids.insert(entry["id"].toInt());
 		}
+	}
+	for (const QJsonValue& value : Database::getPendingEntries()) {
+		if (!ids.contains(value.toObject()["id"].toInt())) {
+			candidates.append(value.toObject().toVariantMap());
+		}
+	}
+	return candidates;
+}
+
+QVariantMap TimeTracker::unlinkedEntriesRange() const
+{
+	QString from;
+	QString to;
+	for (const QVariant& value : linkCandidates()) {
+		const QString day = value.toMap()["spent_on"].toString().left(10);
 		if (from.isEmpty() || day < from) {
 			from = day;
 		}
@@ -419,14 +437,16 @@ QVariantMap TimeTracker::unlinkedEntriesRange() const
 	return { { "from", from }, { "to", to } };
 }
 
+bool TimeTracker::hasPendingEntries() const { return !Database::getPendingEntries().isEmpty(); }
+
 void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
 {
 	QSet<int> taken = Database::linkedRedmineIds();
 	bool linked = false;
-	for (const QVariant& value : std::as_const(mRecentEntries)) {
+	for (const QVariant& value : linkCandidates()) {
 		const QVariantMap entry = value.toMap();
-		if (entry["redmine_id"].toInt() > 0) {
-			continue;
+		if (mSubmitting.contains(entry["id"].toInt())) {
+			continue; // being sent right now: linked by its own reply
 		}
 		const int issueId = entry["issue_id"].toInt();
 		const QString day = entry["spent_on"].toString().left(10);
@@ -484,6 +504,10 @@ void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)
 	// A rejected entry is sent again once changed (hopefully fixed); an unconfirmed one only when
 	// asked to, since Redmine may have it already.
 	const int status = entry["sync_status"].toInt();
+	// Being sent with the old values: send the changes once Redmine created it (linkCreatedTimeEntry()).
+	if (status == Database::Pending && mSubmitting.contains(localId)) {
+		mEditedWhileSubmitting.insert(localId);
+	}
 	if (status == Database::Rejected || (status == Database::Unconfirmed && changes["submit"].toBool())) {
 		sendToRedmine(localId);
 	} else if (changed > 0) {
@@ -576,6 +600,17 @@ bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId
 	}
 	if (Database::updateSyncStatus(localId, redmineId)) {
 		loadRecentEntries();
+	}
+	// Changed while it was being sent: Redmine got the old values, so send the current ones.
+	if (mEditedWhileSubmitting.remove(localId)) {
+		const QJsonObject entry = Database::getTimeEntry(localId);
+		const QVariantMap changes { { "hours", entry["hours"].toDouble() },
+			{ "comments", entry["comments"].toString() }, { "spent_on", entry["spent_on"].toString().left(10) },
+			{ "activity_id", entry["activity_id"].toInt() },
+			{ "custom_fields", entry["custom_fields"].toArray().toVariantList() } };
+		const int tag = stageRedmineUpdate(redmineId, changes);
+		emit updateTimeEntryOnRedmine(redmineId, changes["hours"].toDouble(), changes["comments"].toString(),
+			changes["spent_on"].toString(), changes["activity_id"].toInt(), changes["custom_fields"].toList(), tag);
 	}
 	return interactive;
 }

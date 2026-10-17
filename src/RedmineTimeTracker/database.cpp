@@ -44,26 +44,56 @@ static QString legacyPath()
 	return QDir(base).absoluteFilePath(QCoreApplication::applicationName() + "/" + DATABASE_FILE_NAME);
 }
 
-// Moves a database from its legacy location (with SQLite's -wal/-shm companions) to path, unless
-// there already is one at path.
+// Moves a database from its legacy location to path, unless there already is one at path.
 static void moveLegacyDatabase(const QString& path)
 {
 	const QString legacy = legacyPath();
 	if (legacy == path || !QFile::exists(legacy) || QFile::exists(path)) {
 		return;
 	}
-	for (const QString& suffix : { QString(), QStringLiteral("-wal"), QStringLiteral("-shm") }) {
-		if (!QFile::exists(legacy + suffix)) {
-			continue;
-		}
-		if (!QFile::rename(legacy + suffix, path + suffix) &&
-			!(QFile::copy(legacy + suffix, path + suffix) && QFile::remove(legacy + suffix))) {
-			qWarning(lcDataBase) << "Could not move the database from" << legacy << "to" << path;
-			return;
+	if (Database::moveDatabaseFiles(legacy, path)) {
+		QDir().rmdir(QFileInfo(legacy).absolutePath()); // only if nothing else is left in it
+		qInfo(lcDataBase) << "Moved the database from" << legacy << "to" << path;
+	} else {
+		qWarning(lcDataBase) << "Could not move the database from" << legacy << "to" << path;
+	}
+}
+
+bool Database::moveDatabaseFiles(const QString& from, const QString& to)
+{
+	// Write what's in the write-ahead log into the database file first, so normally there's only
+	// that one file left to move.
+	{
+		QSqlDatabase legacy = QSqlDatabase::addDatabase("QSQLITE", QStringLiteral("legacy-move"));
+		legacy.setDatabaseName(from);
+		if (legacy.open()) {
+			QSqlQuery(legacy).exec(QStringLiteral("PRAGMA wal_checkpoint(TRUNCATE)"));
+			legacy.close();
 		}
 	}
-	QDir().rmdir(QFileInfo(legacy).absolutePath()); // only if nothing else is left in it
-	qInfo(lcDataBase) << "Moved the database from" << legacy << "to" << path;
+	QSqlDatabase::removeDatabase(QStringLiteral("legacy-move"));
+
+	// Copy everything before removing anything, so a failure leaves the old database complete
+	// (and the move is tried again on the next start) rather than split across both places.
+	const QStringList suffixes { QString(), QStringLiteral("-wal"), QStringLiteral("-shm") };
+	QStringList copied;
+	for (const QString& suffix : suffixes) {
+		if (!QFile::exists(from + suffix)) {
+			continue;
+		}
+		QFile::remove(to + suffix); // a leftover from an earlier, failed attempt
+		if (!QFile::copy(from + suffix, to + suffix)) {
+			for (const QString& done : std::as_const(copied)) {
+				QFile::remove(to + done);
+			}
+			return false;
+		}
+		copied << suffix;
+	}
+	for (const QString& suffix : std::as_const(copied)) {
+		QFile::remove(from + suffix);
+	}
+	return true;
 }
 
 bool Database::initialize(const QString& path)
