@@ -29,6 +29,22 @@ ItemDelegate {
 	property bool showDivider: true
 	//! Whether clicking the entry edits it (the view handles `clicked`); shows a pen icon on hover.
 	property bool editable: false
+	//! Whether the entry is on Redmine, for local entries: "" (it is), "pending" (not sent yet),
+	//! "rejected" (Redmine refused it, see syncError) or "unconfirmed" (unknown, saved before
+	//! sending was tracked).
+	property string syncState: ""
+	//! Why Redmine rejected the entry (syncState "rejected").
+	property string syncError: ""
+	//! Whether to offer continuing the entry's work (continueRequested()), e.g. while not tracking.
+	property bool continuable: false
+	//! Whether to offer pinning the entry's issue (favoriteToggled()), and whether it's pinned.
+	property bool showFavorite: false
+	property bool favorite: false
+
+	//! Asks to start tracking the entry's issue with its comment and activity.
+	signal continueRequested()
+	//! Asks to pin or unpin the entry's issue.
+	signal favoriteToggled()
 
 	//! Formats a decimal hour count (e.g. 1.5) as "HH:MM:SS" (e.g. "01:30:00").
 	function formatDuration(hours) {
@@ -149,6 +165,49 @@ ItemDelegate {
 				color: Material.secondaryTextColor
 				wrapMode: Text.WordWrap
 			}
+
+			Label {
+				Layout.fillWidth: true
+				visible: delegate.syncState !== ""
+				text: {
+					switch (delegate.syncState) {
+					case "pending":
+						return qsTr("Not on Redmine yet - sent once it's reachable")
+					case "rejected":
+						return qsTr("Rejected by Redmine: %1").arg(delegate.syncError)
+					default:
+						return qsTr("Not linked to Redmine")
+					}
+				}
+				color: delegate.syncState === "rejected" ? Material.color(Material.Red, Material.Shade200) : Material.hintTextColor
+				font.pixelSize: 12
+				wrapMode: Text.WordWrap
+			}
+		}
+
+		ToolButton {
+			Layout.alignment: Qt.AlignVCenter
+			visible: delegate.showFavorite
+			icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/star.svg"
+			icon.width: 14
+			icon.height: 14
+			icon.color: delegate.favorite ? Material.accentColor : Material.hintTextColor
+			opacity: delegate.favorite || delegate.hovered || hovered ? 1 : 0
+			onClicked: delegate.favoriteToggled()
+			ToolTip.visible: hovered
+			ToolTip.text: delegate.favorite ? qsTr("Unpin issue") : qsTr("Pin issue")
+		}
+
+		ToolButton {
+			Layout.alignment: Qt.AlignVCenter
+			visible: delegate.continuable
+			icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/play.svg"
+			icon.width: 14
+			icon.height: 14
+			opacity: delegate.hovered || hovered ? 1 : 0
+			onClicked: delegate.continueRequested()
+			ToolTip.visible: hovered
+			ToolTip.text: qsTr("Continue tracking this")
 		}
 
 		IconImage {

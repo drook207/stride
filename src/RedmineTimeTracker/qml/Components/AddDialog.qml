@@ -41,25 +41,19 @@ Dialog {
 		const issueIdResult = docroot.issueId
 		const commentsResult = docroot.comment
 		const spentOnResult = docroot.spentOn === "" ? new Date() : docroot.spentOn
-		console.log("Add dialog hours value: ", hoursResult)
-		console.log("Add dialog issueId value: ", issueIdResult)
-		console.log("Add dialog comment value: ", commentsResult)
-		console.log("Add dialog spentOn value: ", spentOnResult)
-		// Add to local history; its id lets the entry be linked to the created time entry.
-		const localId = docroot.timeTracker.addRecentEntry({
+		// Saved locally and sent to Redmine from there, now or once it's reachable (see Main.qml).
+		docroot.timeTracker.addRecentEntry({
 											   "issueId": issueIdResult,
 											   "hours": hoursResult,
 											   "comments": commentsResult,
-											   "date": spentOnResult
+											   "date": spentOnResult,
+											   "activityId": docroot.activityId,
+											   "customFields": docroot.customFields,
+											   "issueStatusId": statusPicker.statusId
 										   })
-
-		// Submit to Redmine
-		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult, docroot.activityId, docroot.customFields, localId)
 	}
 
-	onRejected: {
-
-	}
+	onAboutToShow: statusPicker.load(parseInt(docroot.issueId))
 
 	contentItem: ColumnLayout {
 		id: content
@@ -72,6 +66,12 @@ Dialog {
 		Label {
 			text: qsTr("Total time: %1 spent on: %2").arg(docroot.hours).arg(docroot.spentOn)
 			font.bold: true
+		}
+
+		IssueStatusPicker {
+			id: statusPicker
+			Layout.fillWidth: true
+			client: docroot.client
 		}
 	}
 }

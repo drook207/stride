@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Material
@@ -46,6 +48,10 @@ Item {
             docroot.client.updateTimeEntry(editDialog.entryId, changes.hours, changes.comments, changes.spent_on,
                                            changes.activity_id || 0, changes.custom_fields || [], tag)
         }
+
+        // The list (and any local copies) follow once Redmine confirms
+        // (TimeTracker.removeDeletedTimeEntry, wired up in Main.qml).
+        onDeleteRequested: docroot.client.deleteTimeEntry(editDialog.entryId)
     }
 
     ColumnLayout {
@@ -124,6 +130,13 @@ Item {
                     spentOn: modelData.spent_on
                     showDivider: index < ListView.view.count - 1
                     editable: true
+                    continuable: !docroot.timeTracker.isTracking
+                    showFavorite: true
+                    favorite: docroot.timeTracker.favoriteIssues.some(f => f.issue_id === modelData.issue.id)
+
+                    onContinueRequested: docroot.timeTracker.continueTracking(modelData.issue.id, modelData.comments || "",
+                                                                          modelData.activity ? modelData.activity.id : 0)
+                    onFavoriteToggled: docroot.timeTracker.toggleFavoriteIssue(modelData.issue.id)
 
                     onClicked: {
                         editDialog.entryId = modelData.id
@@ -134,8 +147,7 @@ Item {
                                                "comments": modelData.comments,
                                                "spentOn": modelData.spent_on,
                                                "activityId": modelData.activity ? modelData.activity.id : 0,
-                                               "special": docroot.specialOf(modelData),
-                                               "localOnly": false
+                                               "special": docroot.specialOf(modelData)
                                            })
                     }
                 }

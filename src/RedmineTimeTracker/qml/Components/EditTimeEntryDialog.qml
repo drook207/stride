@@ -21,13 +21,20 @@ Dialog {
 	property var specialField: null
 	//! Project of the entry being edited, so only activities it allows are offered; -1 if unknown.
 	property int projectId: -1
-	//! Whether the entry only exists locally (not linked to a Redmine time entry); hides the
-	//! activity, which local entries don't store, and explains that changes stay local.
-	property bool localOnly: false
+	//! Whether a local entry is on Redmine, as TimeEntryDelegate.syncState: "" for one that is (or
+	//! an entry from Redmine), else "pending", "rejected" or "unconfirmed". Explains where the
+	//! changes go.
+	property string syncState: ""
+	//! Why Redmine rejected the entry (syncState "rejected").
+	property string syncError: ""
 
-	//! Emitted on Save with "hours" (decimal hours), "comments", "spent_on" ("yyyy-MM-dd") and,
-	//! if one is selected, "activity_id" and "activity_name".
+	//! Emitted on Save with "hours" (decimal hours), "comments", "spent_on" ("yyyy-MM-dd"), if one
+	//! is selected "activity_id" and "activity_name", if changed "custom_fields", and "submit" when
+	//! an unconfirmed entry is to be sent to Redmine.
 	signal saved(var changes)
+
+	//! Emitted when the user confirmed deleting the entry; the caller deletes it.
+	signal deleteRequested()
 
 	//! The entry's hours as passed to openFor(). The field shows them rounded to 2 decimals, so
 	//! they are saved as they were unless the field is edited.
@@ -45,11 +52,13 @@ Dialog {
 	//! Opens the dialog for an entry.
 	//! \param entry {issueId, projectId, hours, comments, spentOn ("yyyy-MM-dd..." or Date), activityId,
 	//!              special (the Special field's value; undefined if unknown, keeping it unchanged),
-	//!              localOnly}
+	//!              syncState, syncError (see the properties; both optional)}
 	function openFor(entry) {
 		dialog.issueId = entry.issueId
 		dialog.projectId = entry.projectId > 0 ? entry.projectId : -1
-		dialog.localOnly = entry.localOnly
+		dialog.syncState = entry.syncState || ""
+		dialog.syncError = entry.syncError || ""
+		sendCheck.checked = false
 		dialog.originalHours = Number(entry.hours)
 		hoursField.text = HoursFormat.format(dialog.originalHours)
 		commentsField.text = entry.comments || ""
@@ -68,7 +77,48 @@ Dialog {
 	Overlay.modal: DialogScrim {}
 
 	title: qsTr("Edit time entry for #%1").arg(dialog.issueId)
-	standardButtons: Dialog.Save | Dialog.Cancel
+
+	footer: DialogButtonBox {
+		standardButtons: DialogButtonBox.Save | DialogButtonBox.Cancel
+
+		Button {
+			text: qsTr("Delete")
+			flat: true
+			Material.foreground: Material.color(Material.Red, Material.Shade200)
+			DialogButtonBox.buttonRole: DialogButtonBox.ActionRole
+			onClicked: dialog.deleteConfirmation.open()
+		}
+	}
+
+	// Held in a property rather than declared as a child: as a child it would join the dialog's
+	// content and make its size depend on itself.
+	readonly property Dialog deleteConfirmation: Dialog {
+		parent: Overlay.overlay
+		anchors.centerIn: parent
+		// Set when opened rather than bound: bound to the window's width, Material's Dialog reports a
+		// binding loop for its implicitHeight with the wrapping label below.
+		width: 440
+		onAboutToShow: width = Math.min(parent.width - 32, 440)
+		modal: true
+		Overlay.modal: DialogScrim {}
+		title: qsTr("Delete time entry?")
+		standardButtons: Dialog.Yes | Dialog.No
+
+		// A child with a set width rather than the contentItem: a wrapping contentItem's height
+		// depends on the dialog's width and back.
+		Label {
+			width: parent.width
+			wrapMode: Text.WordWrap
+			// Entries on Redmine (syncState "") are deleted there too.
+			text: dialog.syncState === "" ? qsTr("The time entry is deleted on Redmine, too. This can't be undone.")
+										  : qsTr("The time entry is deleted from the app. This can't be undone.")
+		}
+
+		onAccepted: {
+			dialog.close()
+			dialog.deleteRequested()
+		}
+	}
 
 	Component.onCompleted: standardButton(Dialog.Save).enabled = Qt.binding(() => !isNaN(dialog.hours))
 
@@ -78,12 +128,15 @@ Dialog {
 			"comments": commentsField.text,
 			"spent_on": dateField.isoDate
 		}
-		if (!dialog.localOnly && activityCombo.activityId > 0) {
+		if (activityCombo.activityId > 0) {
 			changes["activity_id"] = activityCombo.activityId
 			changes["activity_name"] = activityCombo.currentText
 		}
-		if (!dialog.localOnly && specialCombo.customFieldValues.length > 0) {
+		if (specialCombo.customFieldValues.length > 0) {
 			changes["custom_fields"] = specialCombo.customFieldValues
+		}
+		if (dialog.syncState === "unconfirmed" && sendCheck.checked) {
+			changes["submit"] = true
 		}
 		dialog.saved(changes)
 	}
@@ -93,10 +146,26 @@ Dialog {
 
 		Label {
 			Layout.fillWidth: true
-			visible: dialog.localOnly
-			text: qsTr("This entry isn't linked to a time entry on Redmine, so the changes are only saved in the app.")
-			color: Material.secondaryTextColor
+			visible: dialog.syncState !== ""
+			text: {
+				switch (dialog.syncState) {
+				case "pending":
+					return qsTr("This entry isn't on Redmine yet. It's sent with your changes once Redmine is reachable.")
+				case "rejected":
+					return qsTr("Redmine rejected this entry: %1\nSaving sends it again.").arg(dialog.syncError)
+				default:
+					return qsTr("This entry was saved before the app kept track of sending entries, so it may already be on Redmine. Changes are only saved in the app, unless you send it.")
+				}
+			}
+			color: dialog.syncState === "rejected" ? Material.color(Material.Red, Material.Shade200) : Material.secondaryTextColor
 			wrapMode: Text.WordWrap
+		}
+
+		CheckBox {
+			id: sendCheck
+			Layout.fillWidth: true
+			visible: dialog.syncState === "unconfirmed"
+			text: qsTr("It's not on Redmine yet - send it when saving")
 		}
 
 		LabeledField {
@@ -133,7 +202,6 @@ Dialog {
 
 			LabeledField {
 				Layout.fillWidth: true
-				visible: !dialog.localOnly
 				label: qsTr("Activity")
 
 				ActivityComboBox {
@@ -149,10 +217,10 @@ Dialog {
 			}
 		}
 
-		// Redmine's "Special" time entry custom field; local entries don't store it.
+		// Redmine's "Special" time entry custom field.
 		LabeledField {
 			Layout.fillWidth: true
-			visible: !dialog.localOnly && dialog.specialField !== null
+			visible: dialog.specialField !== null
 			label: qsTr("Special")
 
 			SpecialFieldComboBox {
