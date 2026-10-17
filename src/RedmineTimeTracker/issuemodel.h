@@ -18,6 +18,7 @@ public:
 		IdAndSubjectRole,
 		SubjectRole,
 		ProjectIdRole,
+		ProjectNameRole,
 		StatusIdRole,
 		DescriptionRole,
 		CreatedOnRole,
@@ -44,6 +45,7 @@ private:
 		int id;
 		QString subject;
 		int projectId;
+		QString projectName;
 		int statusId;
 		QString description;
 		QDateTime createdOn;

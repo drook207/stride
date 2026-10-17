@@ -58,28 +58,42 @@ namespace SqlQueries {
 		"ORDER BY (comments = ?) DESC, created_at DESC "
 		"LIMIT 1");
 
+	// Local time entries, newest first, with the project of their issue where that issue is cached.
 	STATIC_CONST_QSTRING(GET_RECENT_ENTRIES,
-		"SELECT * FROM time_entries "
-		"ORDER BY created_at DESC "
+		"SELECT t.*, i.project_id AS project_id, i.project_name AS project_name "
+		"FROM time_entries t LEFT JOIN issues i ON i.id = t.issue_id "
+		"ORDER BY t.created_at DESC "
 		"LIMIT ?");
+
+	// Issues of local time entries that aren't cached with a project yet.
+	STATIC_CONST_QSTRING(GET_ISSUE_IDS_WITHOUT_PROJECT,
+		"SELECT DISTINCT t.issue_id FROM time_entries t LEFT JOIN issues i ON i.id = t.issue_id "
+		"WHERE i.project_name IS NULL OR i.project_name = ''");
 
 	STATIC_CONST_QSTRING(CREATE_ISSUES_TABLE,
 		"CREATE TABLE IF NOT EXISTS issues ("
 		"id INTEGER PRIMARY KEY NOT NULL, "
 		"subject TEXT NOT NULL, "
 		"project_id INTEGER, "
+		"project_name TEXT, "
 		"status_id INTEGER NOT NULL, "
 		"description TEXT, "
 		"created_on DATETIME NOT NULL, "
 		"updated_on DATETIME NOT NULL)");
 
+	// project_name was added after the first release; databases created before get it added.
+	STATIC_CONST_QSTRING(GET_ISSUES_COLUMNS, "PRAGMA table_info(issues)");
+	STATIC_CONST_QSTRING(ADD_ISSUES_PROJECT_NAME_COLUMN, "ALTER TABLE issues ADD COLUMN project_name TEXT");
+
 	STATIC_CONST_QSTRING(REPLACE_ISSUE,
 		"REPLACE INTO issues ("
-		"id, subject, project_id, status_id, description, created_on, updated_on) VALUES "
-		"(:id,:subject, :project_id,:status_id,:description,:created_on,:updated_on)");
+		"id, subject, project_id, project_name, status_id, description, created_on, updated_on) VALUES "
+		"(:id,:subject, :project_id, :project_name, :status_id,:description,:created_on,:updated_on)");
 
-	STATIC_CONST_QSTRING(
-		GET_ISSUES, "SELECT id, subject, project_id, status_id, description, created_on, updated_on FROM issues");
+	// Sorted by project, so issue suggestions can be grouped by it.
+	STATIC_CONST_QSTRING(GET_ISSUES,
+		"SELECT id, subject, project_id, project_name, status_id, description, created_on, updated_on FROM issues "
+		"ORDER BY project_name COLLATE NOCASE, id");
 }
 
 class Database {
@@ -118,8 +132,14 @@ public:
 
 	static bool createIssuesDatabase();
 
-	static bool addIssue(int issueId, const QString& subject, int projectId, int statusId, const QString& description,
-		const QDateTime& createdOn, const QDateTime& updatedOn);
+	static bool addIssue(int issueId, const QString& subject, int projectId, const QString& projectName, int statusId,
+		const QString& description, const QDateTime& createdOn, const QDateTime& updatedOn);
+
+	/*!
+	 * \brief issueIdsWithoutProject Issues of local time entries that aren't cached with their
+	 * project yet, so it can't be shown for those entries
+	 */
+	static QList<int> issueIdsWithoutProject();
 
 	static QSqlQuery getIssues();
 

@@ -10,8 +10,8 @@ void IssueModel::updateIssueList()
 	QSqlQuery query = Database::getIssues();
 
 	while (query.next()) {
-		Issue issue = { query.value("id").toInt(), query.value("subject").toString(),
-			query.value("project_id").toInt(), query.value("status_id").toInt(),
+		Issue issue = { query.value("id").toInt(), query.value("subject").toString(), query.value("project_id").toInt(),
+			query.value("project_name").toString(), query.value("status_id").toInt(),
 			query.value("description").toString(), query.value("created_on").toDateTime(),
 			query.value("updated_on").toDateTime() };
 		mIssues.append(issue);
@@ -46,6 +46,8 @@ QVariant IssueModel::data(const QModelIndex& index, int role) const
 			return issue.subject;
 		case ProjectIdRole:
 			return issue.projectId;
+		case ProjectNameRole:
+			return issue.projectName;
 		case StatusIdRole:
 			return issue.statusId;
 		case DescriptionRole:
@@ -72,6 +74,7 @@ QHash<int, QByteArray> IssueModel::roleNames() const
 	roles[IdAndSubjectRole] = "idAndSubject";
 	roles[SubjectRole] = "subject";
 	roles[ProjectIdRole] = "projectId";
+	roles[ProjectNameRole] = "projectName";
 	roles[StatusIdRole] = "statusId";
 	roles[DescriptionRole] = "description";
 	roles[CreatedOnRole] = "createdOn";
