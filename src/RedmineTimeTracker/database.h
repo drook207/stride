@@ -171,6 +171,13 @@ public:
 	//! The database file in the platform's application data directory.
 	static QString defaultPath();
 
+	/*!
+	 * \brief moveDatabaseFiles Moves a database file with its SQLite companions (-wal, -shm), after
+	 * writing its write-ahead log into it. Either everything is moved, or nothing changes at from.
+	 * \return Whether it was moved
+	 */
+	static bool moveDatabaseFiles(const QString& from, const QString& to);
+
 	//! The schema version (SQLite's user_version): how many migrations have run.
 	static int schemaVersion();
 
