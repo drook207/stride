@@ -26,11 +26,20 @@ add_executable(qredminetesting
 redmineclienttest.h redmineclienttest.cpp
 redmineclientintegrationtest.h redmineclientintegrationtest.cpp
 projectaccesstest.cpp
+databasetest.cpp
+timetrackertest.cpp
 mockhttpserver.h mockhttpserver.cpp
 testutils.h
 main.cpp)
 
-find_package(Qt6 REQUIRED Core Network Quick)
+find_package(Qt6 REQUIRED Core Network Quick Sql)
+
+# The app's storage and tracking logic, tested directly: its sources are built into the test binary
+# (they belong to the app's QML module, which a test can't link).
+set(APP_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker)
+target_sources(qredminetesting PRIVATE ${APP_SOURCE_DIR}/database.h ${APP_SOURCE_DIR}/database.cpp
+                                       ${APP_SOURCE_DIR}/timetracker.h ${APP_SOURCE_DIR}/timetracker.cpp)
+target_include_directories(qredminetesting PRIVATE ${APP_SOURCE_DIR})
 
 target_link_libraries(qredminetesting
  PRIVATE
@@ -40,6 +49,7 @@ QRedmine::Utils
  Qt6::Core
  Qt6::Network
  Qt6::Quick
+ Qt6::Sql
 )
 
 include(GoogleTest)
