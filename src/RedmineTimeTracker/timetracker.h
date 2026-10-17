@@ -84,8 +84,8 @@ public:
 	Q_INVOKABLE QVariantList issueIdsWithoutProject() const;
 
 	/*!
-	 * \brief unlinkedEntriesRange Days spanned by the recent entries that aren't linked to a Redmine
-	 * time entry, e.g. entries saved before linking existed or whose link was missed
+	 * \brief unlinkedEntriesRange Days spanned by the recent entries of the last month that aren't
+	 * linked to a Redmine time entry, e.g. entries saved before linking existed or whose link was missed
 	 * \return {"from", "to"} as "yyyy-MM-dd" for RedmineClient::getOwnTimeEntries(), or an empty
 	 * map if all recent entries are linked
 	 */
@@ -169,8 +169,8 @@ public slots:
 
 	/*!
 	 * \brief linkExistingTimeEntries Links recent local entries that aren't linked yet to the
-	 * user's time entries on Redmine they were submitted as: same issue and day, hours equal up to
-	 * Redmine's rounding, preferably the same comment. Entries without a clear match stay unlinked.
+	 * user's time entries on Redmine they were submitted as: same issue, day and comment, hours
+	 * equal up to Redmine's rounding. Entries without such a match stay unlinked.
 	 * Connected to RedmineClient::ownTimeEntriesReceived.
 	 * \param timeEntries The user's time entries on Redmine for unlinkedEntriesRange()
 	 */

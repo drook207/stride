@@ -207,16 +207,21 @@ QVariantList TimeTracker::issueIdsWithoutProject() const
 	return ids;
 }
 
+//! How far back unlinked entries are linked (see linkExistingTimeEntries()). Older ones are left alone,
+//! so an entry that never matches doesn't make every launch fetch months of time entries.
+static constexpr int LINKING_MAX_AGE_DAYS = 31;
+
 QVariantMap TimeTracker::unlinkedEntriesRange() const
 {
+	const QString oldest = QDate::currentDate().addDays(-LINKING_MAX_AGE_DAYS).toString(Qt::ISODate);
 	QString from;
 	QString to;
 	for (const QVariant& value : mRecentEntries) {
 		const QVariantMap entry = value.toMap();
-		if (entry["redmine_id"].toInt() > 0) {
+		const QString day = entry["spent_on"].toString().left(10);
+		if (entry["redmine_id"].toInt() > 0 || day < oldest) {
 			continue;
 		}
-		const QString day = entry["spent_on"].toString().left(10);
 		if (from.isEmpty() || day < from) {
 			from = day;
 		}
@@ -242,30 +247,22 @@ void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
 		const int issueId = entry["issue_id"].toInt();
 		const QString day = entry["spent_on"].toString().left(10);
 		const double hours = entry["hours"].toDouble();
-		const QString comments = entry["comments"].toString();
+		const QString comments = entry["comments"].toString().trimmed();
 
-		QList<QJsonObject> candidates;
-		QList<QJsonObject> sameComment;
-		for (const QJsonValue& remoteValue : timeEntries) {
+		// Only an entry alike in every compared field counts: one with another comment may be an
+		// unrelated booking (e.g. made in the web UI after this entry's own submission failed), and
+		// linking to it would let edits here overwrite it. Alike entries are interchangeable, so
+		// the first one not linked yet will do.
+		const auto match = std::find_if(timeEntries.begin(), timeEntries.end(), [&](const QJsonValue& remoteValue) {
 			const QJsonObject remote = remoteValue.toObject();
-			if (taken.contains(remote["id"].toInt()) || remote["issue"].toObject()["id"].toInt() != issueId ||
-				remote["spent_on"].toString() != day || std::abs(remote["hours"].toDouble() - hours) >= 0.01) {
-				continue;
-			}
-			candidates.append(remote);
-			if (remote["comments"].toString() == comments) {
-				sameComment.append(remote);
-			}
-		}
-		// Entries alike in every compared field are interchangeable, so the first one will do; with
-		// different comments, only a single candidate is a clear match.
-		const QJsonObject* match = !sameComment.isEmpty() ? &sameComment.first()
-			: candidates.size() == 1					  ? &candidates.first()
-														  : nullptr;
-		if (!match) {
+			return !taken.contains(remote["id"].toInt()) && remote["issue"].toObject()["id"].toInt() == issueId &&
+				remote["spent_on"].toString() == day && std::abs(remote["hours"].toDouble() - hours) < 0.01 &&
+				remote["comments"].toString().trimmed() == comments;
+		});
+		if (match == timeEntries.end()) {
 			continue;
 		}
-		const int redmineId = (*match)["id"].toInt();
+		const int redmineId = match->toObject()["id"].toInt();
 		if (Database::updateSyncStatus(entry["id"].toInt(), redmineId)) {
 			taken.insert(redmineId);
 			linked = true;

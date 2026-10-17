@@ -25,6 +25,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(qredminetesting
 redmineclienttest.h redmineclienttest.cpp
 redmineclientintegrationtest.h redmineclientintegrationtest.cpp
+projectaccesstest.cpp
 mockhttpserver.h mockhttpserver.cpp
 testutils.h
 main.cpp)

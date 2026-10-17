@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -33,6 +34,7 @@ namespace ApiResources {
 	static const QString PROJECTS = QStringLiteral("projects.json");
 	static const QString CUSTOM_FIELDS = QStringLiteral("custom_fields.json");
 	static const QString CURRENT_USER = QStringLiteral("users/current.json");
+	static const QString ROLES = QStringLiteral("roles.json");
 	static const QString ROLE = QStringLiteral("roles/%0.json"); // arg[0] == id
 	static const QString TIME_ENTRY = QStringLiteral("time_entries/%0.json"); // arg[0] == id
 	static const QString TIME_ENTRIES = QStringLiteral("time_entries.json");
@@ -275,9 +277,17 @@ public slots:
 
 	/*!
 	 * \brief getCurrentUser Fetches the user the API key belongs to, with their project memberships
-	 * and roles; emits currentUserReceived(). Failures aren't reported via errorOccurred().
+	 * and roles; emits currentUserReceived(). Starts a new permission lookup: replies to earlier
+	 * getCurrentUser(), getRoles() and getRole() calls are ignored from then on. Failures aren't
+	 * reported via errorOccurred().
 	 */
 	void getCurrentUser();
+
+	/*!
+	 * \brief getRoles Lists the roles that can be given to members (not the built-in "Non member"
+	 * and "Anonymous" roles); emits rolesReceived(). Failures aren't reported via errorOccurred().
+	 */
+	void getRoles();
 
 	/*!
 	 * \brief getRole Fetches a role with its permissions; emits roleReceived(). Failures aren't
@@ -448,6 +458,18 @@ signals:
 	void roleReceived(const QJsonObject& role);
 
 	/*!
+	 * \brief rolesReceived
+	 * \param roles As returned by /roles.json ({id, name})
+	 */
+	void rolesReceived(const QJsonArray& roles);
+
+	/*!
+	 * \brief permissionLookupFailed Emitted when a getCurrentUser(), getRoles() or getRole() request
+	 * of the current permission lookup fails (these failures aren't reported via errorOccurred())
+	 */
+	void permissionLookupFailed();
+
+	/*!
 	 * \brief ownTimeEntriesReceived
 	 * \param timeEntries All of the user's time entries asked for by getOwnTimeEntries()
 	 */
@@ -493,19 +515,38 @@ private slots:
 private:
 	//! Marks requests whose replies are handled separately from handleNetworkReply()'s generic
 	//! routing (stored in a request attribute, see ROUTING_ATTRIBUTE).
-	enum RequestTag { NoTag, TimeEntryCustomFieldsTag, TimeEntryCustomFieldsFallbackTag, OwnTimeEntriesTag };
+	enum RequestTag {
+		NoTag,
+		TimeEntryCustomFieldsTag,
+		TimeEntryCustomFieldsFallbackTag,
+		AllProjectsTag,
+		OwnTimeEntriesTag,
+		PermissionsTag
+	};
 
-	//! Requests the page of getOwnTimeEntries() starting at offset.
-	void requestOwnTimeEntriesPage(int offset);
-	//! Adds a page received for getOwnTimeEntries(), then requests the next one or emits them all.
-	void handleOwnTimeEntriesReply(QNetworkReply* reply);
-	//! Days asked for by the current getOwnTimeEntries() call.
-	QString mOwnTimeEntriesFrom;
-	QString mOwnTimeEntriesTo;
-	//! Time entries received so far by the current getOwnTimeEntries() call.
-	QJsonArray mOwnTimeEntries;
-	//! Counts getOwnTimeEntries() calls, so pages of a superseded call are ignored.
-	int mOwnTimeEntriesGeneration = 0;
+	//! A list fetched page after page (getAllProjects(), getOwnTimeEntries()).
+	struct PagedFetch {
+		QString resource;
+		QUrlQuery query; // without limit/offset
+		QString key; // the list's key in each page's JSON
+		bool quiet = false; // failures aren't reported via errorOccurred()
+		int generation = 0; // counts calls, so pages of a superseded call are ignored
+		QJsonArray collected; // items received so far
+	};
+
+	QHash<RequestTag, PagedFetch> mPagedFetches;
+	//! Starts fetching a list, superseding a fetch with the same tag still in progress.
+	void startPagedFetch(
+		RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key, bool quiet);
+	//! Requests the page starting at offset.
+	void requestPage(RequestTag tag, int offset);
+	//! Adds a received page, then requests the next one or emits all items.
+	void handlePagedReply(QNetworkReply* reply, RequestTag tag);
+
+	//! Counts getCurrentUser() calls, so replies for a superseded permission lookup are ignored.
+	int mPermissionsGeneration = 0;
+	void requestPermissionData(QNetworkRequest request);
+	void handlePermissionsReply(QNetworkReply* reply);
 
 	void handleTimeEntryCustomFieldsReply(QNetworkReply* reply, RequestTag tag);
 	//! Counts getTimeEntryCustomFields() calls, so replies of a superseded call are ignored.
@@ -523,14 +564,6 @@ private:
 	ConnectionState mConnectionState = ConnectionState::OFFLINE;
 	QTimer mConnectionCheckTimer;
 
-	//! Requests the page of getAllProjects() starting at offset.
-	void requestProjectsPage(int offset);
-	//! Adds a page received for getAllProjects(), then requests the next one or emits them all.
-	void collectProjectsPage(const QJsonObject& response);
-	//! Projects received so far by the current getAllProjects() call.
-	QJsonArray mCollectedProjects;
-	//! Counts getAllProjects() calls, so pages of a superseded call are ignored.
-	int mProjectsGeneration = 0;
 	void setupConnectionCheckTimer();
 	void setConnectionState(RedmineClient::ConnectionState newConnectionState);
 	void toggleConnectionState(RedmineClient::ConnectionState newConnectionState);

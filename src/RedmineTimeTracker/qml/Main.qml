@@ -31,17 +31,14 @@ ApplicationWindow {
 
     //! All projects visible to the user ({id, name, identifier, status, is_public, enabled_modules, ...}).
     property var allProjects: []
-    //! The user the API key belongs to, with "memberships" (see RedmineClient::getCurrentUser), or
-    //! null while unknown.
-    property var currentUser: null
-    //! Permissions of the user's roles by role id, as far as fetched (RedmineClient::getRole).
-    property var rolePermissions: ({})
-    //! Redmine's built-in "Non member" role, which applies in public projects the user isn't a member
-    //! of. Created by Redmine's installation before any other role, so its id is 1.
-    readonly property int nonMemberRoleId: 1
-
     //! Projects to pick from in Add Issue: active ones the user may add issues to.
-    readonly property var projects: window.allProjects.filter(project => project.status === 1 && window.canAddIssues(project))
+    readonly property var projects: projectAccess.issueProjects
+    //! Whether the user's own time entries were fetched for linking since the last API key change.
+    property bool entriesLinked: false
+    //! Whether reconnectRefetchTimer already caught up since the last server or API key change. Only
+    //! once: with an invalid key, a server allowing anonymous access flips between online (anonymous
+    //! requests) and offline (the user's), which would otherwise retry endlessly.
+    property bool caughtUp: false
 
     //! Asks Redmine for the user's time entries on the days of recent entries that aren't linked to
     //! one (e.g. saved before linking existed), so TimeTracker can link them and they can be edited
@@ -50,28 +47,11 @@ ApplicationWindow {
         const range = timeTrackerInstance.unlinkedEntriesRange();
         if (range.from) {
             redmineClient.getOwnTimeEntries(range.from, range.to);
+        } else {
+            window.entriesLinked = true;
         }
     }
 
-    //! Whether the user may add issues to a project. While the user or a role's permissions aren't
-    //! known (yet, or fetching them failed), projects are assumed to allow it rather than hidden.
-    function canAddIssues(project) {
-        if (project.enabled_modules && !project.enabled_modules.some(module => module.name === "issue_tracking")) {
-            return false;
-        }
-        if (!window.currentUser || window.currentUser.admin) {
-            return true;
-        }
-        const roleAllows = roleId => {
-            const permissions = window.rolePermissions[roleId];
-            return permissions === undefined || permissions.indexOf("add_issues") >= 0;
-        };
-        const membership = (window.currentUser.memberships || []).find(m => m.project && m.project.id === project.id);
-        if (membership) {
-            return membership.roles.some(role => roleAllows(role.id));
-        }
-        return project.is_public === true && roleAllows(window.nonMemberRoleId);
-    }
     //! The time entry custom field named "Special" (see RedmineClient::getTimeEntryCustomFields),
     //! or null if the server has none; drives the Special combo boxes.
     property var specialField: null
@@ -99,7 +79,7 @@ ApplicationWindow {
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
         redmineClient.getAllProjects();
-        redmineClient.getCurrentUser();
+        projectAccess.refresh();
         redmineClient.getTimeEntryCustomFields();
         window.linkUnlinkedEntries();
         // Recent entries show their issue's project, which needs the issue cached locally. Quietly:
@@ -111,34 +91,59 @@ ApplicationWindow {
     }
 
     // Projects, the user's permissions, the time entry custom fields and the user's own time entries
-    // depend on the API key (the keychain may also deliver it only after startup's requests), and
-    // fetching projects fails while offline: fetch them again after the key changed, once typing
-    // pauses, and projects when the connection comes back without them.
+    // depend on the server and API key (the keychain may also deliver the key only after startup's
+    // requests): fetch them again after either changed, once typing pauses.
     Timer {
         id: apiKeyRefetchTimer
         interval: 1000
         onTriggered: {
+            window.entriesLinked = false;
+            window.caughtUp = false;
             redmineClient.getAllProjects();
-            redmineClient.getCurrentUser();
+            projectAccess.refresh();
             redmineClient.getTimeEntryCustomFields();
             window.linkUnlinkedEntries();
         }
     }
+    // Fetching fails quietly while offline: when the connection comes back, catch up once on what's
+    // still missing (see caughtUp).
     Timer {
-        id: projectsRefetchTimer
+        id: reconnectRefetchTimer
         interval: 1000
-        onTriggered: redmineClient.getAllProjects()
+        onTriggered: {
+            if (window.caughtUp) {
+                return;
+            }
+            window.caughtUp = true;
+            if (window.allProjects.length === 0) {
+                redmineClient.getAllProjects();
+            }
+            if (!projectAccess.userKnown) {
+                projectAccess.refresh();
+            }
+            if (!window.entriesLinked) {
+                window.linkUnlinkedEntries();
+            }
+        }
     }
     Connections {
         target: redmineClient
         function onApiKeyChanged() {
             apiKeyRefetchTimer.restart();
         }
+        function onBaseUrlChanged() {
+            apiKeyRefetchTimer.restart();
+        }
         function onConnectionStateChanged() {
-            if (redmineClient.connectionState === RedmineClient.ONLINE && window.allProjects.length === 0) {
-                projectsRefetchTimer.restart();
+            if (redmineClient.connectionState === RedmineClient.ONLINE) {
+                reconnectRefetchTimer.restart();
             }
         }
+    }
+    ProjectAccess {
+        id: projectAccess
+        client: redmineClient
+        projects: window.allProjects
     }
     // The "Instance" suffix is deliberate: the shells below have properties named timeTracker and
     // activitiesModel, and inside `DesktopShell { activitiesModel: activitiesModel }` the right-hand
@@ -159,27 +164,8 @@ ApplicationWindow {
             activitiesModelInstance.setProjectActivities(projects);
         }
         function onOwnTimeEntriesReceived(timeEntries) {
+            window.entriesLinked = true;
             timeTrackerInstance.linkExistingTimeEntries(timeEntries);
-        }
-        function onCurrentUserReceived(user) {
-            window.currentUser = user;
-            window.rolePermissions = {};
-            const roleIds = [window.nonMemberRoleId];
-            for (const membership of user.memberships || []) {
-                for (const role of membership.roles) {
-                    if (roleIds.indexOf(role.id) < 0) {
-                        roleIds.push(role.id);
-                    }
-                }
-            }
-            if (!user.admin) {
-                roleIds.forEach(roleId => redmineClient.getRole(roleId));
-            }
-        }
-        function onRoleReceived(role) {
-            const permissions = Object.assign({}, window.rolePermissions);
-            permissions[role.id] = role.permissions || [];
-            window.rolePermissions = permissions;
         }
         function onTimeEntryUpdated(timeEntryId, requestTag) {
             timeTrackerInstance.applyRedmineUpdate(timeEntryId, requestTag);
