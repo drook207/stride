@@ -1,3 +1,4 @@
+import QtCore
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Controls.Material
@@ -57,8 +58,9 @@ Dialog {
 
 	Component.onCompleted: standardButton(Dialog.Ok).text = qsTr("Export…")
 	onAccepted: {
-		fileDialog.selectedFile = "file:///time-entries-" + fromField.isoDate + "-" + toField.isoDate
-								  + (formatCombo.currentIndex === 0 ? ".csv" : ".pdf")
+		// Suggested in the documents folder: a bare name would start the dialog in the filesystem root.
+		fileDialog.selectedFile = StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/time-entries-"
+								  + fromField.isoDate + "-" + toField.isoDate + (formatCombo.currentIndex === 0 ? ".csv" : ".pdf")
 		fileDialog.open()
 	}
 
@@ -76,7 +78,7 @@ Dialog {
 			if (dialog.client.connectionState === RedmineClient.ONLINE) {
 				dialog.waiting = true
 				fallbackTimer.restart()
-				dialog.client.getTimeEntryReport(fromField.isoDate, toField.isoDate)
+				dialog.client.getTimeEntryReport(fromField.isoDate, toField.isoDate, RedmineClient.ExportReport)
 			} else {
 				dialog.finish([], false)
 			}
@@ -86,17 +88,24 @@ Dialog {
 	Connections {
 		target: dialog.client
 		enabled: dialog.waiting
-		function onTimeEntryReportReceived(timeEntries, from, to) {
-			if (from === fromField.isoDate && to === toField.isoDate) {
+		function onTimeEntryReportReceived(timeEntries, from, to, purpose) {
+			if (purpose === RedmineClient.ExportReport && from === fromField.isoDate && to === toField.isoDate) {
 				dialog.finish(timeEntries, true)
+			}
+		}
+		// Redmine couldn't be asked after all: export what's known in the app.
+		function onTimeEntryReportFailed(from, to, purpose) {
+			if (purpose === RedmineClient.ExportReport && from === fromField.isoDate && to === toField.isoDate) {
+				dialog.finish([], false)
 			}
 		}
 	}
 
-	// Redmine didn't answer in time (the request fails quietly): export what's known.
+	// Last resort if Redmine never answers at all (a failed request is handled above): export what's
+	// known after a while, generous enough for long periods fetched page by page.
 	Timer {
 		id: fallbackTimer
-		interval: 15000
+		interval: 2 * 60 * 1000
 		onTriggered: {
 			if (dialog.waiting) {
 				dialog.finish([], false)

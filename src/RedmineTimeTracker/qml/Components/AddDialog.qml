@@ -48,9 +48,9 @@ Dialog {
 											   "comments": commentsResult,
 											   "date": spentOnResult,
 											   "activityId": docroot.activityId,
-											   "customFields": docroot.customFields
+											   "customFields": docroot.customFields,
+											   "issueStatusId": statusPicker.statusId
 										   })
-		statusPicker.apply()
 	}
 
 	onAboutToShow: statusPicker.load(parseInt(docroot.issueId))

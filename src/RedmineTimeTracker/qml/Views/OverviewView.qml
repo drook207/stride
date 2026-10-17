@@ -22,7 +22,7 @@ Item {
 	//! Asks Redmine for the shown week's entries; the answer arrives via timeEntryReportReceived.
 	function fetch() {
 		const week = overview.range()
-		docroot.client.getTimeEntryReport(week.from, week.to)
+		docroot.client.getTimeEntryReport(week.from, week.to, RedmineClient.OverviewReport)
 	}
 
 	//! "7,5 h" style, with the decimal comma used by the hour fields.
@@ -38,24 +38,30 @@ Item {
 	ExportDialog {
 		id: exportDialog
 		client: docroot.client
-		// Its request for Redmine's entries replaces the overview's; ask again afterwards.
-		onFinished: docroot.fetch()
 	}
 
 	Connections {
 		target: docroot.client
-		function onTimeEntryReportReceived(timeEntries, from, to) {
-			overview.setRemoteEntries(timeEntries, from, to)
+		function onTimeEntryReportReceived(timeEntries, from, to, purpose) {
+			if (purpose === RedmineClient.OverviewReport) {
+				overview.setRemoteEntries(timeEntries, from, to)
+			}
 		}
 	}
 
-	// A new, changed, sent or deleted entry changes the week; Redmine's side may have, too.
+	// A new, changed, sent or deleted entry changes the week: count again right away, and ask
+	// Redmine again once a burst of changes (e.g. several entries sent on reconnecting) settled.
 	Connections {
 		target: docroot.timeTracker
 		function onRecentEntriesChanged() {
 			overview.refresh()
-			docroot.fetch()
+			refetchTimer.restart()
 		}
+	}
+	Timer {
+		id: refetchTimer
+		interval: 3000
+		onTriggered: docroot.fetch()
 	}
 
 	Component.onCompleted: docroot.fetch()

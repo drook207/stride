@@ -9,8 +9,8 @@ import QRedmine.Client
  *
  * Call load() with the issue; it asks Redmine for the statuses the user may set the issue to
  * (RedmineClient::getIssue with allowed statuses) and offers them, with "Unchanged" preselected.
- * Hidden when Redmine doesn't say (before 5.0) or allows no change. Call apply() to set the
- * picked status, if any.
+ * Hidden when Redmine doesn't say (before 5.0) or allows no change. Pass statusId with the time
+ * entry (TimeTracker::addRecentEntry's "issueStatusId"): it's set once the entry is on Redmine.
  */
 ColumnLayout {
 	id: picker
@@ -31,13 +31,6 @@ ColumnLayout {
 		combo.currentIndex = 0
 		if (issueId > 0) {
 			picker.client.getIssue(issueId, true, true)
-		}
-	}
-
-	//! Sets the picked status on Redmine; does nothing for "Unchanged".
-	function apply() {
-		if (picker.statusId > 0) {
-			picker.client.updateIssue(picker.issueId, "", "", picker.statusId)
 		}
 	}
 
