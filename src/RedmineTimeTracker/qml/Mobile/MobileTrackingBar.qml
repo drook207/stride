@@ -21,7 +21,8 @@ Rectangle {
     required property SubmitDialog submitDialog
     required property var activitiesModel
 
-    property int selectedActivityId: 0
+    //! Activity to submit with the tracked time; 0 lets Redmine use its default.
+    readonly property int selectedActivityId: activityCombo.activityId
     //! Whether the issue/comment/activity fields are visible. Toggled by the chevron button.
     property bool expanded: false
 
@@ -193,19 +194,13 @@ Rectangle {
                     Layout.alignment: Qt.AlignBottom
                     label: qsTr("Activity")
 
-                    ComboBox {
+                    ActivityComboBox {
                         id: activityCombo
                         Layout.fillWidth: true
                         Layout.preferredHeight: docroot.controlHeight
-                        topInset: 0
-                        bottomInset: 0
                         font.pixelSize: 13
-                        model: docroot.activitiesModel.timeEntryActivities
-                        textRole: "name"
-                        valueRole: "id"
-                        // Submit the activity that is shown, including the preselected first one; 0 (Redmine's
-                        // default activity) while none are loaded yet.
-                        onCurrentValueChanged: docroot.selectedActivityId = currentValue !== undefined ? currentValue : 0
+                        activitiesModel: docroot.activitiesModel
+                        projectId: issueField.projectId
                     }
                 }
 
@@ -226,6 +221,7 @@ Rectangle {
                         docroot.submitDialog.comment = commentsField.text
                         docroot.submitDialog.issueId = issueField.value
                         docroot.submitDialog.activityId = docroot.selectedActivityId
+                        docroot.submitDialog.customFields = [] // this bar has no Special field
                         docroot.submitDialog.open()
                     }
                 }

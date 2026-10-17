@@ -11,6 +11,7 @@
 #include <QString>
 #include <QTimer>
 #include <QUrlQuery>
+#include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 #include <QtQmlIntegration/qqmlintegration.h>
 
@@ -30,6 +31,7 @@ namespace ApiResources {
 	static const QString ISSUES = QStringLiteral("issues.json");
 	static const QString PROJECT = QStringLiteral("projects/%0.json"); // arg[0] == id
 	static const QString PROJECTS = QStringLiteral("projects.json");
+	static const QString CUSTOM_FIELDS = QStringLiteral("custom_fields.json");
 	static const QString TIME_ENTRY = QStringLiteral("time_entries/%0.json"); // arg[0] == id
 	static const QString TIME_ENTRIES = QStringLiteral("time_entries.json");
 }
@@ -151,13 +153,15 @@ public slots:
 	 * \param comments
 	 * \param spentOn
 	 * \param activityId
+	 * \param customFields Custom field values as [{"id": <field id>, "value": <value>}], see
+	 * getTimeEntryCustomFields()
 	 * \param requestTag Passed on unchanged with timeEntryCreated(), e.g. to tell which local entry
 	 * the time entry was made from
 	 */
 	void createTimeEntry(int issueId, double hours, const QString& comments,
 		const QString& spentOn = QDateTime::currentDateTime().toString("yyyy-MM-dd"),
 		int activityId = 4, // 4 is often "Development"
-		int requestTag = 0);
+		const QVariantList& customFields = QVariantList(), int requestTag = 0);
 
 	// Update an existing time entry
 	/*!
@@ -167,11 +171,13 @@ public slots:
 	 * \param comments
 	 * \param spentOn New date as "yyyy-MM-dd", left unchanged if empty
 	 * \param activityId New activity, left unchanged if not positive
+	 * \param customFields Custom field values to change, as for createTimeEntry(); fields not
+	 * listed are left unchanged
 	 * \param requestTag Passed on unchanged with timeEntryUpdated() or timeEntryUpdateFailed(), to
 	 * tell which of several updates of the same time entry was confirmed or rejected
 	 */
 	void updateTimeEntry(int timeEntryId, double hours, const QString& comments, const QString& spentOn = QString(),
-		int activityId = 0, int requestTag = 0);
+		int activityId = 0, const QVariantList& customFields = QVariantList(), int requestTag = 0);
 
 	// Get time entries for an issue
 	/*!
@@ -195,6 +201,18 @@ public slots:
 	 * \brief getCustomFields
 	 */
 	void getCustomFields();
+
+	/*!
+	 * \brief getTimeEntryCustomFields Fetches the custom fields of time entries, emitting
+	 * timeEntryCustomFieldsReceived()
+	 *
+	 * Redmine only lists custom fields with their possible values to admins (GET
+	 * /custom_fields.json). For everyone else, this falls back to the fields and values found on
+	 * the latest time entries the user can see: values nobody has used yet are missing then, and
+	 * each field's format is guessed (a field holding only "0"/"1" is taken as a boolean). Neither
+	 * request reports errors via errorOccurred().
+	 */
+	void getTimeEntryCustomFields();
 
 	/*!
 	 * \brief getIssue
@@ -246,7 +264,7 @@ public slots:
 	void getProject(int projectId);
 
 	/*!
-	 * \brief getProjects List projects
+	 * \brief getProjects List projects, including the time entry activities each one allows
 	 * \param limit Maximum number of projects to return
 	 * \param offset Skip this many projects (for pagination)
 	 */
@@ -346,6 +364,13 @@ signals:
 	void customFieldsReceived(const QJsonArray& customFields);
 
 	/*!
+	 * \brief timeEntryCustomFieldsReceived Result of getTimeEntryCustomFields()
+	 * \param customFields Fields as listed by Redmine's /custom_fields.json:
+	 * [{"id", "name", "field_format", "possible_values": [{"value", "label"}], ...}]
+	 */
+	void timeEntryCustomFieldsReceived(const QJsonArray& customFields);
+
+	/*!
 	 * \brief errorOccurred Emitted when a request fails (except for 404 Not Found)
 	 * \param error Human-readable, translated description of the failure, suitable for showing to
 	 * the user (see installTranslations())
@@ -432,6 +457,17 @@ private slots:
 	void checkConnection();
 
 private:
+	//! Marks requests whose replies are handled separately from handleNetworkReply()'s generic
+	//! routing (stored in a request attribute, see ROUTING_ATTRIBUTE).
+	enum RequestTag { NoTag, TimeEntryCustomFieldsTag, TimeEntryCustomFieldsFallbackTag };
+
+	void handleTimeEntryCustomFieldsReply(QNetworkReply* reply, RequestTag tag);
+	//! Counts getTimeEntryCustomFields() calls, so replies of a superseded call are ignored.
+	int mCustomFieldsGeneration = 0;
+
+	//! Sets the connection state a reply shows: ONLINE on success, OFFLINE on connection loss.
+	void updateConnectionStateFromReply(QNetworkReply* reply);
+
 	/*!
 	 * \brief setLoading
 	 * \param loading

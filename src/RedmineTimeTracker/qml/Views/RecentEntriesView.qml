@@ -16,6 +16,8 @@ Item {
 	required property RedmineClient client
 	//! TimeEntryActivitiesModel for the edit dialog's Activity combo box.
 	required property var activitiesModel
+	//! The time entry custom field "Special" (Main.qml), or null if the server has none.
+	property var specialField: null
 
 	//! Project name to show entries of, or "" for all.
 	property string projectFilter: ""
@@ -81,6 +83,7 @@ Item {
 		property var entry: ({})
 
 		activitiesModel: docroot.activitiesModel
+		specialField: docroot.specialField
 
 		onSaved: changes => {
 			const redmineId = editDialog.entry.redmine_id
@@ -89,7 +92,7 @@ Item {
 				// confirms (TimeTracker.applyRedmineUpdate, wired up in Main.qml).
 				const tag = docroot.timeTracker.stageRedmineUpdate(redmineId, changes)
 				docroot.client.updateTimeEntry(redmineId, changes.hours, changes.comments, changes.spent_on,
-											   changes.activity_id || 0, tag)
+											   changes.activity_id || 0, changes.custom_fields || [], tag)
 			} else {
 				docroot.timeTracker.updateRecentEntry(editDialog.entry.id, changes)
 			}
@@ -200,6 +203,7 @@ Item {
 							editDialog.entry = modelData
 							editDialog.openFor({
 												   "issueId": modelData.issue_id,
+											   "projectId": modelData.project_id || -1,
 												   "hours": modelData.hours,
 												   "comments": modelData.comments,
 												   "spentOn": modelData.spent_on,

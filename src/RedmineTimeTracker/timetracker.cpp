@@ -259,6 +259,24 @@ void TimeTracker::applyRedmineUpdate(int redmineId, int tag)
 			activity["name"] = changes["activity_name"];
 			entry["activity"] = activity;
 		}
+		// Changed custom field values ([{id, value}]) replace the entry's values of those fields, or
+		// are added if the entry doesn't have them yet.
+		if (changes.contains("custom_fields")) {
+			QVariantList fields = entry["custom_fields"].toList();
+			for (const auto& changedField : changes["custom_fields"].toList()) {
+				const QVariantMap change = changedField.toMap();
+				const auto existing = std::find_if(fields.begin(), fields.end(),
+					[&change](const QVariant& field) { return field.toMap()["id"].toInt() == change["id"].toInt(); });
+				if (existing == fields.end()) {
+					fields.append(change);
+					continue;
+				}
+				QVariantMap field = existing->toMap();
+				field["value"] = change["value"];
+				*existing = field;
+			}
+			entry["custom_fields"] = fields;
+		}
 		value = entry;
 		resultsChanged = true;
 	}

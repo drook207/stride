@@ -81,6 +81,13 @@ bool IssueModel::hasIssue(int issue)
 	return it != mIssues.end();
 }
 
+int IssueModel::projectIdOf(int issueId) const
+{
+	const auto it =
+		std::find_if(mIssues.cbegin(), mIssues.cend(), [issueId](const Issue& issue) { return issue.id == issueId; });
+	return it != mIssues.cend() ? it->projectId : -1;
+}
+
 QHash<int, QByteArray> IssueModel::roleNames() const
 {
 	QHash<int, QByteArray> roles;

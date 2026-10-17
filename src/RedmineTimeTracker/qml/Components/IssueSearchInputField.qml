@@ -28,6 +28,10 @@ Item {
     //! that need issue details (e.g. starting time tracking) on the issue actually being known.
     readonly property bool knownIssue: issueModel.hasIssue(value)
 
+    //! Project of the selected issue, or -1 while it isn't cached (see knownIssue). Callers use it
+    //! to offer the activities that project allows (ActivityComboBox).
+    readonly property int projectId: knownIssue ? issueModel.projectIdOf(value) : -1
+
     //! Emitted when Enter/Return is pressed in the field (mirrors TextField.accepted).
     signal accepted
 
