@@ -63,6 +63,23 @@ Rectangle {
             }
         }
     }
+    // The tracker can also be started elsewhere (e.g. continuing a recent entry): show what it tracks.
+    Connections {
+        target: docroot.timeTracker
+        function onCurrentIssueChanged() {
+            if (docroot.timeTracker.isTracking && issueField.value !== docroot.timeTracker.currentIssueId) {
+                issueField.value = docroot.timeTracker.currentIssueId
+            }
+        }
+        function onTrackingDetailsChanged() {
+            if (commentsField.text !== docroot.timeTracker.trackingComment) {
+                commentsField.text = docroot.timeTracker.trackingComment
+            }
+            if (docroot.timeTracker.trackingActivityId > 0 && docroot.selectedActivityId !== docroot.timeTracker.trackingActivityId) {
+                activityCombo.selectActivity(docroot.timeTracker.trackingActivityId)
+            }
+        }
+    }
     onSelectedActivityIdChanged: {
         if (docroot.detailsRestored) {
             docroot.timeTracker.trackingActivityId = docroot.selectedActivityId

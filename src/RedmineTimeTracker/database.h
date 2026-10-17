@@ -33,8 +33,12 @@ namespace SqlQueries {
 
 	STATIC_CONST_QSTRING(ADD_TIME_ENTRY,
 		"INSERT INTO time_entries "
-		"(issue_id, hours, comments, spent_on, activity_id, custom_fields, created_at, updated_at) "
-		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+		"(issue_id, hours, comments, spent_on, activity_id, custom_fields, issue_status_id, created_at, updated_at) "
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+	// Schema version 5: the status to set the issue to once the entry is on Redmine.
+	STATIC_CONST_QSTRING(ADD_ISSUE_STATUS_ID_COLUMN, "ALTER TABLE time_entries ADD COLUMN issue_status_id INTEGER");
+	STATIC_CONST_QSTRING(CLEAR_ISSUE_STATUS_ID, "UPDATE time_entries SET issue_status_id = NULL WHERE id = ?");
 
 	STATIC_CONST_QSTRING(GET_LINKED_REDMINE_IDS, "SELECT DISTINCT redmine_id FROM time_entries WHERE redmine_id > 0");
 
@@ -77,6 +81,17 @@ namespace SqlQueries {
 	STATIC_CONST_QSTRING(CLEAR_TRACKING_STATE, "DELETE FROM tracking_state");
 	STATIC_CONST_QSTRING(TOUCH_TRACKING_STATE, "UPDATE tracking_state SET last_seen = ?");
 
+	// Schema version 4: issues the user pinned for quick access.
+	STATIC_CONST_QSTRING(CREATE_FAVORITE_ISSUES_TABLE,
+		"CREATE TABLE favorite_issues (issue_id INTEGER PRIMARY KEY NOT NULL, created_at DATETIME NOT NULL)");
+	STATIC_CONST_QSTRING(
+		ADD_FAVORITE_ISSUE, "INSERT OR IGNORE INTO favorite_issues (issue_id, created_at) VALUES (?, ?)");
+	STATIC_CONST_QSTRING(REMOVE_FAVORITE_ISSUE, "DELETE FROM favorite_issues WHERE issue_id = ?");
+	// In the order they were pinned, with what's cached about each issue.
+	STATIC_CONST_QSTRING(GET_FAVORITE_ISSUES,
+		"SELECT f.issue_id, i.subject, i.project_name FROM favorite_issues f "
+		"LEFT JOIN issues i ON i.id = f.issue_id ORDER BY f.created_at, f.issue_id");
+
 	STATIC_CONST_QSTRING(MARK_UNLINKED_UNCONFIRMED,
 		"UPDATE time_entries SET sync_status = 2 WHERE redmine_id IS NULL OR redmine_id = 0");
 
@@ -89,6 +104,13 @@ namespace SqlQueries {
 		"WHERE ");
 
 	// Local time entries, newest first, with the project of their issue where that issue is cached.
+	// Local time entries spent on the days from .. to, with their issue's project as for GET_RECENT_ENTRIES.
+	STATIC_CONST_QSTRING(GET_ENTRIES_BETWEEN,
+		"SELECT t.*, i.project_id AS project_id, i.project_name AS project_name "
+		"FROM time_entries t LEFT JOIN issues i ON i.id = t.issue_id "
+		"WHERE date(t.spent_on) BETWEEN ? AND ? "
+		"ORDER BY t.spent_on, t.id");
+
 	STATIC_CONST_QSTRING(GET_RECENT_ENTRIES,
 		"SELECT t.*, i.project_id AS project_id, i.project_name AS project_name "
 		"FROM time_entries t LEFT JOIN issues i ON i.id = t.issue_id "
@@ -167,11 +189,15 @@ public:
 	 * \brief addTimeEntry Adds a local time entry, pending to be sent to Redmine
 	 * \param activityId Redmine activity to send it with; 0 for Redmine's default
 	 * \param customFields Custom field values to send it with, as [{"id", "value"}]
+	 * \param issueStatusId Status to set the issue to once the entry is on Redmine; 0 for none
 	 * \return The new entry's local id, or -1 on failure
 	 */
 	static int addTimeEntry(int issueId, double hours, const QString& comments,
 		const QDateTime& spentOn = QDateTime::currentDateTime(), int activityId = 0,
-		const QVariantList& customFields = {});
+		const QVariantList& customFields = {}, int issueStatusId = 0);
+
+	//! Forgets the status to set the entry's issue to, e.g. once it was set.
+	static bool clearIssueStatus(int id);
 
 	/*!
 	 * \brief updateTimeEntry Changes the local time entry with the given local id
@@ -223,7 +249,15 @@ public:
 	//! Records that the app is still running with the remembered tracker.
 	static bool touchTrackingState();
 
+	static bool addFavoriteIssue(int issueId);
+	static bool removeFavoriteIssue(int issueId);
+	//! Pinned issues, oldest first: "issue_id", "subject" and "project_name" ("" while not cached).
+	static QVariantList getFavoriteIssues();
+
 	static QJsonArray getRecentEntries(int limit = 50);
+
+	//! Local entries spent on the days from .. to (both included), fields as for getRecentEntries().
+	static QJsonArray getEntriesBetween(const QDate& from, const QDate& to);
 
 	/*!
 	 * \brief linkedRedmineIds Redmine time entries some local entry is linked to (see updateSyncStatus())
@@ -252,6 +286,8 @@ private:
 	static bool migrateToVersion1();
 	static bool migrateToVersion2();
 	static bool migrateToVersion3();
+	static bool migrateToVersion4();
+	static bool migrateToVersion5();
 	//! An entry row as a JSON object (see getRecentEntries()).
 	static QJsonObject entryFromQuery(const QSqlQuery& query);
 	static bool execute(const QString& sql);

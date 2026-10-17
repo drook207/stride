@@ -130,6 +130,13 @@ Item {
                     spentOn: modelData.spent_on
                     showDivider: index < ListView.view.count - 1
                     editable: true
+                    continuable: !docroot.timeTracker.isTracking
+                    showFavorite: true
+                    favorite: docroot.timeTracker.favoriteIssues.some(f => f.issue_id === modelData.issue.id)
+
+                    onContinueRequested: docroot.timeTracker.continueTracking(modelData.issue.id, modelData.comments || "",
+                                                                          modelData.activity ? modelData.activity.id : 0)
+                    onFavoriteToggled: docroot.timeTracker.toggleFavoriteIssue(modelData.issue.id)
 
                     onClicked: {
                         editDialog.entryId = modelData.id
