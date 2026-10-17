@@ -14,6 +14,8 @@
 #
 # Idempotent: everything is looked up by name and only created or updated where it differs.
 
+require 'json'
+
 phase = ARGV.first || 'setup'
 
 def say(message)
@@ -35,10 +37,9 @@ ACTIVITIES = [
   { name: 'Legacy maintenance', active: false }
 ].freeze
 
-# Activities switched off for a single project (Administration of the project -> Time tracking).
-PROJECT_ACTIVITY_OVERRIDES = {
-  'customer-support' => { inactive: ['Design'] }
-}.freeze
+# Activities switched off for a single project (Administration of the project -> Time tracking), shared
+# with seed_redmine.py, which never books time on them. seed.sh copies the file next to this script.
+PROJECT_ACTIVITY_OVERRIDES = JSON.parse(File.read(File.join(__dir__, 'seed_activity_overrides.json'))).freeze
 
 def ensure_activities
   ACTIVITIES.each_with_index do |spec, index|
@@ -93,19 +94,31 @@ def apply_project_activity_overrides
       say "project '#{identifier}' not found, skipping its activity overrides (run seed_redmine.py first)"
       next
     end
-    settings = spec[:inactive].each_with_object({}) do |name, hash|
+    settings = spec['inactive'].each_with_object({}) do |name, hash|
       activity = TimeEntryActivity.shared.find_by!(name: name)
       # parent_id makes Redmine create a project-specific copy of the shared activity
       hash[activity.id.to_s] = { 'parent_id' => activity.id.to_s, 'active' => '0' }
     end
     project.update_or_create_time_entry_activities(settings)
-    say "project '#{identifier}': deactivated #{spec[:inactive].join(', ')}"
+    say "project '#{identifier}': deactivated #{spec['inactive'].join(', ')}"
   end
+end
+
+# Redmine's default trackers, statuses and roles (README step 2) must exist first: creating
+# activities or custom fields before makes `rake redmine:load_default_data` refuse to run later.
+def ensure_default_data_loaded
+  missing = { 'trackers' => Tracker, 'issue statuses' => IssueStatus }.reject { |_, model| model.exists? }.keys
+  missing << 'roles' unless Role.givable.exists?
+  return if missing.empty?
+
+  abort "Redmine's default data isn't loaded (no #{missing.join(', ')}). Run step 2 of docker/README.md " \
+        '(rake redmine:load_default_data) first, then run seed.sh again.'
 end
 
 case phase
 when 'setup'
   puts 'Configuring Redmine...'
+  ensure_default_data_loaded
   Setting.rest_api_enabled = '1'
   say 'REST API enabled'
   ensure_activities

@@ -51,7 +51,12 @@ docker/seed.sh --reset
 
 `--reset` deletes the demo projects (and everything in them) first; without it, existing
 users/projects are left alone and nothing is added twice. Other users and projects are never
-touched. Further arguments go to `seed_redmine.py`, e.g. `--weeks 8` or `--seed 7` (the default
+touched. A project left half-seeded by a failed run isn't completed by a later run (the script
+warns about it); use `--reset` then. `seed.sh` stops with an error if Redmine's default data
+(step 2) hasn't been loaded yet.
+
+Activities a project deactivates are listed in `seed_activity_overrides.json`, shared by both
+scripts: the config script applies them to the server, the seeder never books time on them. Further arguments go to `seed_redmine.py`, e.g. `--weeks 8` or `--seed 7` (the default
 seed makes runs reproducible). Use `PYTHON=/path/to/venv/bin/python docker/seed.sh` if
 `requests` isn't installed system-wide.
 

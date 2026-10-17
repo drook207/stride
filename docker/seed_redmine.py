@@ -21,14 +21,19 @@ docker/README.md.
     pip install -r docker/requirements.txt
     REDMINE_API_KEY=<admin key> python3 docker/seed_redmine.py [--reset]
 
-Without --reset, existing users/projects are detected and left alone, and a project's issues and
-time entries are only seeded while it has none. With --reset, the seeded projects (and everything
-in them) are deleted first; other projects and users are never touched.
+Without --reset, existing users and projects are detected and left alone; only projects that don't
+exist yet are seeded. A project left half-seeded by a failed run is therefore not completed by a
+later run - the script warns about it, and --reset recovers. With --reset, the seeded projects (and
+everything in them) are deleted first; other projects and users are never touched.
+
+Activities a project deactivates are listed in seed_activity_overrides.json, which
+seed_redmine_config.rb applies to the server and this script uses to never book time on them.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import random
 import sys
@@ -40,6 +45,9 @@ from typing import Any
 import requests
 
 DEFAULT_URL = "http://localhost:8080"
+# Per-project activity overrides, shared with seed_redmine_config.rb.
+ACTIVITY_OVERRIDES = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                 "seed_activity_overrides.json")))
 DEMO_USER_PASSWORD = "TestPass123!"
 
 # login, first name, last name, role in the projects they're a member of
@@ -278,9 +286,15 @@ class Redmine:
         response = self.request("GET", path, **kwargs)
         return response.json() if response.content else {}
 
-    def exists(self, path: str) -> bool:
+    def find(self, path: str) -> dict[str, Any] | None:
+        """GETs a resource; None if it doesn't exist (404), raises on any other error."""
         url = f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
-        return self.session.get(url, timeout=30).status_code != 404
+        response = self.session.get(url, timeout=30)
+        if response.status_code == 404:
+            return None
+        if response.status_code != 200:
+            raise RedmineApiError(f"GET {path} -> {response.status_code}: {response.text[:500]}")
+        return response.json()
 
 
 @dataclass
@@ -348,14 +362,14 @@ def delete_projects(redmine: Redmine) -> None:
     # explicitly keeps this working if they were ever moved.
     for spec in reversed(PROJECTS):
         identifier = spec["identifier"]
-        if redmine.exists(f"/projects/{identifier}.json"):
+        if redmine.find(f"/projects/{identifier}.json"):
             redmine.request("DELETE", f"/projects/{identifier}.json")
             print(f"  deleted project '{identifier}'")
     # Recent Redmine versions delete projects in a background job; wait until they're gone, so their
     # identifiers can be reused.
     for spec in PROJECTS:
         for _ in range(60):
-            if not redmine.exists(f"/projects/{spec['identifier']}.json"):
+            if not redmine.find(f"/projects/{spec['identifier']}.json"):
                 break
             time.sleep(1)
         else:
@@ -365,9 +379,15 @@ def delete_projects(redmine: Redmine) -> None:
 def seed_project(redmine: Redmine, ref: Reference, spec: dict[str, Any], users: dict[str, dict[str, Any]],
                  project_ids: dict[str, int]) -> tuple[dict[str, Any], bool]:
     identifier = spec["identifier"]
-    if redmine.exists(f"/projects/{identifier}.json"):
-        project = redmine.get(f"/projects/{identifier}.json")["project"]
-        print(f"  project '{identifier}' exists")
+    existing = redmine.find(f"/projects/{identifier}.json")
+    if existing:
+        project = existing["project"]
+        issues = redmine.get("/issues.json", params={"project_id": project["id"], "status_id": "*", "limit": 1})
+        if issues.get("total_count", 0) == 0:
+            print(f"  WARNING: project '{identifier}' exists but has no issues (an earlier run failed?); "
+                  "it is not seeded again - re-run with --reset")
+        else:
+            print(f"  project '{identifier}' exists")
         return project, False
 
     payload = {"project": {"identifier": identifier, "name": spec["name"], "description": spec["description"],
@@ -406,6 +426,7 @@ class SeededIssue:
     tracker: str
     assignee: str | None
     start_date: date
+    parent_id: int | None = None
     final_status: str = "New"
 
 
@@ -421,7 +442,7 @@ def custom_field_values(ref: Reference, spec: dict[str, Any], tracker: str) -> l
 
 
 def seed_issues(redmine: Redmine, ref: Reference, spec: dict[str, Any], project: dict[str, Any],
-                history_days: int) -> list[SeededIssue]:
+                history_days: int, user_ids: dict[str, int]) -> list[SeededIssue]:
     today = date.today()
     categories = {c["name"]: c["id"] for c in
                   redmine.get(f"/projects/{project['id']}/issue_categories.json")["issue_categories"]}
@@ -450,9 +471,9 @@ def seed_issues(redmine: Redmine, ref: Reference, spec: dict[str, Any], project:
         if parent_id:
             issue["parent_issue_id"] = parent_id
         if assignee:
-            issue["assigned_to_id"] = USER_IDS[assignee]
+            issue["assigned_to_id"] = user_ids[assignee]
         created = redmine.request("POST", "/issues.json", as_user=author, json={"issue": issue}).json()["issue"]
-        result = SeededIssue(created["id"], spec["identifier"], tracker, assignee, start)
+        result = SeededIssue(created["id"], spec["identifier"], tracker, assignee, start, parent_id)
         seeded.append(result)
         return result
 
@@ -475,8 +496,14 @@ def finish_issues(redmine: Redmine, ref: Reference, spec: dict[str, Any], projec
                   issues: list[SeededIssue]) -> None:
     """Sets the final statuses, done ratios and target versions, then closes past versions."""
     versions = {v["name"]: v["id"] for v in redmine.get(f"/projects/{project['id']}/versions.json")["versions"]}
-    for issue in issues:
+    closed_statuses = ("Closed", "Rejected")
+    # Subtasks first: Redmine doesn't let an issue with open subtasks be closed, and silently drops
+    # such a status change from an API update.
+    for issue in sorted(issues, key=lambda i: i.parent_id is None):
         status = weighted(FINAL_STATUSES) if not spec.get("closed") else weighted([("Closed", 4), ("Rejected", 1)])
+        children = [i for i in issues if i.parent_id == issue.id]
+        if status in closed_statuses and any(c.final_status not in closed_statuses for c in children):
+            status = "Resolved"
         issue.final_status = status
         low, high = DONE_RATIO[status]
         update: dict[str, Any] = {"status_id": ref.statuses[status], "done_ratio": random.randint(low, high) // 10 * 10}
@@ -486,6 +513,9 @@ def finish_issues(redmine: Redmine, ref: Reference, spec: dict[str, Any], projec
             pool = past if status in ("Closed", "Resolved") and past else future or past
             update["fixed_version_id"] = versions[random.choice(pool)]
         redmine.request("PUT", f"/issues/{issue.id}.json", json={"issue": update})
+        actual = redmine.get(f"/issues/{issue.id}.json")["issue"]["status"]["name"]
+        if actual != status:
+            print(f"  WARNING: issue #{issue.id} is '{actual}', Redmine did not accept '{status}'")
     for name, _, closed in spec["versions"]:
         if closed:
             redmine.request("PUT", f"/versions/{versions[name]}.json", json={"version": {"status": "closed"}})
@@ -504,7 +534,7 @@ def entry_custom_fields(ref: Reference, spec: dict[str, Any], activity: str, spe
 
 
 def seed_time_entries(redmine: Redmine, ref: Reference, issues: list[SeededIssue], history_days: int,
-                      legacy_days: tuple[int, int]) -> int:
+                      legacy_days: tuple[int, int], project_ids: dict[str, int]) -> int:
     today = date.today()
     specs = {spec["identifier"]: spec for spec in PROJECTS}
     count = 0
@@ -518,15 +548,14 @@ def seed_time_entries(redmine: Redmine, ref: Reference, issues: list[SeededIssue
         if issue:
             entry["issue_id"] = issue.id
         else:
-            entry["project_id"] = PROJECT_IDS[project]  # the REST API wants the numeric id here
+            entry["project_id"] = project_ids[project]  # the REST API wants the numeric id here
         redmine.request("POST", "/time_entries.json", as_user=user, json={"time_entry": entry})
         count += 1
 
     def activity_for(user: str, project: str, tracker: str) -> str:
         choices = MANAGER_ACTIVITIES if user == "frank" else ACTIVITIES_BY_TRACKER[tracker]
-        if project == "customer-support":  # Design is deactivated in this project
-            choices = [c for c in choices if c[0] != "Design"]
-        return weighted(choices)
+        inactive = ACTIVITY_OVERRIDES.get(project, {}).get("inactive", [])
+        return weighted([c for c in choices if c[0] not in inactive])
 
     def work_day(user: str, day: date, pool: list[SeededIssue], target: float, special: str | None = None) -> None:
         mine = [i for i in pool if i.assignee == user] or pool
@@ -591,8 +620,6 @@ def seed_time_entries(redmine: Redmine, ref: Reference, issues: list[SeededIssue
 # ---------------------------------------------------------------------------------------------
 
 
-USER_IDS: dict[str, int] = {}
-PROJECT_IDS: dict[str, int] = {}
 
 
 def build_session(api_key: str | None, username: str | None, password: str | None) -> requests.Session:
@@ -644,7 +671,7 @@ def main(argv: list[str]) -> int:
 
     print("Users...")
     users = seed_users(redmine)
-    USER_IDS.update({login: user["id"] for login, user in users.items()})
+    user_ids = {login: user["id"] for login, user in users.items()}
 
     history_days = args.weeks * 7
     print("Projects...")
@@ -653,7 +680,6 @@ def main(argv: list[str]) -> int:
     for spec in PROJECTS:
         project, created = seed_project(redmine, ref, spec, users, project_ids)
         project_ids[spec["identifier"]] = project["id"]
-        PROJECT_IDS[spec["identifier"]] = project["id"]
         if created:
             new_projects.append((spec, project))
 
@@ -661,12 +687,13 @@ def main(argv: list[str]) -> int:
     all_issues: list[SeededIssue] = []
     issues_by_project: dict[str, list[SeededIssue]] = {}
     for spec, project in new_projects:
-        issues = seed_issues(redmine, ref, spec, project, history_days)
+        issues = seed_issues(redmine, ref, spec, project, history_days, user_ids)
         issues_by_project[spec["identifier"]] = issues
         all_issues.extend(issues)
 
     print("Time entries (this takes a minute)...")
-    entries = seed_time_entries(redmine, ref, all_issues, history_days, (history_days + 14, history_days + 42))
+    entries = seed_time_entries(redmine, ref, all_issues, history_days, (history_days + 14, history_days + 42),
+                                project_ids)
     print(f"  created {entries} time entries")
 
     print("Final issue states, versions and closed projects...")
