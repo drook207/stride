@@ -22,11 +22,20 @@ protected:
 		Database::close();
 	}
 
-	//! Adds a local entry dated daysAgo days back; returns its local id.
+	//! Adds a local entry dated daysAgo days back; returns its local id. It's being sent to Redmine
+	//! then (see TimeTracker::addRecentEntry()).
 	int addEntry(int issueId, double hours, const QString& comments, int daysAgo = 1)
 	{
 		return tracker->addRecentEntry(
 			{ { "issueId", issueId }, { "hours", hours }, { "comments", comments }, { "date", day(daysAgo) } });
+	}
+
+	//! Adds a local entry whose sending failed without reaching Redmine (e.g. offline).
+	int addOfflineEntry(int issueId, double hours, const QString& comments, int daysAgo = 1)
+	{
+		const int id = addEntry(issueId, hours, comments, daysAgo);
+		tracker->submissionFailed(id, 0, "offline");
+		return id;
 	}
 
 	static QString day(int daysAgo) { return QDate::currentDate().addDays(-daysAgo).toString(Qt::ISODate); }
@@ -54,9 +63,9 @@ protected:
 
 TEST_F(TimeTrackerTest, LinksOnlyEntriesWithTheSameIssueDayHoursAndComment)
 {
-	const int exact = addEntry(10, 1.5, "Review");
-	const int rounded = addEntry(11, 1.249, "Docs");
-	const int otherComment = addEntry(12, 2.0, "Mine");
+	const int exact = addOfflineEntry(10, 1.5, "Review");
+	const int rounded = addOfflineEntry(11, 1.249, "Docs");
+	const int otherComment = addOfflineEntry(12, 2.0, "Mine");
 
 	tracker->linkExistingTimeEntries(QJsonArray {
 		remote(100, 10, 1.5, "Review"), remote(101, 11, 1.25, "Docs"), remote(102, 12, 2.0, "Booked in the web UI") });
@@ -68,8 +77,8 @@ TEST_F(TimeTrackerTest, LinksOnlyEntriesWithTheSameIssueDayHoursAndComment)
 
 TEST_F(TimeTrackerTest, LinksEachRedmineEntryOnlyOnce)
 {
-	const int older = addEntry(10, 1.0, "Same");
-	const int newer = addEntry(10, 1.0, "Same");
+	const int older = addOfflineEntry(10, 1.0, "Same");
+	const int newer = addOfflineEntry(10, 1.0, "Same");
 	const int alreadyLinked = addEntry(20, 3.0, "Linked");
 	tracker->linkCreatedTimeEntry(remote(300, 20, 3.0, "Linked"), alreadyLinked);
 
@@ -80,15 +89,20 @@ TEST_F(TimeTrackerTest, LinksEachRedmineEntryOnlyOnce)
 	EXPECT_EQ(redmineIdOf(alreadyLinked), 300);
 }
 
-TEST_F(TimeTrackerTest, UnlinkedRangeCoversOnlyTheLastMonth)
+TEST_F(TimeTrackerTest, UnlinkedRangeCoversTheLastMonthAndEverythingStillToSend)
 {
 	addEntry(1, 1.0, "recent", 3);
 	addEntry(1, 1.0, "less recent", 10);
-	addEntry(1, 1.0, "too old", 60);
+	// Old and unconfirmed: left alone. Old and still to be sent: included, however old.
+	Database::setSyncStatus(addEntry(1, 1.0, "too old", 60), Database::Unconfirmed);
 
-	const QVariantMap range = tracker->unlinkedEntriesRange();
+	QVariantMap range = tracker->unlinkedEntriesRange();
 	EXPECT_EQ(range["from"].toString(), day(10));
 	EXPECT_EQ(range["to"].toString(), day(3));
+
+	addOfflineEntry(1, 1.0, "old, not sent yet", 90);
+	range = tracker->unlinkedEntriesRange();
+	EXPECT_EQ(range["from"].toString(), day(90));
 }
 
 TEST_F(TimeTrackerTest, StagedUpdatesApplyOnlyTheirOwnChangesAndRejectedOnesAreDropped)
@@ -280,4 +294,42 @@ TEST_F(TimeTrackerTest, SleepCanBeLeftOutWhileTrackingGoesOn)
 	EXPECT_TRUE(tracker->isTracking());
 	EXPECT_FALSE(tracker->isPaused());
 	EXPECT_LT(tracker->getElapsedHours(), 0.01); // the hour asleep isn't counted
+}
+
+TEST_F(TimeTrackerTest, PendingEntryThatReachedRedmineIsLinkedInsteadOfSentAgain)
+{
+	int sent = 0;
+	QObject::connect(tracker.get(), &TimeTracker::submitTimeEntry, [&]() { ++sent; });
+
+	const int local = addEntry(10, 1.0, "Timed out", 60); // older than the month recent entries cover
+	tracker->submissionFailed(local, 0, "timeout"); // Redmine saved it, the reply got lost
+
+	const QVariantMap range = tracker->unlinkedEntriesRange();
+	EXPECT_EQ(range["from"].toString(), day(60));
+	EXPECT_TRUE(tracker->hasPendingEntries());
+
+	tracker->linkExistingTimeEntries(QJsonArray { remote(800, 10, 1.0, "Timed out", 60) });
+	tracker->submitPendingEntries();
+
+	EXPECT_EQ(sent, 1); // only the first attempt
+	EXPECT_EQ(redmineIdOf(local), 800);
+	EXPECT_FALSE(tracker->hasPendingEntries());
+}
+
+TEST_F(TimeTrackerTest, ChangesMadeWhileSendingAreSentAfterwards)
+{
+	int updatedId = -1;
+	QString updatedComment;
+	QObject::connect(
+		tracker.get(), &TimeTracker::updateTimeEntryOnRedmine, [&](int redmineId, double, const QString& comments) {
+			updatedId = redmineId;
+			updatedComment = comments;
+		});
+
+	const int local = addEntry(10, 1.0, "Old"); // being sent
+	tracker->updateRecentEntry(local, { { "hours", 1.0 }, { "comments", "New" }, { "spent_on", day(1) } });
+	tracker->linkCreatedTimeEntry(remote(900, 10, 1.0, "Old"), local);
+
+	EXPECT_EQ(updatedId, 900);
+	EXPECT_EQ(updatedComment.toStdString(), "New");
 }
