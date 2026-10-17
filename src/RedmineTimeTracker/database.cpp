@@ -125,7 +125,7 @@ bool Database::execute(const QString& sql)
 const QList<bool (*)()>& Database::migrations()
 {
 	static const QList<bool (*)()> list { &Database::migrateToVersion1, &Database::migrateToVersion2,
-		&Database::migrateToVersion3 };
+		&Database::migrateToVersion3, &Database::migrateToVersion4 };
 	return list;
 }
 
@@ -183,6 +183,44 @@ bool Database::migrateToVersion2()
 }
 
 bool Database::migrateToVersion3() { return execute(SqlQueries::CREATE_TRACKING_STATE_TABLE); }
+
+bool Database::migrateToVersion4() { return execute(SqlQueries::CREATE_FAVORITE_ISSUES_TABLE); }
+
+bool Database::addFavoriteIssue(int issueId)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::ADD_FAVORITE_ISSUE, query)) {
+		return false;
+	}
+	query.addBindValue(issueId);
+	query.addBindValue(QDateTime::currentDateTime());
+	return evaluateQueryExec(query);
+}
+
+bool Database::removeFavoriteIssue(int issueId)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::REMOVE_FAVORITE_ISSUE, query)) {
+		return false;
+	}
+	query.addBindValue(issueId);
+	return evaluateQueryExec(query);
+}
+
+QVariantList Database::getFavoriteIssues()
+{
+	QVariantList favorites;
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_FAVORITE_ISSUES, query) || !evaluateQueryExec(query)) {
+		return favorites;
+	}
+	while (query.next()) {
+		favorites.append(QVariantMap { { "issue_id", query.value("issue_id").toInt() },
+			{ "subject", query.value("subject").toString() },
+			{ "project_name", query.value("project_name").toString() } });
+	}
+	return favorites;
+}
 
 bool Database::saveTrackingState(const QVariantMap& state)
 {

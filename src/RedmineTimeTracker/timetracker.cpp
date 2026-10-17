@@ -25,6 +25,47 @@ TimeTracker::TimeTracker(QObject* parent)
 	}
 	loadRecentEntries();
 	restoreTrackingState();
+	loadFavoriteIssues();
+	// A pinned issue's subject and project may only be known once the issue is cached.
+	connect(this, &TimeTracker::issueAddedOrUpdated, this, &TimeTracker::loadFavoriteIssues);
+}
+
+bool TimeTracker::continueTracking(int issueId, const QString& comment, int activityId)
+{
+	if (isTracking() || issueId <= 0) {
+		return false;
+	}
+	setTrackingComment(comment);
+	setTrackingActivityId(activityId);
+	startTracking(issueId);
+	return true;
+}
+
+QVariantList TimeTracker::favoriteIssues() const { return mFavoriteIssues; }
+
+bool TimeTracker::isFavoriteIssue(int issueId) const
+{
+	return std::any_of(mFavoriteIssues.cbegin(), mFavoriteIssues.cend(),
+		[issueId](const QVariant& favorite) { return favorite.toMap()["issue_id"].toInt() == issueId; });
+}
+
+void TimeTracker::toggleFavoriteIssue(int issueId)
+{
+	if (issueId <= 0) {
+		return;
+	}
+	if (isFavoriteIssue(issueId) ? Database::removeFavoriteIssue(issueId) : Database::addFavoriteIssue(issueId)) {
+		loadFavoriteIssues();
+	}
+}
+
+void TimeTracker::loadFavoriteIssues()
+{
+	const QVariantList favorites = Database::getFavoriteIssues();
+	if (favorites != mFavoriteIssues) {
+		mFavoriteIssues = favorites;
+		emit favoriteIssuesChanged();
+	}
 }
 
 TimeTracker::~TimeTracker()

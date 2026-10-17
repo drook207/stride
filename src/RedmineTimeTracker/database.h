@@ -77,6 +77,17 @@ namespace SqlQueries {
 	STATIC_CONST_QSTRING(CLEAR_TRACKING_STATE, "DELETE FROM tracking_state");
 	STATIC_CONST_QSTRING(TOUCH_TRACKING_STATE, "UPDATE tracking_state SET last_seen = ?");
 
+	// Schema version 4: issues the user pinned for quick access.
+	STATIC_CONST_QSTRING(CREATE_FAVORITE_ISSUES_TABLE,
+		"CREATE TABLE favorite_issues (issue_id INTEGER PRIMARY KEY NOT NULL, created_at DATETIME NOT NULL)");
+	STATIC_CONST_QSTRING(
+		ADD_FAVORITE_ISSUE, "INSERT OR IGNORE INTO favorite_issues (issue_id, created_at) VALUES (?, ?)");
+	STATIC_CONST_QSTRING(REMOVE_FAVORITE_ISSUE, "DELETE FROM favorite_issues WHERE issue_id = ?");
+	// In the order they were pinned, with what's cached about each issue.
+	STATIC_CONST_QSTRING(GET_FAVORITE_ISSUES,
+		"SELECT f.issue_id, i.subject, i.project_name FROM favorite_issues f "
+		"LEFT JOIN issues i ON i.id = f.issue_id ORDER BY f.created_at, f.issue_id");
+
 	STATIC_CONST_QSTRING(MARK_UNLINKED_UNCONFIRMED,
 		"UPDATE time_entries SET sync_status = 2 WHERE redmine_id IS NULL OR redmine_id = 0");
 
@@ -223,6 +234,11 @@ public:
 	//! Records that the app is still running with the remembered tracker.
 	static bool touchTrackingState();
 
+	static bool addFavoriteIssue(int issueId);
+	static bool removeFavoriteIssue(int issueId);
+	//! Pinned issues, oldest first: "issue_id", "subject" and "project_name" ("" while not cached).
+	static QVariantList getFavoriteIssues();
+
 	static QJsonArray getRecentEntries(int limit = 50);
 
 	//! Local entries spent on the days from .. to (both included), fields as for getRecentEntries().
@@ -255,6 +271,7 @@ private:
 	static bool migrateToVersion1();
 	static bool migrateToVersion2();
 	static bool migrateToVersion3();
+	static bool migrateToVersion4();
 	//! An entry row as a JSON object (see getRecentEntries()).
 	static QJsonObject entryFromQuery(const QSqlQuery& query);
 	static bool execute(const QString& sql);

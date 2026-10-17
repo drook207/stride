@@ -230,3 +230,37 @@ TEST_F(TimeTrackerTest, EntryBeingSentIsNotDeleted)
 	EXPECT_FALSE(tracker->deleteRecentEntry(local));
 	EXPECT_EQ(tracker->recentEntries().size(), 1);
 }
+
+TEST_F(TimeTrackerTest, ContinueTrackingStartsOnlyWhenIdle)
+{
+	EXPECT_TRUE(tracker->continueTracking(42, "Same as yesterday", 9));
+	EXPECT_EQ(tracker->currentIssueId(), 42);
+	EXPECT_EQ(tracker->trackingComment().toStdString(), "Same as yesterday");
+	EXPECT_EQ(tracker->trackingActivityId(), 9);
+
+	// Already tracking: the running tracker stays.
+	EXPECT_FALSE(tracker->continueTracking(43, "Other"));
+	EXPECT_EQ(tracker->currentIssueId(), 42);
+}
+
+TEST_F(TimeTrackerTest, FavoriteIssuesAreToggledAndKept)
+{
+	ASSERT_TRUE(Database::addIssue(
+		42, "Login page", 1, "Website", 1, "", QDateTime::currentDateTime(), QDateTime::currentDateTime()));
+	tracker->toggleFavoriteIssue(42);
+	tracker->toggleFavoriteIssue(7); // not cached
+	ASSERT_EQ(tracker->favoriteIssues().size(), 2);
+	EXPECT_TRUE(tracker->isFavoriteIssue(42));
+	const QVariantList favorites = tracker->favoriteIssues();
+	const auto pinned = std::find_if(favorites.cbegin(), favorites.cend(),
+		[](const QVariant& favorite) { return favorite.toMap()["issue_id"].toInt() == 42; });
+	ASSERT_NE(pinned, favorites.cend());
+	EXPECT_EQ(pinned->toMap()["subject"].toString().toStdString(), "Login page");
+
+	tracker->toggleFavoriteIssue(42);
+	EXPECT_FALSE(tracker->isFavoriteIssue(42));
+
+	TimeTracker restarted;
+	ASSERT_EQ(restarted.favoriteIssues().size(), 1);
+	EXPECT_EQ(restarted.favoriteIssues().first().toMap()["issue_id"].toInt(), 7);
+}

@@ -35,6 +35,16 @@ ItemDelegate {
 	property string syncState: ""
 	//! Why Redmine rejected the entry (syncState "rejected").
 	property string syncError: ""
+	//! Whether to offer continuing the entry's work (continueRequested()), e.g. while not tracking.
+	property bool continuable: false
+	//! Whether to offer pinning the entry's issue (favoriteToggled()), and whether it's pinned.
+	property bool showFavorite: false
+	property bool favorite: false
+
+	//! Asks to start tracking the entry's issue with its comment and activity.
+	signal continueRequested()
+	//! Asks to pin or unpin the entry's issue.
+	signal favoriteToggled()
 
 	//! Formats a decimal hour count (e.g. 1.5) as "HH:MM:SS" (e.g. "01:30:00").
 	function formatDuration(hours) {
@@ -173,6 +183,31 @@ ItemDelegate {
 				font.pixelSize: 12
 				wrapMode: Text.WordWrap
 			}
+		}
+
+		ToolButton {
+			Layout.alignment: Qt.AlignVCenter
+			visible: delegate.showFavorite
+			icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/star.svg"
+			icon.width: 14
+			icon.height: 14
+			icon.color: delegate.favorite ? Material.accentColor : Material.hintTextColor
+			opacity: delegate.favorite || delegate.hovered || hovered ? 1 : 0
+			onClicked: delegate.favoriteToggled()
+			ToolTip.visible: hovered
+			ToolTip.text: delegate.favorite ? qsTr("Unpin issue") : qsTr("Pin issue")
+		}
+
+		ToolButton {
+			Layout.alignment: Qt.AlignVCenter
+			visible: delegate.continuable
+			icon.source: "qrc:/qt/qml/QRedmine/TimeTracker/qml/Assets/Icons/solid/play.svg"
+			icon.width: 14
+			icon.height: 14
+			opacity: delegate.hovered || hovered ? 1 : 0
+			onClicked: delegate.continueRequested()
+			ToolTip.visible: hovered
+			ToolTip.text: qsTr("Continue tracking this")
 		}
 
 		IconImage {

@@ -33,6 +33,8 @@ class TimeTracker : public QObject {
 	//! When the app was last seen running while the restored tracker kept running (it was closed or
 	//! crashed meanwhile); invalid otherwise. See resolveInterruption().
 	Q_PROPERTY(QDateTime interruptedAt READ interruptedAt NOTIFY interruptedAtChanged FINAL)
+	//! Issues pinned for quick access (Database::getFavoriteIssues()).
+	Q_PROPERTY(QVariantList favoriteIssues READ favoriteIssues NOTIFY favoriteIssuesChanged FINAL)
 public:
 	//! A restored running tracker whose app was gone for longer than this asks whether to count the
 	//! time in between (interruptedAt); shorter gaps (e.g. a quick restart) just count.
@@ -56,6 +58,18 @@ public:
 	 * or stop the tracker as it was when the app was last seen (it's paused then)
 	 */
 	Q_INVOKABLE void resolveInterruption(bool countTimeAway);
+
+	/*!
+	 * \brief continueTracking Starts tracking an issue with a comment and activity, e.g. to go on
+	 * with an earlier entry's work. Does nothing while already tracking, so no tracked time is lost.
+	 * \return Whether tracking started
+	 */
+	Q_INVOKABLE bool continueTracking(int issueId, const QString& comment = QString(), int activityId = 0);
+
+	QVariantList favoriteIssues() const;
+	Q_INVOKABLE bool isFavoriteIssue(int issueId) const;
+	//! Pins an issue, or unpins it if it's pinned.
+	Q_INVOKABLE void toggleFavoriteIssue(int issueId);
 
 	/*!
 	 * \brief isTracking
@@ -269,6 +283,7 @@ signals:
 	void issueAddedOrUpdated();
 	void trackingDetailsChanged();
 	void interruptedAtChanged();
+	void favoriteIssuesChanged();
 
 	/*!
 	 * \brief submitTimeEntry Asks to create a local entry on Redmine; connect it to
@@ -317,6 +332,8 @@ private:
 	QString mTrackingComment;
 	int mTrackingActivityId = 0;
 	QDateTime mInterruptedAt;
+	QVariantList mFavoriteIssues;
+	void loadFavoriteIssues();
 	//! Seconds since the saved tracker's last_seen was last updated.
 	int mSecondsSinceTouch = 0;
 };

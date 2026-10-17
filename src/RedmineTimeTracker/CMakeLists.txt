@@ -108,6 +108,7 @@ qt_add_qml_module(
  qml/Assets/Icons/solid/chevron-right.svg
  qml/Assets/Icons/solid/calendar-days.svg
  qml/Assets/Icons/solid/chart-column.svg
+ qml/Assets/Icons/solid/star.svg
  qml/Assets/Icons/solid/clock.svg
  qml/Assets/Icons/solid/pen.svg
  qml/Assets/Icons/solid/plus.svg
