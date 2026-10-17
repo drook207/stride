@@ -3,5 +3,10 @@
         "inactive": [
             "Design"
         ]
+    },
+    "internal-tools": {
+        "reactivated": [
+            "Code review"
+        ]
     }
 }
