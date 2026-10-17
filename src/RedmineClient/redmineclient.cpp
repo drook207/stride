@@ -812,6 +812,11 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0)) {
 			emit errorOccurred(userErrorMessage(reply, response));
 		}
+		// A time entry that's gone on Redmine already is as good as deleted.
+		if (reply->operation() == QNetworkAccessManager::DeleteOperation && httpStatus == 404 &&
+			reply->url().path().contains("/time_entries/")) {
+			emit timeEntryDeleted(resourceIdFromPath(reply->url().path()));
+		}
 		if (createdTimeEntry) {
 			emit timeEntryCreateFailed(reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt(), httpStatus,
 				userErrorMessage(reply, response));

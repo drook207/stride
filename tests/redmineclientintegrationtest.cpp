@@ -396,6 +396,22 @@ TEST_F(RedmineClientIntegrationTest, DeleteTimeEntrySendsDeleteAndEmitsTimeEntry
 	EXPECT_EQ(deletedId, 77);
 }
 
+TEST_F(RedmineClientIntegrationTest, DeletingATimeEntryThatIsGoneAlreadyCountsAsDeleted)
+{
+	server->enqueueResponse(MockHttpResponse { 404, "Not Found", "" });
+
+	int deletedId = -1;
+	bool errorFired = false;
+	QObject::connect(client.get(), &RedmineClient::timeEntryDeleted, [&](int id) { deletedId = id; });
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
+
+	client->deleteTimeEntry(78);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryDeleted));
+
+	EXPECT_EQ(deletedId, 78);
+	EXPECT_FALSE(errorFired);
+}
+
 TEST_F(RedmineClientIntegrationTest, UpdateTimeEntrySendsChangedFieldsAndEmitsTimeEntryUpdated)
 {
 	server->enqueueResponse(MockHttpResponse { 204, "No Content", "" });

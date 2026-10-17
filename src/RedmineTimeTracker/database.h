@@ -51,6 +51,8 @@ namespace SqlQueries {
 		"SELECT * FROM time_entries WHERE sync_status = 0 AND (redmine_id IS NULL OR redmine_id = 0) "
 		"ORDER BY created_at, id");
 	STATIC_CONST_QSTRING(GET_TIME_ENTRY, "SELECT * FROM time_entries WHERE id = ?");
+	STATIC_CONST_QSTRING(DELETE_TIME_ENTRY, "DELETE FROM time_entries WHERE id = ?");
+	STATIC_CONST_QSTRING(DELETE_TIME_ENTRIES_BY_REDMINE_ID, "DELETE FROM time_entries WHERE redmine_id = ?");
 
 	// Schema version 2: what's needed to send an entry (again) later, and why Redmine rejected it.
 	// Unlinked entries from before can't be told apart from ones Redmine already has, so they
@@ -197,6 +199,11 @@ public:
 	 * \brief setSyncStatus Sets an entry's SyncStatus and why it was rejected (empty otherwise)
 	 */
 	static bool setSyncStatus(int id, SyncStatus status, const QString& error = QString());
+
+	//! Deletes a local entry; returns the number deleted (0 or 1), or -1 on failure.
+	static int deleteTimeEntry(int id);
+	//! Deletes the local entries linked to a Redmine time entry; returns the number deleted, or -1.
+	static int deleteTimeEntriesByRedmineId(int redmineId);
 
 	/*!
 	 * \brief saveTrackingState Remembers the tracker: "issue_id", "started_at" (QDateTime, invalid

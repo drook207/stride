@@ -365,6 +365,23 @@ bool Database::setSyncStatus(int id, SyncStatus status, const QString& error)
 	return evaluateQueryExec(query);
 }
 
+static int deleteWhere(const QString& sql, int key)
+{
+	QSqlQuery query;
+	if (!query.prepare(sql)) {
+		return -1;
+	}
+	query.addBindValue(key);
+	return query.exec() ? query.numRowsAffected() : -1;
+}
+
+int Database::deleteTimeEntry(int id) { return deleteWhere(SqlQueries::DELETE_TIME_ENTRY, id); }
+
+int Database::deleteTimeEntriesByRedmineId(int redmineId)
+{
+	return deleteWhere(SqlQueries::DELETE_TIME_ENTRIES_BY_REDMINE_ID, redmineId);
+}
+
 QJsonArray Database::getPendingEntries()
 {
 	QJsonArray entries;

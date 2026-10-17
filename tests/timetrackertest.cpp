@@ -207,3 +207,26 @@ TEST_F(TimeTrackerTest, TimeWhileTheAppWasGoneCanBeLeftOut)
 	EXPECT_TRUE(restored.isPaused());
 	EXPECT_EQ(restored.elapsedTime().toStdString(), "01:10:00");
 }
+
+TEST_F(TimeTrackerTest, DeletesLocalEntriesAndForgetsOnesDeletedOnRedmine)
+{
+	const int local = addEntry(10, 1.0, "Local only");
+	tracker->submissionFailed(local, 0, "offline"); // no longer being sent
+	const int linked = addEntry(11, 2.0, "On Redmine");
+	tracker->linkCreatedTimeEntry(remote(700, 11, 2.0, "On Redmine"), linked);
+	tracker->addEntriesFromId(QJsonArray { remote(700, 11, 2.0, "On Redmine"), remote(701, 11, 1.0, "Other") });
+
+	EXPECT_TRUE(tracker->deleteRecentEntry(local));
+	tracker->removeDeletedTimeEntry(700);
+
+	EXPECT_TRUE(tracker->recentEntries().isEmpty());
+	ASSERT_EQ(tracker->entriesFromId().size(), 1);
+	EXPECT_EQ(tracker->entriesFromId().first().toMap()["id"].toInt(), 701);
+}
+
+TEST_F(TimeTrackerTest, EntryBeingSentIsNotDeleted)
+{
+	const int local = addEntry(10, 1.0, "Sending");
+	EXPECT_FALSE(tracker->deleteRecentEntry(local));
+	EXPECT_EQ(tracker->recentEntries().size(), 1);
+}

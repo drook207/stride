@@ -33,6 +33,9 @@ Dialog {
 	//! an unconfirmed entry is to be sent to Redmine.
 	signal saved(var changes)
 
+	//! Emitted when the user confirmed deleting the entry; the caller deletes it.
+	signal deleteRequested()
+
 	//! The entry's hours as passed to openFor(). The field shows them rounded to 2 decimals, so
 	//! they are saved as they were unless the field is edited.
 	property real originalHours: 0
@@ -74,7 +77,48 @@ Dialog {
 	Overlay.modal: DialogScrim {}
 
 	title: qsTr("Edit time entry for #%1").arg(dialog.issueId)
-	standardButtons: Dialog.Save | Dialog.Cancel
+
+	footer: DialogButtonBox {
+		standardButtons: DialogButtonBox.Save | DialogButtonBox.Cancel
+
+		Button {
+			text: qsTr("Delete")
+			flat: true
+			Material.foreground: Material.color(Material.Red, Material.Shade200)
+			DialogButtonBox.buttonRole: DialogButtonBox.ActionRole
+			onClicked: dialog.deleteConfirmation.open()
+		}
+	}
+
+	// Held in a property rather than declared as a child: as a child it would join the dialog's
+	// content and make its size depend on itself.
+	readonly property Dialog deleteConfirmation: Dialog {
+		parent: Overlay.overlay
+		anchors.centerIn: parent
+		// Set when opened rather than bound: bound to the window's width, Material's Dialog reports a
+		// binding loop for its implicitHeight with the wrapping label below.
+		width: 440
+		onAboutToShow: width = Math.min(parent.width - 32, 440)
+		modal: true
+		Overlay.modal: DialogScrim {}
+		title: qsTr("Delete time entry?")
+		standardButtons: Dialog.Yes | Dialog.No
+
+		// A child with a set width rather than the contentItem: a wrapping contentItem's height
+		// depends on the dialog's width and back.
+		Label {
+			width: parent.width
+			wrapMode: Text.WordWrap
+			// Entries on Redmine (syncState "") are deleted there too.
+			text: dialog.syncState === "" ? qsTr("The time entry is deleted on Redmine, too. This can't be undone.")
+										  : qsTr("The time entry is deleted from the app. This can't be undone.")
+		}
+
+		onAccepted: {
+			dialog.close()
+			dialog.deleteRequested()
+		}
+	}
 
 	Component.onCompleted: standardButton(Dialog.Save).enabled = Qt.binding(() => !isNaN(dialog.hours))
 

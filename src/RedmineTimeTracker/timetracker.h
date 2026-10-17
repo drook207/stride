@@ -174,6 +174,19 @@ public slots:
 	void submissionFailed(int localId, int httpStatus, const QString& error);
 
 	/*!
+	 * \brief deleteRecentEntry Deletes a local entry that isn't linked to a Redmine time entry (for a
+	 * linked one, delete the Redmine entry: RedmineClient::deleteTimeEntry())
+	 * \return false if it couldn't be deleted, e.g. because it's being sent to Redmine right now
+	 */
+	bool deleteRecentEntry(int localId);
+
+	/*!
+	 * \brief removeDeletedTimeEntry Forgets a time entry deleted on Redmine: its local copies and
+	 * its Search Issue result. Connected to RedmineClient::timeEntryDeleted.
+	 */
+	void removeDeletedTimeEntry(int redmineId);
+
+	/*!
 	 * \brief sendToRedmine Marks an entry pending and sends it, e.g. an unconfirmed one the user
 	 * knows isn't on Redmine
 	 */

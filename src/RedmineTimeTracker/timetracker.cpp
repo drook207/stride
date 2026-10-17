@@ -283,6 +283,34 @@ void TimeTracker::submissionFailed(int localId, int httpStatus, const QString& e
 	}
 }
 
+bool TimeTracker::deleteRecentEntry(int localId)
+{
+	// Its creation on Redmine may be under way, and would then leave a Redmine entry nothing
+	// points to.
+	if (mSubmitting.contains(localId)) {
+		return false;
+	}
+	if (Database::deleteTimeEntry(localId) < 0) {
+		qCWarning(lcTimeTracker) << "Could not delete local time entry" << localId;
+		return false;
+	}
+	loadRecentEntries();
+	return true;
+}
+
+void TimeTracker::removeDeletedTimeEntry(int redmineId)
+{
+	if (Database::deleteTimeEntriesByRedmineId(redmineId) > 0) {
+		loadRecentEntries();
+	}
+	const auto removed = std::remove_if(mEntriesFromId.begin(), mEntriesFromId.end(),
+		[redmineId](const QVariant& entry) { return entry.toMap()["id"].toInt() == redmineId; });
+	if (removed != mEntriesFromId.end()) {
+		mEntriesFromId.erase(removed, mEntriesFromId.end());
+		emit entriesFromIdChanged();
+	}
+}
+
 void TimeTracker::sendToRedmine(int localId)
 {
 	if (Database::setSyncStatus(localId, Database::Pending)) {
@@ -331,13 +359,14 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 
 void TimeTracker::loadRecentEntries()
 {
-	auto entries = Database::getRecentEntries();
-	if (!entries.isEmpty()) {
-		mRecentEntries.clear();
-		for (const QJsonValue& value : std::as_const(entries)) {
-			mRecentEntries.append(value.toObject().toVariantMap());
-		}
-
+	const auto entries = Database::getRecentEntries();
+	QVariantList recentEntries;
+	for (const QJsonValue& value : entries) {
+		recentEntries.append(value.toObject().toVariantMap());
+	}
+	// Also when it became empty, e.g. after deleting the last entry.
+	if (recentEntries != mRecentEntries) {
+		mRecentEntries = recentEntries;
 		emit recentEntriesChanged();
 	}
 }

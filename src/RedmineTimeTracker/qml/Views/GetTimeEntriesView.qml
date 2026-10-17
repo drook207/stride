@@ -46,6 +46,10 @@ Item {
             docroot.client.updateTimeEntry(editDialog.entryId, changes.hours, changes.comments, changes.spent_on,
                                            changes.activity_id || 0, changes.custom_fields || [], tag)
         }
+
+        // The list (and any local copies) follow once Redmine confirms
+        // (TimeTracker.removeDeletedTimeEntry, wired up in Main.qml).
+        onDeleteRequested: docroot.client.deleteTimeEntry(editDialog.entryId)
     }
 
     ColumnLayout {

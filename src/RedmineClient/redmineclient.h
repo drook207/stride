@@ -382,7 +382,7 @@ signals:
 	void timeEntriesReceived(const QJsonArray& entries);
 
 	/*!
-	 * \brief timeEntryDeleted
+	 * \brief timeEntryDeleted Emitted when a time entry was deleted, or was found gone already (404)
 	 * \param timeEntryId
 	 */
 	void timeEntryDeleted(int timeEntryId);

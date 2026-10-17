@@ -120,6 +120,22 @@ Item {
 				docroot.timeTracker.updateRecentEntry(editDialog.entry.id, changes)
 			}
 		}
+
+		onDeleteRequested: {
+			const redmineId = editDialog.entry.redmine_id
+			if (redmineId > 0) {
+				// Deleted on Redmine; the local copy goes once Redmine confirms
+				// (TimeTracker.removeDeletedTimeEntry, wired up in Main.qml).
+				docroot.client.deleteTimeEntry(redmineId)
+			} else if (!docroot.timeTracker.deleteRecentEntry(editDialog.entry.id)) {
+				deleteFailedDialog.open()
+			}
+		}
+	}
+
+	MessageDialog {
+		id: deleteFailedDialog
+		text: qsTr("The entry is being sent to Redmine right now. Please try again in a moment.")
 	}
 
 	ColumnLayout {

@@ -195,6 +195,9 @@ ApplicationWindow {
         function onTimeEntryUpdateFailed(timeEntryId, requestTag) {
             timeTrackerInstance.discardRedmineUpdate(timeEntryId, requestTag);
         }
+        function onTimeEntryDeleted(timeEntryId) {
+            timeTrackerInstance.removeDeletedTimeEntry(timeEntryId);
+        }
         function onTimeEntryActivitiesReceived(value) {
             activitiesModelInstance.addTimeEntryActivities(value);
         }
@@ -270,14 +273,18 @@ ApplicationWindow {
         id: interruptionDialog
         parent: Overlay.overlay
         anchors.centerIn: parent
-        width: Math.min(parent.width - 32, 520)
+        // Set when opened rather than bound to the window's width, which makes Material's Dialog
+        // report a binding loop with the wrapping label (see EditTimeEntryDialog).
+        width: 520
+        onAboutToShow: width = Math.min(parent.width - 32, 520)
         modal: true
         closePolicy: Popup.NoAutoClose
         Overlay.modal: DialogScrim {}
         title: qsTr("Timer still running")
         standardButtons: Dialog.Yes | Dialog.No
 
-        contentItem: Label {
+        Label {
+            width: parent.width
             wrapMode: Text.WordWrap
             text: qsTr("The timer for #%1 was running when the app was last used, on %2. Should the time since then count?")
                 .arg(timeTrackerInstance.currentIssueId)
