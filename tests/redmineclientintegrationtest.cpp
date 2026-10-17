@@ -250,6 +250,34 @@ TEST_F(RedmineClientIntegrationTest, GetRoleEmitsRoleReceivedAndFailsQuietly)
 	EXPECT_FALSE(errorFired);
 }
 
+TEST_F(RedmineClientIntegrationTest, GetOwnTimeEntriesRequestsEveryPageWithoutEmittingTimeEntriesReceived)
+{
+	server->enqueueResponse(MockHttpResponse {
+		200, "OK", R"({"time_entries":[{"id":1},{"id":2}],"total_count":3,"offset":0,"limit":100})" });
+	server->enqueueResponse(
+		MockHttpResponse { 200, "OK", R"({"time_entries":[{"id":3}],"total_count":3,"offset":2,"limit":100})" });
+
+	QJsonArray received;
+	bool searchResultsFired = false;
+	QObject::connect(client.get(), &RedmineClient::ownTimeEntriesReceived,
+		[&](const QJsonArray& timeEntries) { received = timeEntries; });
+	QObject::connect(
+		client.get(), &RedmineClient::timeEntriesReceived, [&](const QJsonArray&) { searchResultsFired = true; });
+
+	client->getOwnTimeEntries("2026-10-01", "2026-10-17");
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::ownTimeEntriesReceived));
+
+	ASSERT_EQ(server->requests().size(), 2);
+	const RecordedHttpRequest& first = server->requests().first();
+	EXPECT_EQ(first.path.toStdString(), "/time_entries.json");
+	EXPECT_EQ(first.query.queryItemValue("user_id").toStdString(), "me");
+	EXPECT_EQ(first.query.queryItemValue("from").toStdString(), "2026-10-01");
+	EXPECT_EQ(first.query.queryItemValue("to").toStdString(), "2026-10-17");
+	EXPECT_EQ(server->requests().at(1).query.queryItemValue("offset").toStdString(), "2");
+	EXPECT_EQ(received.size(), 3);
+	EXPECT_FALSE(searchResultsFired);
+}
+
 TEST_F(RedmineClientIntegrationTest, CreateProjectSendsPostBodyAndEmitsProjectCreated)
 {
 	server->enqueueResponse(MockHttpResponse { 201, "Created", R"({"project":{"id":8,"identifier":"proj"}})" });

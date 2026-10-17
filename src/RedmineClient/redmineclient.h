@@ -291,6 +291,15 @@ public slots:
 	void getRole(int roleId);
 
 	/*!
+	 * \brief getOwnTimeEntries Fetches all time entries of the user the API key belongs to within
+	 * a range of days, page after page; emits ownTimeEntriesReceived() once with all of them.
+	 * Failures aren't reported via errorOccurred(). A new call supersedes one still in progress.
+	 * \param from First day, "yyyy-MM-dd"
+	 * \param to Last day, "yyyy-MM-dd"
+	 */
+	void getOwnTimeEntries(const QString& from, const QString& to);
+
+	/*!
 	 * \brief createProject
 	 * \param name
 	 * \param identifier
@@ -446,6 +455,12 @@ signals:
 	void roleReceived(const QJsonObject& role);
 
 	/*!
+	 * \brief ownTimeEntriesReceived
+	 * \param timeEntries All of the user's time entries asked for by getOwnTimeEntries()
+	 */
+	void ownTimeEntriesReceived(const QJsonArray& timeEntries);
+
+	/*!
 	 * \brief projectCreated
 	 * \param project
 	 */
@@ -485,7 +500,19 @@ private slots:
 private:
 	//! Marks requests whose replies are handled separately from handleNetworkReply()'s generic
 	//! routing (stored in a request attribute, see ROUTING_ATTRIBUTE).
-	enum RequestTag { NoTag, TimeEntryCustomFieldsTag, TimeEntryCustomFieldsFallbackTag };
+	enum RequestTag { NoTag, TimeEntryCustomFieldsTag, TimeEntryCustomFieldsFallbackTag, OwnTimeEntriesTag };
+
+	//! Requests the page of getOwnTimeEntries() starting at offset.
+	void requestOwnTimeEntriesPage(int offset);
+	//! Adds a page received for getOwnTimeEntries(), then requests the next one or emits them all.
+	void handleOwnTimeEntriesReply(QNetworkReply* reply);
+	//! Days asked for by the current getOwnTimeEntries() call.
+	QString mOwnTimeEntriesFrom;
+	QString mOwnTimeEntriesTo;
+	//! Time entries received so far by the current getOwnTimeEntries() call.
+	QJsonArray mOwnTimeEntries;
+	//! Counts getOwnTimeEntries() calls, so pages of a superseded call are ignored.
+	int mOwnTimeEntriesGeneration = 0;
 
 	void handleTimeEntryCustomFieldsReply(QNetworkReply* reply, RequestTag tag);
 	//! Counts getTimeEntryCustomFields() calls, so replies of a superseded call are ignored.

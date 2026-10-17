@@ -33,8 +33,12 @@ static constexpr auto ROUTING_ATTRIBUTE = static_cast<QNetworkRequest::Attribute
 //! belongs to
 static constexpr auto CUSTOM_FIELDS_GENERATION_ATTRIBUTE =
 	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 4);
-//! Page size used by getAllProjects(); 100 is the most Redmine returns per request
-static constexpr int PROJECTS_PAGE_SIZE = 100;
+//! Request attribute carrying the getOwnTimeEntries() call (mOwnTimeEntriesGeneration) a page belongs to
+static constexpr auto OWN_TIME_ENTRIES_GENERATION_ATTRIBUTE =
+	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 5);
+//! Page size used by getAllProjects() and getOwnTimeEntries(); 100 is the most Redmine returns per
+//! request
+static constexpr int PAGE_SIZE = 100;
 
 // Service identifier the API key is stored under in the OS-native secure storage (see securestorage.h).
 // Derived from the application name rather than a fixed literal so that, e.g., the test binary
@@ -499,6 +503,57 @@ void RedmineClient::getRole(int roleId)
 	mNetworkManager->get(request);
 }
 
+void RedmineClient::getOwnTimeEntries(const QString& from, const QString& to)
+{
+	++mOwnTimeEntriesGeneration;
+	mOwnTimeEntriesFrom = from;
+	mOwnTimeEntriesTo = to;
+	mOwnTimeEntries = QJsonArray();
+	requestOwnTimeEntriesPage(0);
+}
+
+void RedmineClient::requestOwnTimeEntriesPage(int offset)
+{
+	setLoading(true);
+
+	QUrlQuery query;
+	query.addQueryItem("user_id", "me");
+	query.addQueryItem("from", mOwnTimeEntriesFrom);
+	query.addQueryItem("to", mOwnTimeEntriesTo);
+	query.addQueryItem("limit", QString::number(PAGE_SIZE));
+	query.addQueryItem("offset", QString::number(offset));
+
+	QNetworkRequest request = createRequest(ApiResources::TIME_ENTRIES, query);
+	request.setAttribute(ROUTING_ATTRIBUTE, OwnTimeEntriesTag);
+	request.setAttribute(OWN_TIME_ENTRIES_GENERATION_ATTRIBUTE, mOwnTimeEntriesGeneration);
+	mNetworkManager->get(request);
+}
+
+void RedmineClient::handleOwnTimeEntriesReply(QNetworkReply* reply)
+{
+	if (reply->request().attribute(OWN_TIME_ENTRIES_GENERATION_ATTRIBUTE).toInt() != mOwnTimeEntriesGeneration) {
+		return;
+	}
+	if (reply->error() != QNetworkReply::NoError) {
+		qCWarning(lcRedmineClient) << "Could not fetch own time entries:" << reply->errorString();
+		return;
+	}
+
+	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
+	const QJsonArray page = response["time_entries"].toArray();
+	for (const QJsonValue& entry : page) {
+		mOwnTimeEntries.append(entry);
+	}
+
+	const int nextOffset = response["offset"].toInt() + page.size();
+	if (!page.isEmpty() && nextOffset < response["total_count"].toInt()) {
+		requestOwnTimeEntriesPage(nextOffset);
+		return;
+	}
+	emit ownTimeEntriesReceived(mOwnTimeEntries);
+	mOwnTimeEntries = QJsonArray();
+}
+
 void RedmineClient::getAllProjects()
 {
 	++mProjectsGeneration;
@@ -511,7 +566,7 @@ void RedmineClient::requestProjectsPage(int offset)
 	setLoading(true);
 
 	QUrlQuery query;
-	query.addQueryItem("limit", QString::number(PROJECTS_PAGE_SIZE));
+	query.addQueryItem("limit", QString::number(PAGE_SIZE));
 	query.addQueryItem("offset", QString::number(offset));
 	// As in getProjects(): the activities each project allows and its modules.
 	query.addQueryItem("include", "time_entry_activities,enabled_modules");
@@ -730,6 +785,11 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	if (tag == TimeEntryCustomFieldsTag || tag == TimeEntryCustomFieldsFallbackTag) {
 		updateConnectionStateFromReply(reply);
 		handleTimeEntryCustomFieldsReply(reply, tag);
+		return;
+	}
+	if (tag == OwnTimeEntriesTag) {
+		updateConnectionStateFromReply(reply);
+		handleOwnTimeEntriesReply(reply);
 		return;
 	}
 

@@ -5,7 +5,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
+#include <QSet>
 #include <algorithm>
+#include <cmath>
 
 Q_LOGGING_CATEGORY(lcTimeTracker, "qredmine.timetracker")
 
@@ -203,6 +205,75 @@ QVariantList TimeTracker::issueIdsWithoutProject() const
 		ids.append(id);
 	}
 	return ids;
+}
+
+QVariantMap TimeTracker::unlinkedEntriesRange() const
+{
+	QString from;
+	QString to;
+	for (const QVariant& value : mRecentEntries) {
+		const QVariantMap entry = value.toMap();
+		if (entry["redmine_id"].toInt() > 0) {
+			continue;
+		}
+		const QString day = entry["spent_on"].toString().left(10);
+		if (from.isEmpty() || day < from) {
+			from = day;
+		}
+		if (to.isEmpty() || day > to) {
+			to = day;
+		}
+	}
+	if (from.isEmpty()) {
+		return {};
+	}
+	return { { "from", from }, { "to", to } };
+}
+
+void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
+{
+	QSet<int> taken = Database::linkedRedmineIds();
+	bool linked = false;
+	for (const QVariant& value : std::as_const(mRecentEntries)) {
+		const QVariantMap entry = value.toMap();
+		if (entry["redmine_id"].toInt() > 0) {
+			continue;
+		}
+		const int issueId = entry["issue_id"].toInt();
+		const QString day = entry["spent_on"].toString().left(10);
+		const double hours = entry["hours"].toDouble();
+		const QString comments = entry["comments"].toString();
+
+		QList<QJsonObject> candidates;
+		QList<QJsonObject> sameComment;
+		for (const QJsonValue& remoteValue : timeEntries) {
+			const QJsonObject remote = remoteValue.toObject();
+			if (taken.contains(remote["id"].toInt()) || remote["issue"].toObject()["id"].toInt() != issueId ||
+				remote["spent_on"].toString() != day || std::abs(remote["hours"].toDouble() - hours) >= 0.01) {
+				continue;
+			}
+			candidates.append(remote);
+			if (remote["comments"].toString() == comments) {
+				sameComment.append(remote);
+			}
+		}
+		// Entries alike in every compared field are interchangeable, so the first one will do; with
+		// different comments, only a single candidate is a clear match.
+		const QJsonObject* match = !sameComment.isEmpty() ? &sameComment.first()
+			: candidates.size() == 1					  ? &candidates.first()
+														  : nullptr;
+		if (!match) {
+			continue;
+		}
+		const int redmineId = (*match)["id"].toInt();
+		if (Database::updateSyncStatus(entry["id"].toInt(), redmineId)) {
+			taken.insert(redmineId);
+			linked = true;
+		}
+	}
+	if (linked) {
+		loadRecentEntries();
+	}
 }
 
 void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)

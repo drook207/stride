@@ -43,6 +43,16 @@ ApplicationWindow {
     //! Projects to pick from in Add Issue: active ones the user may add issues to.
     readonly property var projects: window.allProjects.filter(project => project.status === 1 && window.canAddIssues(project))
 
+    //! Asks Redmine for the user's time entries on the days of recent entries that aren't linked to
+    //! one (e.g. saved before linking existed), so TimeTracker can link them and they can be edited
+    //! on Redmine (see TimeTracker::linkExistingTimeEntries).
+    function linkUnlinkedEntries() {
+        const range = timeTrackerInstance.unlinkedEntriesRange();
+        if (range.from) {
+            redmineClient.getOwnTimeEntries(range.from, range.to);
+        }
+    }
+
     //! Whether the user may add issues to a project. While the user or a role's permissions aren't
     //! known (yet, or fetching them failed), projects are assumed to allow it rather than hidden.
     function canAddIssues(project) {
@@ -91,6 +101,7 @@ ApplicationWindow {
         redmineClient.getAllProjects();
         redmineClient.getCurrentUser();
         redmineClient.getTimeEntryCustomFields();
+        window.linkUnlinkedEntries();
         // Recent entries show their issue's project, which needs the issue cached locally. Quietly:
         // the user didn't ask for these, and one they can't fetch (e.g. no access any more) would
         // otherwise report an error on every launch.
@@ -99,10 +110,10 @@ ApplicationWindow {
         }
     }
 
-    // Projects, the user's permissions and the time entry custom fields depend on the API key (the keychain may also deliver
-    // it only after startup's requests), and fetching projects fails while offline: fetch them again
-    // after the key changed, once typing pauses, and projects when the connection comes back
-    // without them.
+    // Projects, the user's permissions, the time entry custom fields and the user's own time entries
+    // depend on the API key (the keychain may also deliver it only after startup's requests), and
+    // fetching projects fails while offline: fetch them again after the key changed, once typing
+    // pauses, and projects when the connection comes back without them.
     Timer {
         id: apiKeyRefetchTimer
         interval: 1000
@@ -110,6 +121,7 @@ ApplicationWindow {
             redmineClient.getAllProjects();
             redmineClient.getCurrentUser();
             redmineClient.getTimeEntryCustomFields();
+            window.linkUnlinkedEntries();
         }
     }
     Timer {
@@ -145,6 +157,9 @@ ApplicationWindow {
         function onProjectsReceived(projects) {
             window.allProjects = projects;
             activitiesModelInstance.setProjectActivities(projects);
+        }
+        function onOwnTimeEntriesReceived(timeEntries) {
+            timeTrackerInstance.linkExistingTimeEntries(timeEntries);
         }
         function onCurrentUserReceived(user) {
             window.currentUser = user;

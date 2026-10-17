@@ -1,5 +1,6 @@
 #include "stringhelper.h"
 #include <QJsonArray>
+#include <QSet>
 #include <QString>
 #include <QStringLiteral>
 #include <qsqlquery.h>
@@ -32,6 +33,8 @@ namespace SqlQueries {
 		"INSERT INTO time_entries "
 		"(issue_id, hours, comments, spent_on, created_at, updated_at) "
 		"VALUES (?, ?, ?, ?, ?, ?)");
+
+	STATIC_CONST_QSTRING(GET_LINKED_REDMINE_IDS, "SELECT DISTINCT redmine_id FROM time_entries WHERE redmine_id > 0");
 
 	STATIC_CONST_QSTRING(UPDATE_SYNC_STATE,
 		"UPDATE time_entries "
@@ -116,6 +119,11 @@ public:
 	static QVector<QVariantMap> getUnsyncedEntries();
 
 	static QJsonArray getRecentEntries(int limit = 50);
+
+	/*!
+	 * \brief linkedRedmineIds Redmine time entries some local entry is linked to (see updateSyncStatus())
+	 */
+	static QSet<int> linkedRedmineIds();
 
 	static bool createIssuesDatabase();
 
