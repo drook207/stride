@@ -662,6 +662,20 @@ TEST_F(RedmineClientIntegrationTest, QuietGetIssueDoesNotEmitErrorOccurred)
 	EXPECT_EQ(server->requests().size(), 1);
 }
 
+TEST_F(RedmineClientIntegrationTest, NoErrorIsReportedWhileNoServerIsSetUp)
+{
+	client->setBaseUrl(QString());
+
+	bool errorFired = false;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
+
+	client->getAllProjects();
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+	waitUntil([]() { return false; }, 200);
+
+	EXPECT_FALSE(errorFired);
+}
+
 TEST_F(RedmineClientIntegrationTest, ServerErrorResponseEmitsErrorOccurred)
 {
 	server->enqueueResponse(MockHttpResponse { 500, "Internal Server Error", R"({"errors":["boom"]})" });

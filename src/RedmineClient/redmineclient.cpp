@@ -583,7 +583,7 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply, RequestTag tag)
 	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
 	if (reply->error() != QNetworkReply::NoError) {
 		qCWarning(lcRedmineClient) << "Could not fetch" << fetch.key << ":" << reply->errorString();
-		if (!fetch.quiet && reply->error() != QNetworkReply::ContentNotFoundError) {
+		if (!fetch.quiet && reply->error() != QNetworkReply::ContentNotFoundError && !mBaseUrl.isEmpty()) {
 			emit errorOccurred(userErrorMessage(reply, response));
 		}
 		return;
@@ -819,8 +819,10 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 		const bool createdTimeEntry = reply->operation() == QNetworkAccessManager::PostOperation &&
 			reply->url().path().endsWith(ApiResources::TIME_ENTRIES);
+		// Without a server set up (e.g. on first start) every request fails; that's no news.
 		if (reply->error() != QNetworkReply::ContentNotFoundError &&
-			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0)) {
+			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0) &&
+			!mBaseUrl.isEmpty()) {
 			emit errorOccurred(userErrorMessage(reply, response));
 		}
 		// A time entry that's gone on Redmine already is as good as deleted.

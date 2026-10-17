@@ -264,3 +264,20 @@ TEST_F(TimeTrackerTest, FavoriteIssuesAreToggledAndKept)
 	ASSERT_EQ(restarted.favoriteIssues().size(), 1);
 	EXPECT_EQ(restarted.favoriteIssues().first().toMap()["issue_id"].toInt(), 7);
 }
+
+TEST_F(TimeTrackerTest, SleepCanBeLeftOutWhileTrackingGoesOn)
+{
+	tracker->startTracking(42);
+	const QDateTime now = QDateTime::currentDateTime();
+	tracker->noticeTick(now.addSecs(-3600)); // last tick before the computer slept for an hour
+	tracker->noticeTick(now);
+
+	ASSERT_TRUE(tracker->interruptedAt().isValid());
+	EXPECT_TRUE(tracker->interruptedBySleep());
+	tracker->resolveInterruption(false);
+
+	EXPECT_FALSE(tracker->interruptedAt().isValid());
+	EXPECT_TRUE(tracker->isTracking());
+	EXPECT_FALSE(tracker->isPaused());
+	EXPECT_LT(tracker->getElapsedHours(), 0.01); // the hour asleep isn't counted
+}

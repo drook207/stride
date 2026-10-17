@@ -30,9 +30,12 @@ class TimeTracker : public QObject {
 		QString trackingComment READ trackingComment WRITE setTrackingComment NOTIFY trackingDetailsChanged FINAL)
 	Q_PROPERTY(
 		int trackingActivityId READ trackingActivityId WRITE setTrackingActivityId NOTIFY trackingDetailsChanged FINAL)
-	//! When the app was last seen running while the restored tracker kept running (it was closed or
-	//! crashed meanwhile); invalid otherwise. See resolveInterruption().
+	//! When the app was last seen running while the tracker kept running: it was closed, crashed or
+	//! the computer was asleep since; invalid otherwise. See resolveInterruption().
 	Q_PROPERTY(QDateTime interruptedAt READ interruptedAt NOTIFY interruptedAtChanged FINAL)
+	//! Whether the interruption (interruptedAt) was the computer sleeping while the app ran, rather
+	//! than the app being gone.
+	Q_PROPERTY(bool interruptedBySleep READ interruptedBySleep NOTIFY interruptedAtChanged FINAL)
 	//! Issues pinned for quick access (Database::getFavoriteIssues()).
 	Q_PROPERTY(QVariantList favoriteIssues READ favoriteIssues NOTIFY favoriteIssuesChanged FINAL)
 public:
@@ -52,12 +55,17 @@ public:
 	int trackingActivityId() const;
 	void setTrackingActivityId(int activityId);
 	QDateTime interruptedAt() const;
+	bool interruptedBySleep() const;
 
 	/*!
-	 * \brief resolveInterruption Decides about the time the app was gone (interruptedAt): count it,
-	 * or stop the tracker as it was when the app was last seen (it's paused then)
+	 * \brief resolveInterruption Decides about the time the app was gone or the computer asleep
+	 * (interruptedAt): count it, or leave it out. Leaving it out pauses the tracker as it was when
+	 * the app was last seen; after sleep, the tracker keeps running from now instead.
 	 */
 	Q_INVOKABLE void resolveInterruption(bool countTimeAway);
+
+	//! Handles a tick of the running timer at now (called every second; public for tests).
+	void noticeTick(const QDateTime& now);
 
 	/*!
 	 * \brief continueTracking Starts tracking an issue with a comment and activity, e.g. to go on
@@ -336,5 +344,8 @@ private:
 	void loadFavoriteIssues();
 	//! Seconds since the saved tracker's last_seen was last updated.
 	int mSecondsSinceTouch = 0;
+	//! When the timer last ticked while running, to notice the computer sleeping.
+	QDateTime mLastTick;
+	bool mInterruptedBySleep = false;
 };
 }

@@ -29,6 +29,7 @@ projectaccesstest.cpp
 databasetest.cpp
 timetrackertest.cpp
 timeoverviewtest.cpp
+reminderstest.cpp
 mockhttpserver.h mockhttpserver.cpp
 testutils.h
 main.cpp)
@@ -40,7 +41,8 @@ find_package(Qt6 REQUIRED Core Network Quick Sql)
 set(APP_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker)
 target_sources(qredminetesting PRIVATE ${APP_SOURCE_DIR}/database.h ${APP_SOURCE_DIR}/database.cpp
                                        ${APP_SOURCE_DIR}/timetracker.h ${APP_SOURCE_DIR}/timetracker.cpp
-                                       ${APP_SOURCE_DIR}/timeoverview.h ${APP_SOURCE_DIR}/timeoverview.cpp)
+                                       ${APP_SOURCE_DIR}/timeoverview.h ${APP_SOURCE_DIR}/timeoverview.cpp
+                                       ${APP_SOURCE_DIR}/reminders.h ${APP_SOURCE_DIR}/reminders.cpp)
 target_include_directories(qredminetesting PRIVATE ${APP_SOURCE_DIR})
 
 target_link_libraries(qredminetesting

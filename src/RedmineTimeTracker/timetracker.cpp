@@ -105,6 +105,8 @@ void TimeTracker::setTrackingActivityId(int activityId)
 
 QDateTime TimeTracker::interruptedAt() const { return mInterruptedAt; }
 
+bool TimeTracker::interruptedBySleep() const { return mInterruptedBySleep; }
+
 void TimeTracker::saveTrackingState()
 {
 	if (!isTracking()) {
@@ -146,15 +148,21 @@ void TimeTracker::resolveInterruption(bool countTimeAway)
 		return;
 	}
 	if (!countTimeAway && mTimer.isActive()) {
-		// Stop the clock where it was when the app was last seen.
+		// Stop the clock where it was when the app was last seen...
 		mTotalElapsedTime += std::max<qint64>(0, mStartTime.secsTo(mInterruptedAt));
-		mTimer.stop();
-		mIsPaused = true;
-		emit pausedChanged();
-		emit trackingChanged();
+		if (mInterruptedBySleep) {
+			// ...and, after sleep, go on from now: the user is back at work.
+			mStartTime = QDateTime::currentDateTime();
+		} else {
+			mTimer.stop();
+			mIsPaused = true;
+			emit pausedChanged();
+			emit trackingChanged();
+		}
 		emit elapsedTimeChanged();
 	}
 	mInterruptedAt = QDateTime();
+	mInterruptedBySleep = false;
 	emit interruptedAtChanged();
 	saveTrackingState();
 }
@@ -206,6 +214,7 @@ void TimeTracker::startTracking(int issueId)
 	mStartTime = QDateTime::currentDateTime();
 	mTotalElapsedTime = 0;
 	mIsPaused = false;
+	mLastTick = QDateTime();
 	mTimer.start();
 	saveTrackingState();
 
@@ -248,6 +257,7 @@ void TimeTracker::resumeTracking()
 {
 	if (!mTimer.isActive() && mIsPaused) {
 		mStartTime = QDateTime::currentDateTime();
+		mLastTick = QDateTime();
 		mTimer.start();
 		mIsPaused = false;
 		saveTrackingState();
@@ -621,8 +631,19 @@ bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId
 	return interactive;
 }
 
-void TimeTracker::updateElapsedTime()
+void TimeTracker::updateElapsedTime() { noticeTick(QDateTime::currentDateTime()); }
+
+void TimeTracker::noticeTick(const QDateTime& now)
 {
+	// The timer ticks every second; a much longer gap means the computer was asleep (suspended or
+	// hibernated). Like time the app was gone, that may not be working time: ask (interruptedAt).
+	if (mLastTick.isValid() && mLastTick.secsTo(now) > INTERRUPTION_THRESHOLD_SECONDS && !mInterruptedAt.isValid()) {
+		mInterruptedAt = mLastTick;
+		mInterruptedBySleep = true;
+		emit interruptedAtChanged();
+	}
+	mLastTick = now;
+
 	// Lets a restart tell how long the app was gone (see restoreTrackingState()).
 	if (++mSecondsSinceTouch >= 30) {
 		mSecondsSinceTouch = 0;
