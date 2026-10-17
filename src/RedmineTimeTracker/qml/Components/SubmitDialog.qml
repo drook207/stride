@@ -48,8 +48,11 @@ Dialog {
 											   "activityId": docroot.activityId,
 											   "customFields": docroot.customFields
 										   })
+		statusPicker.apply()
 		docroot.comment = ""
 	}
+
+	onAboutToShow: statusPicker.load(parseInt(docroot.issueId))
 
 	onRejected: {
 		docroot.timeTracker.stopTracking()
@@ -67,6 +70,12 @@ Dialog {
 		Label {
 			text: qsTr("Total time: %0").arg(docroot.timeTracker.elapsedTime)
 			font.bold: true
+		}
+
+		IssueStatusPicker {
+			id: statusPicker
+			Layout.fillWidth: true
+			client: docroot.client
 		}
 	}
 }

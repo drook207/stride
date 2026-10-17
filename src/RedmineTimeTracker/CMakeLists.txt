@@ -75,6 +75,7 @@ qt_add_qml_module(
  qml/Components/TimeRangeRow.qml
  qml/Components/EditTimeEntryDialog.qml
  qml/Components/TrayIcon.qml
+ qml/Components/IssueStatusPicker.qml
  qml/Components/ActivityComboBox.qml
  qml/Components/SpecialFieldComboBox.qml
  qml/Desktop/DesktopShell.qml

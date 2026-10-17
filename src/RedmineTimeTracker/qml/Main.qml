@@ -197,6 +197,10 @@ ApplicationWindow {
         function onTimeEntryUpdateFailed(timeEntryId, requestTag) {
             timeTrackerInstance.discardRedmineUpdate(timeEntryId, requestTag);
         }
+        // Refreshes the cached issue, e.g. after its status was set with a time entry.
+        function onIssueUpdated(issueId) {
+            redmineClient.getIssue(issueId, true);
+        }
         function onTimeEntryDeleted(timeEntryId) {
             timeTrackerInstance.removeDeletedTimeEntry(timeEntryId);
         }
