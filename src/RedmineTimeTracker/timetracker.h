@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
+#include <QSet>
 #include <QString>
 #include <QTimer>
 #include <QVariantList>
@@ -71,9 +72,12 @@ public:
 	void setEntriesFromId(const QVariantList& newEntriesFromId);
 
 	/*!
-	 * \brief updateRecentEntry Changes a local entry that isn't linked to a Redmine time entry
+	 * \brief updateRecentEntry Changes a local entry that isn't linked to a Redmine time entry. A
+	 * rejected entry is sent to Redmine again afterwards.
 	 * \param localId The entry's "id" in recentEntries
-	 * \param changes "hours" (decimal hours), "comments" and "spent_on" ("yyyy-MM-dd")
+	 * \param changes "hours" (decimal hours), "comments" and "spent_on" ("yyyy-MM-dd"); optionally
+	 * "activity_id", "custom_fields" (changed ones, [{"id", "value"}]) and "submit" (send an
+	 * unconfirmed entry to Redmine)
 	 */
 	Q_INVOKABLE void updateRecentEntry(int localId, const QVariantMap& changes);
 
@@ -125,12 +129,30 @@ public slots:
 	void resumeTracking();
 
 	/*!
-	 * \brief addRecentEntry
-	 * \param entry
-	 * \return The new entry's local id, to pass to RedmineClient::createTimeEntry() as requestTag
-	 * so linkCreatedTimeEntry() can link it; -1 if it couldn't be saved
+	 * \brief addRecentEntry Saves a time entry locally and sends it to Redmine (submitTimeEntry())
+	 * \param entry "issueId", "hours", "comments", "date" ("yyyy-MM-dd" or a Date) and optionally
+	 * "activityId" and "customFields" ([{"id", "value"}])
+	 * \return The new entry's local id; -1 if it couldn't be saved
 	 */
 	int addRecentEntry(const QVariantMap& entry);
+
+	/*!
+	 * \brief submitPendingEntries Sends the entries not on Redmine yet (Database::Pending) via
+	 * submitTimeEntry(), except those already being sent. Call when Redmine is reachable.
+	 */
+	void submitPendingEntries();
+
+	/*!
+	 * \brief submissionFailed Handles a failed submission (RedmineClient::timeEntryCreateFailed):
+	 * an entry Redmine refused is marked rejected with the reason, others are sent again later
+	 */
+	void submissionFailed(int localId, int httpStatus, const QString& error);
+
+	/*!
+	 * \brief sendToRedmine Marks an entry pending and sends it, e.g. an unconfirmed one the user
+	 * knows isn't on Redmine
+	 */
+	void sendToRedmine(int localId);
 
 	/*!
 	 * \brief addEntriesFromId
@@ -163,9 +185,11 @@ public slots:
 	 * \brief linkCreatedTimeEntry Links the local entry a time entry just created on Redmine was
 	 * made from to that time entry, so it can be edited on Redmine later. Connected to
 	 * RedmineClient::timeEntryCreated.
-	 * \param localId The local entry's id, as returned by addRecentEntry(); ignored if not positive
+	 * \param localId The local entry's id (the requestTag of submitTimeEntry()); ignored if not positive
+	 * \return Whether the entry was just added by the user (addRecentEntry()) rather than sent
+	 * again in the background, e.g. to confirm it
 	 */
-	void linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId);
+	bool linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId);
 
 	/*!
 	 * \brief linkExistingTimeEntries Links recent local entries that aren't linked yet to the
@@ -206,6 +230,14 @@ signals:
 
 	void issueAddedOrUpdated();
 
+	/*!
+	 * \brief submitTimeEntry Asks to create a local entry on Redmine; connect it to
+	 * RedmineClient::createTimeEntry() with localId as the requestTag, and that request's outcome to
+	 * linkCreatedTimeEntry() and submissionFailed()
+	 */
+	void submitTimeEntry(int localId, int issueId, double hours, const QString& comments, const QString& spentOn,
+		int activityId, const QVariantList& customFields);
+
 private slots:
 	/*!
 	 * \brief updateElapsedTime
@@ -217,6 +249,9 @@ private:
 	 * \brief loadRecentEntries
 	 */
 	void loadRecentEntries();
+
+	//! Emits submitTimeEntry() for an entry (as from Database::getTimeEntry()) not being sent yet.
+	void submitEntry(const QJsonObject& entry);
 
 	QTimer mTimer;
 	int mCurrentIssueId;
@@ -230,5 +265,9 @@ private:
 	//! confirms even while another update of the same entry is under way.
 	QHash<int, QVariantMap> mPendingRedmineUpdates;
 	int mLastRedmineUpdateTag = 0;
+	//! Local ids of entries being sent to Redmine, so none is sent twice at a time.
+	QSet<int> mSubmitting;
+	//! Local ids of entries the user just added, whose creation on Redmine is worth a message.
+	QSet<int> mInteractiveSubmissions;
 };
 }

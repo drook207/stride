@@ -49,6 +49,15 @@ ApplicationWindow {
             redmineClient.getOwnTimeEntries(range.from, range.to);
         } else {
             window.entriesLinked = true;
+            window.sendPendingEntries();
+        }
+    }
+
+    //! Sends the entries saved while Redmine wasn't reachable. Only after linking, which finds ones
+    //! that did reach Redmine although the app didn't hear back, so they aren't sent twice.
+    function sendPendingEntries() {
+        if (window.entriesLinked) {
+            timeTrackerInstance.submitPendingEntries();
         }
     }
 
@@ -65,11 +74,15 @@ ApplicationWindow {
         }
 
         onTimeEntryCreated: function (timeEntry, requestTag) {
-            // Lets the local entry be edited on Redmine later: the dialogs pass its local id as the
-            // tag, see TimeTracker::linkCreatedTimeEntry.
-            timeTrackerInstance.linkCreatedTimeEntry(timeEntry, requestTag);
-            messageDialog.text = qsTr("Time entry created successfully");
-            messageDialog.open();
+            // Links the local entry (its id is the tag, see TimeTracker::submitTimeEntry) so it can be
+            // edited on Redmine later. Entries sent again in the background don't need a message.
+            if (timeTrackerInstance.linkCreatedTimeEntry(timeEntry, requestTag)) {
+                messageDialog.text = qsTr("Time entry created successfully");
+                messageDialog.open();
+            }
+        }
+        onTimeEntryCreateFailed: function (requestTag, httpStatus, error) {
+            timeTrackerInstance.submissionFailed(requestTag, httpStatus, error);
         }
     }
 
@@ -137,6 +150,7 @@ ApplicationWindow {
         function onConnectionStateChanged() {
             if (redmineClient.connectionState === RedmineClient.ONLINE) {
                 reconnectRefetchTimer.restart();
+                window.sendPendingEntries();
             }
         }
     }
@@ -150,6 +164,10 @@ ApplicationWindow {
     // side resolves to the shell's own property rather than an id here, binding it to itself.
     TimeTracker {
         id: timeTrackerInstance
+
+        onSubmitTimeEntry: function (localId, issueId, hours, comments, spentOn, activityId, customFields) {
+            redmineClient.createTimeEntry(issueId, hours, comments, spentOn, activityId, customFields, localId);
+        }
     }
     TimeEntryActivitiesModel {
         id: activitiesModelInstance
@@ -166,6 +184,7 @@ ApplicationWindow {
         function onOwnTimeEntriesReceived(timeEntries) {
             window.entriesLinked = true;
             timeTrackerInstance.linkExistingTimeEntries(timeEntries);
+            window.sendPendingEntries();
         }
         function onTimeEntryUpdated(timeEntryId, requestTag) {
             timeTrackerInstance.applyRedmineUpdate(timeEntryId, requestTag);

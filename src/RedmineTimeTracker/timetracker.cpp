@@ -115,16 +115,28 @@ void TimeTracker::resumeTracking()
 	}
 }
 
+// A date given as "yyyy-MM-dd..." text, or as a Date from QML (which arrives as QDateTime).
+static QDate dateOf(const QVariant& value)
+{
+	if (value.metaType() == QMetaType::fromType<QDateTime>()) {
+		return value.toDateTime().date();
+	}
+	if (value.metaType() == QMetaType::fromType<QDate>()) {
+		return value.toDate();
+	}
+	return QDate::fromString(value.toString().left(10), Qt::ISODate);
+}
+
 int TimeTracker::addRecentEntry(const QVariantMap& entry)
 {
 	const auto hours = entry["hours"].toDouble();
 	const auto comment = entry["comments"].toString();
 	const auto issueId = entry["issueId"].toInt();
-	const auto spentOn = entry["date"].toString();
-	QDateTime spentOnAsDateTime =
-		spentOn.isEmpty() ? QDateTime::currentDateTime() : QDateTime::fromString(spentOn, "yyyy-MM-dd");
+	const QDate day = dateOf(entry["date"]);
+	const QDateTime spentOn(day.isValid() ? day : QDate::currentDate(), QTime(0, 0));
 
-	const int localId = Database::addTimeEntry(issueId, hours, comment, spentOnAsDateTime);
+	const int localId = Database::addTimeEntry(
+		issueId, hours, comment, spentOn, entry["activityId"].toInt(), entry["customFields"].toList());
 	if (localId < 0) {
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return -1;
@@ -133,7 +145,50 @@ int TimeTracker::addRecentEntry(const QVariantMap& entry)
 	// Reload rather than prepending the new entry ourselves, so it gets the same fields as the
 	// others, including its issue's project (see Database::getRecentEntries()).
 	loadRecentEntries();
+	mInteractiveSubmissions.insert(localId);
+	submitEntry(Database::getTimeEntry(localId));
 	return localId;
+}
+
+void TimeTracker::submitPendingEntries()
+{
+	for (const QJsonValue& entry : Database::getPendingEntries()) {
+		submitEntry(entry.toObject());
+	}
+}
+
+void TimeTracker::submitEntry(const QJsonObject& entry)
+{
+	const int localId = entry["id"].toInt();
+	if (localId <= 0 || mSubmitting.contains(localId)) {
+		return;
+	}
+	mSubmitting.insert(localId);
+	emit submitTimeEntry(localId, entry["issue_id"].toInt(), entry["hours"].toDouble(), entry["comments"].toString(),
+		entry["spent_on"].toString().left(10), entry["activity_id"].toInt(),
+		entry["custom_fields"].toArray().toVariantList());
+}
+
+void TimeTracker::submissionFailed(int localId, int httpStatus, const QString& error)
+{
+	mSubmitting.remove(localId);
+	mInteractiveSubmissions.remove(localId);
+	// Redmine refused the entry itself (e.g. 422 for a closed project, 403 without permission):
+	// sending it unchanged again won't help. Anything else (not reached, 401 for a key being
+	// fixed, server errors) is tried again later.
+	if (httpStatus >= 400 && httpStatus < 500 && httpStatus != 401 && httpStatus != 408 && httpStatus != 429) {
+		if (Database::setSyncStatus(localId, Database::Rejected, error)) {
+			loadRecentEntries();
+		}
+	}
+}
+
+void TimeTracker::sendToRedmine(int localId)
+{
+	if (Database::setSyncStatus(localId, Database::Pending)) {
+		loadRecentEntries();
+		submitEntry(Database::getTimeEntry(localId));
+	}
 }
 
 void TimeTracker::addEntriesFromId(const QJsonArray& entries)
@@ -275,11 +330,33 @@ void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
 
 void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)
 {
+	const QJsonObject entry = Database::getTimeEntry(localId);
+	// Changed custom field values replace the entry's values of those fields; the others stay.
+	QVariant customFields;
+	if (changes.contains("custom_fields")) {
+		QVariantList fields = entry["custom_fields"].toArray().toVariantList();
+		for (const QVariant& changedField : changes["custom_fields"].toList()) {
+			const int fieldId = changedField.toMap()["id"].toInt();
+			fields.erase(std::remove_if(fields.begin(), fields.end(),
+							 [fieldId](const QVariant& field) { return field.toMap()["id"].toInt() == fieldId; }),
+				fields.end());
+			fields.append(changedField);
+		}
+		customFields = fields;
+	}
+
 	const QDateTime spentOn(QDate::fromString(changes["spent_on"].toString(), Qt::ISODate), QTime(0, 0));
-	const int changed =
-		Database::updateTimeEntry(localId, changes["hours"].toDouble(), changes["comments"].toString(), spentOn);
+	const int changed = Database::updateTimeEntry(localId, changes["hours"].toDouble(), changes["comments"].toString(),
+		spentOn, changes["activity_id"].toInt(), customFields);
 	if (changed < 0) {
 		qCWarning(lcTimeTracker) << "Could not update local time entry" << localId;
+		return;
+	}
+	// A rejected entry is sent again once changed (hopefully fixed); an unconfirmed one only when
+	// asked to, since Redmine may have it already.
+	const int status = entry["sync_status"].toInt();
+	if (status == Database::Rejected || (status == Database::Unconfirmed && changes["submit"].toBool())) {
+		sendToRedmine(localId);
 	} else if (changed > 0) {
 		loadRecentEntries();
 	}
@@ -303,8 +380,8 @@ void TimeTracker::applyRedmineUpdate(int redmineId, int tag)
 	const QString comments = changes["comments"].toString();
 	const QString spentOn = changes["spent_on"].toString();
 
-	const int changed = Database::updateTimeEntriesByRedmineId(
-		redmineId, hours, comments, QDateTime(QDate::fromString(spentOn, Qt::ISODate), QTime(0, 0)));
+	const int changed = Database::updateTimeEntriesByRedmineId(redmineId, hours, comments,
+		QDateTime(QDate::fromString(spentOn, Qt::ISODate), QTime(0, 0)), changes["activity_id"].toInt());
 	if (changed < 0) {
 		qCWarning(lcTimeTracker) << "Could not update local copies of Redmine time entry" << redmineId;
 	} else if (changed > 0) {
@@ -360,15 +437,18 @@ void TimeTracker::discardRedmineUpdate(int redmineId, int tag)
 	}
 }
 
-void TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId)
+bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId)
 {
+	mSubmitting.remove(localId);
+	const bool interactive = mInteractiveSubmissions.remove(localId);
 	const int redmineId = timeEntry["id"].toInt(-1);
 	if (redmineId < 0 || localId <= 0) {
-		return;
+		return interactive;
 	}
 	if (Database::updateSyncStatus(localId, redmineId)) {
 		loadRecentEntries();
 	}
+	return interactive;
 }
 
 void TimeTracker::updateElapsedTime() { emit elapsedTimeChanged(); }

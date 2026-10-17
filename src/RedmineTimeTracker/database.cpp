@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
 #include <QSqlDatabase>
@@ -123,7 +124,7 @@ bool Database::execute(const QString& sql)
 // has been released, since existing databases have already run it.
 const QList<bool (*)()>& Database::migrations()
 {
-	static const QList<bool (*)()> list { &Database::migrateToVersion1 };
+	static const QList<bool (*)()> list { &Database::migrateToVersion1, &Database::migrateToVersion2 };
 	return list;
 }
 
@@ -172,6 +173,12 @@ bool Database::migrateToVersion1()
 		hasProjectName = hasProjectName || columns.value("name").toString() == QStringLiteral("project_name");
 	}
 	return hasProjectName || execute(SqlQueries::ADD_ISSUES_PROJECT_NAME_COLUMN);
+}
+
+bool Database::migrateToVersion2()
+{
+	return execute(SqlQueries::ADD_ACTIVITY_ID_COLUMN) && execute(SqlQueries::ADD_CUSTOM_FIELDS_COLUMN) &&
+		execute(SqlQueries::ADD_SYNC_ERROR_COLUMN) && execute(SqlQueries::MARK_UNLINKED_UNCONFIRMED);
 }
 
 QList<int> Database::issueIdsWithoutProject(int limit)
@@ -229,7 +236,17 @@ QSqlQuery Database::getIssues()
 	return query;
 }
 
-int Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn)
+// custom_fields is stored as a JSON array; NULL when there are none.
+static QVariant customFieldsColumn(const QVariantList& customFields)
+{
+	if (customFields.isEmpty()) {
+		return QVariant(QMetaType::fromType<QString>());
+	}
+	return QString::fromUtf8(QJsonDocument(QJsonArray::fromVariantList(customFields)).toJson(QJsonDocument::Compact));
+}
+
+int Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn, int activityId,
+	const QVariantList& customFields)
 {
 	QSqlQuery query;
 	if (!evaluateQueryPrepare(SqlQueries::ADD_TIME_ENTRY, query)) {
@@ -241,6 +258,8 @@ int Database::addTimeEntry(int issueId, double hours, const QString& comments, c
 	query.addBindValue(hours);
 	query.addBindValue(comments);
 	query.addBindValue(spentOn);
+	query.addBindValue(activityId > 0 ? QVariant(activityId) : QVariant(QMetaType::fromType<int>()));
+	query.addBindValue(customFieldsColumn(customFields));
 	query.addBindValue(now);
 	query.addBindValue(now);
 
@@ -250,19 +269,21 @@ int Database::addTimeEntry(int issueId, double hours, const QString& comments, c
 	return query.lastInsertId().toInt();
 }
 
-int Database::updateTimeEntry(int id, double hours, const QString& comments, const QDateTime& spentOn)
+int Database::updateTimeEntry(int id, double hours, const QString& comments, const QDateTime& spentOn, int activityId,
+	const QVariant& customFields)
 {
-	return updateTimeEntries(QStringLiteral("id"), id, hours, comments, spentOn);
+	return updateTimeEntries(QStringLiteral("id"), id, hours, comments, spentOn, activityId, customFields);
 }
 
-int Database::updateTimeEntriesByRedmineId(
-	int redmineId, double hours, const QString& comments, const QDateTime& spentOn)
+int Database::updateTimeEntriesByRedmineId(int redmineId, double hours, const QString& comments,
+	const QDateTime& spentOn, int activityId, const QVariant& customFields)
 {
-	return updateTimeEntries(QStringLiteral("redmine_id"), redmineId, hours, comments, spentOn);
+	return updateTimeEntries(
+		QStringLiteral("redmine_id"), redmineId, hours, comments, spentOn, activityId, customFields);
 }
 
-int Database::updateTimeEntries(
-	const QString& keyColumn, int key, double hours, const QString& comments, const QDateTime& spentOn)
+int Database::updateTimeEntries(const QString& keyColumn, int key, double hours, const QString& comments,
+	const QDateTime& spentOn, int activityId, const QVariant& customFields)
 {
 	QSqlQuery query;
 	if (!evaluateQueryPrepare(SqlQueries::UPDATE_TIME_ENTRIES_WHERE + keyColumn + QStringLiteral(" = ?"), query)) {
@@ -272,6 +293,12 @@ int Database::updateTimeEntries(
 	query.addBindValue(hours);
 	query.addBindValue(comments);
 	query.addBindValue(spentOn);
+	// NULL keeps the current value (COALESCE in the query).
+	query.addBindValue(activityId > 0 ? QVariant(activityId) : QVariant(QMetaType::fromType<int>()));
+	query.addBindValue(customFields.isValid()
+			? QVariant(QString::fromUtf8(
+				  QJsonDocument(QJsonArray::fromVariantList(customFields.toList())).toJson(QJsonDocument::Compact)))
+			: QVariant(QMetaType::fromType<QString>()));
 	query.addBindValue(QDateTime::currentDateTime());
 	query.addBindValue(key);
 
@@ -279,6 +306,61 @@ int Database::updateTimeEntries(
 		return -1;
 	}
 	return query.numRowsAffected();
+}
+
+bool Database::setSyncStatus(int id, SyncStatus status, const QString& error)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::SET_SYNC_STATUS, query)) {
+		return false;
+	}
+	query.addBindValue(static_cast<int>(status));
+	query.addBindValue(error.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(error));
+	query.addBindValue(QDateTime::currentDateTime());
+	query.addBindValue(id);
+	return evaluateQueryExec(query);
+}
+
+QJsonArray Database::getPendingEntries()
+{
+	QJsonArray entries;
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_PENDING_ENTRIES, query) || !evaluateQueryExec(query)) {
+		return entries;
+	}
+	while (query.next()) {
+		entries.append(entryFromQuery(query));
+	}
+	return entries;
+}
+
+QJsonObject Database::getTimeEntry(int id)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_TIME_ENTRY, query)) {
+		return {};
+	}
+	query.addBindValue(id);
+	if (!evaluateQueryExec(query) || !query.next()) {
+		return {};
+	}
+	return entryFromQuery(query);
+}
+
+QJsonObject Database::entryFromQuery(const QSqlQuery& query)
+{
+	QJsonObject entry;
+	entry["id"] = query.value("id").toInt();
+	entry["issue_id"] = query.value("issue_id").toInt();
+	entry["hours"] = query.value("hours").toDouble();
+	entry["comments"] = query.value("comments").toString();
+	entry["spent_on"] = query.value("spent_on").toString();
+	entry["sync_status"] = query.value("sync_status").toInt();
+	entry["sync_error"] = query.value("sync_error").toString();
+	entry["redmine_id"] = query.value("redmine_id").toInt();
+	entry["activity_id"] = query.value("activity_id").toInt();
+	entry["custom_fields"] = QJsonDocument::fromJson(query.value("custom_fields").toString().toUtf8()).array();
+	return entry;
 }
 
 bool Database::updateSyncStatus(int id, int redmineId)
@@ -324,31 +406,6 @@ bool Database::evaluateQueryExec(QSqlQuery& query)
 	return true;
 }
 
-QVector<QVariantMap> Database::getUnsyncedEntries()
-{
-	QVector<QVariantMap> entries;
-
-	QSqlQuery query;
-	if (!evaluateQueryPrepare(SqlQueries::GET_UNSYNCED_ENTRIES, query)) {
-		return QVector<QVariantMap>();
-	}
-	if (!evaluateQueryExec(query)) {
-		return QVector<QVariantMap>();
-	}
-
-	while (query.next()) {
-		QVariantMap entry;
-		entry["id"] = query.value("id");
-		entry["issue_id"] = query.value("issue_id");
-		entry["hours"] = query.value("hours");
-		entry["comments"] = query.value("comments");
-		entry["spent_on"] = query.value("spent_on");
-		entries.append(entry);
-	}
-
-	return entries;
-}
-
 QJsonArray Database::getRecentEntries(int limit)
 {
 	QJsonArray entries;
@@ -363,14 +420,7 @@ QJsonArray Database::getRecentEntries(int limit)
 	}
 
 	while (query.next()) {
-		QJsonObject entry;
-		entry["id"] = query.value("id").toInt();
-		entry["issue_id"] = query.value("issue_id").toInt();
-		entry["hours"] = query.value("hours").toDouble();
-		entry["comments"] = query.value("comments").toString();
-		entry["spent_on"] = query.value("spent_on").toString();
-		entry["sync_status"] = query.value("sync_status").toInt();
-		entry["redmine_id"] = query.value("redmine_id").toInt();
+		QJsonObject entry = entryFromQuery(query);
 		entry["project_id"] = query.value("project_id").toInt();
 		entry["project_name"] = query.value("project_name").toString();
 		entries.append(entry);

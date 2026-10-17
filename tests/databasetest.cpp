@@ -63,6 +63,14 @@ TEST(DatabaseMigrationTest, DatabaseFromBeforeVersioningGetsProjectNameAndAVersi
 							   "project_id INTEGER, status_id INTEGER NOT NULL, description TEXT, "
 							   "created_on DATETIME NOT NULL, updated_on DATETIME NOT NULL)"));
 		ASSERT_TRUE(query.exec("INSERT INTO issues VALUES (5, 'Old issue', 1, 1, '', '2026-01-01', '2026-01-01')"));
+		ASSERT_TRUE(query.exec("CREATE TABLE time_entries (id INTEGER PRIMARY KEY AUTOINCREMENT, issue_id INTEGER "
+							   "NOT NULL, hours REAL NOT NULL, comments TEXT, spent_on DATETIME NOT NULL, "
+							   "sync_status INTEGER DEFAULT 0, redmine_id INTEGER, created_at DATETIME NOT NULL, "
+							   "updated_at DATETIME NOT NULL)"));
+		ASSERT_TRUE(
+			query.exec("INSERT INTO time_entries (issue_id, hours, spent_on, sync_status, redmine_id, "
+					   "created_at, updated_at) VALUES (5, 1, '2026-01-01', 0, NULL, '2026-01-01', '2026-01-01'), "
+					   "(5, 2, '2026-01-02', 1, 42, '2026-01-02', '2026-01-02')"));
 		legacy.close();
 	}
 	QSqlDatabase::removeDatabase("legacy");
@@ -77,6 +85,12 @@ TEST(DatabaseMigrationTest, DatabaseFromBeforeVersioningGetsProjectNameAndAVersi
 		++count;
 	}
 	EXPECT_EQ(count, 2);
+	// Unlinked entries from before may be on Redmine already: not sent automatically.
+	EXPECT_TRUE(Database::getPendingEntries().isEmpty());
+	const QJsonArray entries = Database::getRecentEntries();
+	ASSERT_EQ(entries.size(), 2);
+	EXPECT_EQ(entries[1].toObject()["sync_status"].toInt(), Database::Unconfirmed);
+	EXPECT_EQ(entries[0].toObject()["sync_status"].toInt(), Database::Synced);
 	Database::close();
 
 	// Opening it again doesn't migrate anything twice.

@@ -351,6 +351,16 @@ signals:
 	void timeEntryCreated(const QJsonObject& timeEntry, int requestTag);
 
 	/*!
+	 * \brief timeEntryCreateFailed Emitted when a createTimeEntry() request fails. errorOccurred()
+	 * reports it too, unless the server wasn't reached (httpStatus 0)
+	 * \param requestTag As passed to createTimeEntry()
+	 * \param httpStatus Redmine's HTTP status (e.g. 422 when it rejected the entry), 0 if the
+	 * server wasn't reached
+	 * \param error User-facing reason
+	 */
+	void timeEntryCreateFailed(int requestTag, int httpStatus, const QString& error);
+
+	/*!
 	 * \brief timeEntryUpdated
 	 * \param timeEntryId
 	 * \param requestTag As passed to updateTimeEntry()

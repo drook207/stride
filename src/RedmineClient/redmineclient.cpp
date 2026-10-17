@@ -803,9 +803,18 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();
 
+		// A time entry that didn't reach the server stays queued in the app and is sent again later,
+		// so that's no error worth a dialog; one Redmine refused is.
+		const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+		const bool createdTimeEntry = reply->operation() == QNetworkAccessManager::PostOperation &&
+			reply->url().path().endsWith(ApiResources::TIME_ENTRIES);
 		if (reply->error() != QNetworkReply::ContentNotFoundError &&
-			!reply->request().attribute(QUIET_ATTRIBUTE).toBool()) {
+			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0)) {
 			emit errorOccurred(userErrorMessage(reply, response));
+		}
+		if (createdTimeEntry) {
+			emit timeEntryCreateFailed(reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt(), httpStatus,
+				userErrorMessage(reply, response));
 		}
 
 		qWarning(lcRedmineClient) << QStringLiteral("[%0] %1: ").arg(reply->error()).arg(reply->errorString())

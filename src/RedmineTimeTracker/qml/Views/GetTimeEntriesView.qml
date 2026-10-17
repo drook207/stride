@@ -134,8 +134,7 @@ Item {
                                                "comments": modelData.comments,
                                                "spentOn": modelData.spent_on,
                                                "activityId": modelData.activity ? modelData.activity.id : 0,
-                                               "special": docroot.specialOf(modelData),
-                                               "localOnly": false
+                                               "special": docroot.specialOf(modelData)
                                            })
                     }
                 }

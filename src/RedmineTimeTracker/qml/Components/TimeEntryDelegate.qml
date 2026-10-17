@@ -29,6 +29,12 @@ ItemDelegate {
 	property bool showDivider: true
 	//! Whether clicking the entry edits it (the view handles `clicked`); shows a pen icon on hover.
 	property bool editable: false
+	//! Whether the entry is on Redmine, for local entries: "" (it is), "pending" (not sent yet),
+	//! "rejected" (Redmine refused it, see syncError) or "unconfirmed" (unknown, saved before
+	//! sending was tracked).
+	property string syncState: ""
+	//! Why Redmine rejected the entry (syncState "rejected").
+	property string syncError: ""
 
 	//! Formats a decimal hour count (e.g. 1.5) as "HH:MM:SS" (e.g. "01:30:00").
 	function formatDuration(hours) {
@@ -147,6 +153,24 @@ ItemDelegate {
 				visible: delegate.comment.length > 0
 				text: delegate.comment
 				color: Material.secondaryTextColor
+				wrapMode: Text.WordWrap
+			}
+
+			Label {
+				Layout.fillWidth: true
+				visible: delegate.syncState !== ""
+				text: {
+					switch (delegate.syncState) {
+					case "pending":
+						return qsTr("Not on Redmine yet - sent once it's reachable")
+					case "rejected":
+						return qsTr("Rejected by Redmine: %1").arg(delegate.syncError)
+					default:
+						return qsTr("Not linked to Redmine")
+					}
+				}
+				color: delegate.syncState === "rejected" ? Material.color(Material.Red, Material.Shade200) : Material.hintTextColor
+				font.pixelSize: 12
 				wrapMode: Text.WordWrap
 			}
 		}

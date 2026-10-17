@@ -30,6 +30,29 @@ Item {
 		return entry.project_name || ""
 	}
 
+	//! TimeEntryDelegate.syncState of an entry, from its sync_status (see Database::SyncStatus).
+	function syncStateOf(entry) {
+		switch (entry.sync_status) {
+		case 0:
+			return "pending"
+		case 2:
+			return "unconfirmed"
+		case 3:
+			return "rejected"
+		default:
+			return ""
+		}
+	}
+
+	//! Value of the Special field stored with an entry: "" if empty, undefined if not stored.
+	function specialOf(entry) {
+		if (!docroot.specialField) {
+			return undefined
+		}
+		const field = (entry.custom_fields || []).find(f => f.id === docroot.specialField.id)
+		return field ? (field.value || "") : undefined
+	}
+
 	//! Projects that recent entries belong to, alphabetically.
 	readonly property var projectNames: {
 		const names = []
@@ -193,6 +216,9 @@ Item {
 						hours: modelData.hours
 						comment: modelData.comments || ""
 						spentOn: modelData.spent_on
+						special: docroot.specialOf(modelData) || ""
+						syncState: docroot.syncStateOf(modelData)
+						syncError: modelData.sync_error || ""
 						// Not above the next group's header, which separates the groups already.
 						showDivider: index < docroot.shownEntries.length - 1
 									 && !(docroot.groupByProject
@@ -207,8 +233,10 @@ Item {
 												   "hours": modelData.hours,
 												   "comments": modelData.comments,
 												   "spentOn": modelData.spent_on,
-												   "activityId": 0,
-												   "localOnly": !(modelData.redmine_id > 0)
+												   "activityId": modelData.activity_id || 0,
+												   "special": docroot.specialOf(modelData),
+												   "syncState": docroot.syncStateOf(modelData),
+												   "syncError": modelData.sync_error || ""
 											   })
 						}
 					}

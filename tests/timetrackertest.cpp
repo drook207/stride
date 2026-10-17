@@ -108,3 +108,52 @@ TEST_F(TimeTrackerTest, StagedUpdatesApplyOnlyTheirOwnChangesAndRejectedOnesAreD
 	EXPECT_EQ(entry["comments"].toString().toStdString(), "First");
 	EXPECT_DOUBLE_EQ(entry["hours"].toDouble(), 2.0);
 }
+
+TEST_F(TimeTrackerTest, NewEntriesAreSentOnceAndStayPendingUntilRedmineIsReached)
+{
+	std::vector<int> sent;
+	QObject::connect(tracker.get(), &TimeTracker::submitTimeEntry,
+		[&](int localId, int, double, const QString&, const QString& spentOn, int activityId, const QVariantList&) {
+			sent.push_back(localId);
+			EXPECT_EQ(spentOn, day(1));
+			EXPECT_EQ(activityId, 9);
+		});
+
+	const int local = tracker->addRecentEntry(
+		{ { "issueId", 10 }, { "hours", 1.0 }, { "comments", "Offline" }, { "date", day(1) }, { "activityId", 9 } });
+	ASSERT_EQ(sent, std::vector<int> { local });
+
+	// Still being sent: not sent a second time.
+	tracker->submitPendingEntries();
+	EXPECT_EQ(sent.size(), 1u);
+
+	// Not reached: stays pending and is sent again later.
+	tracker->submissionFailed(local, 0, "offline");
+	EXPECT_EQ(tracker->recentEntries().first().toMap()["sync_status"].toInt(), Database::Pending);
+	tracker->submitPendingEntries();
+	EXPECT_EQ(sent.size(), 2u);
+
+	EXPECT_FALSE(tracker->linkCreatedTimeEntry(remote(900, 10, 1.0, "Offline"), local)); // background
+	EXPECT_EQ(redmineIdOf(local), 900);
+	tracker->submitPendingEntries();
+	EXPECT_EQ(sent.size(), 2u);
+}
+
+TEST_F(TimeTrackerTest, RejectedEntriesWaitUntilChanged)
+{
+	int sent = 0;
+	QObject::connect(tracker.get(), &TimeTracker::submitTimeEntry, [&]() { ++sent; });
+
+	const int local = addEntry(10, 1.0, "Closed project");
+	tracker->submissionFailed(local, 422, "Project is closed");
+	const QVariantMap entry = tracker->recentEntries().first().toMap();
+	EXPECT_EQ(entry["sync_status"].toInt(), Database::Rejected);
+	EXPECT_EQ(entry["sync_error"].toString().toStdString(), "Project is closed");
+
+	tracker->submitPendingEntries();
+	EXPECT_EQ(sent, 1);
+
+	tracker->updateRecentEntry(local, { { "hours", 1.0 }, { "comments", "Other issue" }, { "spent_on", day(1) } });
+	EXPECT_EQ(sent, 2);
+	EXPECT_EQ(tracker->recentEntries().first().toMap()["sync_status"].toInt(), Database::Pending);
+}
