@@ -17,6 +17,10 @@ Dialog {
 	property var activitiesModel: undefined
 	//! Issue of the entry being edited, shown in the title.
 	property int issueId: -1
+	//! The time entry custom field "Special" (Main.qml), or null if the server has none.
+	property var specialField: null
+	//! Project of the entry being edited, so only activities it allows are offered; -1 if unknown.
+	property int projectId: -1
 	//! Whether the entry only exists locally (not linked to a Redmine time entry); hides the
 	//! activity, which local entries don't store, and explains that changes stay local.
 	property bool localOnly: false
@@ -39,9 +43,12 @@ Dialog {
 	}
 
 	//! Opens the dialog for an entry.
-	//! \param entry {issueId, hours, comments, spentOn ("yyyy-MM-dd..." or Date), activityId, localOnly}
+	//! \param entry {issueId, projectId, hours, comments, spentOn ("yyyy-MM-dd..." or Date), activityId,
+	//!              special (the Special field's value; undefined if unknown, keeping it unchanged),
+	//!              localOnly}
 	function openFor(entry) {
 		dialog.issueId = entry.issueId
+		dialog.projectId = entry.projectId > 0 ? entry.projectId : -1
 		dialog.localOnly = entry.localOnly
 		dialog.originalHours = Number(entry.hours)
 		hoursField.text = HoursFormat.format(dialog.originalHours)
@@ -49,7 +56,8 @@ Dialog {
 		const spentOn = entry.spentOn instanceof Date ? entry.spentOn : new Date(String(entry.spentOn).substring(0, 10) + "T00:00:00")
 		dateField.selectedDate = isNaN(spentOn.getTime()) ? new Date() : spentOn
 		timeRange.clear()
-		activityCombo.currentIndex = entry.activityId > 0 ? activityCombo.indexOfValue(entry.activityId) : -1
+		activityCombo.selectActivity(entry.activityId > 0 ? entry.activityId : 0)
+		specialCombo.selectValue(entry.special)
 		dialog.open()
 	}
 
@@ -70,9 +78,12 @@ Dialog {
 			"comments": commentsField.text,
 			"spent_on": dateField.isoDate
 		}
-		if (!dialog.localOnly && activityCombo.currentIndex >= 0) {
-			changes["activity_id"] = activityCombo.currentValue
+		if (!dialog.localOnly && activityCombo.activityId > 0) {
+			changes["activity_id"] = activityCombo.activityId
 			changes["activity_name"] = activityCombo.currentText
+		}
+		if (!dialog.localOnly && specialCombo.customFieldValues.length > 0) {
+			changes["custom_fields"] = specialCombo.customFieldValues
 		}
 		dialog.saved(changes)
 	}
@@ -125,18 +136,32 @@ Dialog {
 				visible: !dialog.localOnly
 				label: qsTr("Activity")
 
-				ComboBox {
+				ActivityComboBox {
 					id: activityCombo
 					Layout.fillWidth: true
 					Layout.preferredHeight: Metrics.controlHeight
-					topInset: 0
-					bottomInset: 0
-					model: dialog.activitiesModel ? dialog.activitiesModel.timeEntryActivities : []
-					textRole: "name"
-					valueRole: "id"
-					// -1 (nothing shown) keeps the entry's activity unchanged.
+					activitiesModel: dialog.activitiesModel
+					projectId: dialog.projectId
+					// Nothing preselected: -1 keeps the entry's activity unchanged.
+					selectDefault: false
 					displayText: currentIndex < 0 ? qsTr("Unchanged") : currentText
 				}
+			}
+		}
+
+		// Redmine's "Special" time entry custom field; local entries don't store it.
+		LabeledField {
+			Layout.fillWidth: true
+			visible: !dialog.localOnly && dialog.specialField !== null
+			label: qsTr("Special")
+
+			SpecialFieldComboBox {
+				id: specialCombo
+				Layout.fillWidth: true
+				Layout.preferredHeight: Metrics.controlHeight
+				field: dialog.specialField
+				// Nothing preselected for an unknown value: keeps it unchanged.
+				allowUnchanged: true
 			}
 		}
 

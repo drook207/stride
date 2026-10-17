@@ -21,6 +21,8 @@ Item {
     property RedmineClient client: undefined
     //! TimeEntryActivitiesModel providing the activities for the Activity combo box.
     property var activitiesModel: undefined
+    //! The time entry custom field "Special" (Main.qml), or null if the server has none.
+    property var specialField: null
     property AddDialog addDialog: AddDialog {
         client: docroot.client
         timeTracker: docroot.timeTracker
@@ -132,33 +134,30 @@ Item {
                     Layout.fillWidth: true
                     label: qsTr("Activity")
 
-                    ComboBox {
+                    ActivityComboBox {
                         id: activityCombo
                         Layout.fillWidth: true
                         Layout.preferredHeight: Metrics.controlHeight
-                        topInset: 0
-                        bottomInset: 0
-                        model: docroot.activitiesModel ? docroot.activitiesModel.timeEntryActivities : []
-                        textRole: "name"
-                        valueRole: "id"
-                        // Submit the activity that is shown, including the preselected first one;
-                        // 0 (Redmine's default activity) while none are loaded yet.
-                        onCurrentValueChanged: docroot.addDialog.activityId = currentValue !== undefined ? currentValue : 0
+                        activitiesModel: docroot.activitiesModel
+                        projectId: issueField.projectId
+                        // Submit the activity that is shown; 0 (Redmine's default) while none are loaded yet.
+                        onActivityIdChanged: docroot.addDialog.activityId = activityId
+                        Component.onCompleted: docroot.addDialog.activityId = activityId
                     }
                 }
 
-                //! Known non-functional placeholder, mirroring the TrackingBar's: empty model,
-                //! nothing reads its selection.
+                // Redmine's "Special" time entry custom field; hidden while the server has none.
                 LabeledField {
                     Layout.fillWidth: true
+                    visible: docroot.specialField !== null
                     label: qsTr("Special")
 
-                    ComboBox {
+                    SpecialFieldComboBox {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Metrics.controlHeight
-                        topInset: 0
-                        bottomInset: 0
-                        model: []
+                        field: docroot.specialField
+                        onCustomFieldValuesChanged: docroot.addDialog.customFields = customFieldValues
+                        Component.onCompleted: docroot.addDialog.customFields = customFieldValues
                     }
                 }
             }

@@ -5,6 +5,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
+#include <algorithm>
 
 Q_LOGGING_CATEGORY(lcTimeTracker, "qredmine.timetracker")
 
@@ -127,25 +128,9 @@ int TimeTracker::addRecentEntry(const QVariantMap& entry)
 		return -1;
 	}
 
-	// Mirror the field names Database::getRecentEntries() produces (issue_id/spent_on, not
-	// issueId/date), since this entry is displayed immediately without waiting for a reload.
-	QVariantMap canonicalEntry;
-	canonicalEntry["id"] = localId;
-	canonicalEntry["issue_id"] = issueId;
-	canonicalEntry["hours"] = hours;
-	canonicalEntry["comments"] = comment;
-	canonicalEntry["spent_on"] = spentOnAsDateTime.toString(Qt::ISODate);
-	canonicalEntry["sync_status"] = 0;
-	canonicalEntry["redmine_id"] = 0;
-
-	mRecentEntries.prepend(canonicalEntry);
-
-	// Keep only last 50 entries
-	while (mRecentEntries.size() > 50) {
-		mRecentEntries.removeLast();
-	}
-
-	emit recentEntriesChanged();
+	// Reload rather than prepending the new entry ourselves, so it gets the same fields as the
+	// others, including its issue's project (see Database::getRecentEntries()).
+	loadRecentEntries();
 	return localId;
 }
 
@@ -164,15 +149,26 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 	const auto id = issue["id"].toInt(-1);
 	const auto subject = issue["subject"].toString();
 	const auto project = issue["project"]["id"].toInt();
+	const auto projectName = issue["project"]["name"].toString();
 	const auto status = issue["status"]["id"].toInt();
 	const auto description = issue["description"].toString();
 	const auto createdOn = issue["created_on"].toVariant().toDateTime();
 	const auto updatedOn = issue["updated_on"].toVariant().toDateTime();
 
-	if (!Database::addIssue(id, subject, project, status, description, createdOn, updatedOn)) {
+	if (!Database::addIssue(id, subject, project, projectName, status, description, createdOn, updatedOn)) {
 		qWarning() << "Could not add issue  " << issue;
 	} else {
 		emit issueAddedOrUpdated();
+		// Recent entries show their issue's project, which may only now be known or have changed.
+		// Reload only then: reloading rebuilds the list and loses its scroll position.
+		const bool shownProjectChanged =
+			std::any_of(mRecentEntries.cbegin(), mRecentEntries.cend(), [&](const QVariant& entry) {
+				const QVariantMap map = entry.toMap();
+				return map["issue_id"].toInt() == id && map["project_name"].toString() != projectName;
+			});
+		if (shownProjectChanged) {
+			loadRecentEntries();
+		}
 	}
 }
 
@@ -198,6 +194,15 @@ void TimeTracker::setEntriesFromId(const QVariantList& newEntriesFromId)
 	}
 	mEntriesFromId = newEntriesFromId;
 	emit entriesFromIdChanged();
+}
+
+QVariantList TimeTracker::issueIdsWithoutProject() const
+{
+	QVariantList ids;
+	for (const int id : Database::issueIdsWithoutProject()) {
+		ids.append(id);
+	}
+	return ids;
 }
 
 void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)
@@ -253,6 +258,24 @@ void TimeTracker::applyRedmineUpdate(int redmineId, int tag)
 			activity["id"] = changes["activity_id"];
 			activity["name"] = changes["activity_name"];
 			entry["activity"] = activity;
+		}
+		// Changed custom field values ([{id, value}]) replace the entry's values of those fields, or
+		// are added if the entry doesn't have them yet.
+		if (changes.contains("custom_fields")) {
+			QVariantList fields = entry["custom_fields"].toList();
+			for (const auto& changedField : changes["custom_fields"].toList()) {
+				const QVariantMap change = changedField.toMap();
+				const auto existing = std::find_if(fields.begin(), fields.end(),
+					[&change](const QVariant& field) { return field.toMap()["id"].toInt() == change["id"].toInt(); });
+				if (existing == fields.end()) {
+					fields.append(change);
+					continue;
+				}
+				QVariantMap field = existing->toMap();
+				field["value"] = change["value"];
+				*existing = field;
+			}
+			entry["custom_fields"] = fields;
 		}
 		value = entry;
 		resultsChanged = true;

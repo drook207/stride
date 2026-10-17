@@ -71,6 +71,8 @@ qt_add_qml_module(
  qml/Components/TimePickerField.qml
  qml/Components/TimeRangeRow.qml
  qml/Components/EditTimeEntryDialog.qml
+ qml/Components/ActivityComboBox.qml
+ qml/Components/SpecialFieldComboBox.qml
  qml/Desktop/DesktopShell.qml
  qml/Mobile/MobileShell.qml
  qml/Mobile/MobileHeader.qml

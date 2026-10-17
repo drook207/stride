@@ -101,11 +101,45 @@ bool Database::createIssuesDatabase()
 		return false;
 	}
 
+	// Migrate databases created before the project_name column existed.
+	QSqlQuery columns;
+	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUES_COLUMNS, columns) || !evaluateQueryExec(columns)) {
+		return false;
+	}
+	bool hasProjectName = false;
+	while (columns.next()) {
+		hasProjectName = hasProjectName || columns.value("name").toString() == QStringLiteral("project_name");
+	}
+	if (!hasProjectName) {
+		QSqlQuery migration;
+		if (!evaluateQueryPrepare(SqlQueries::ADD_ISSUES_PROJECT_NAME_COLUMN, migration) ||
+			!evaluateQueryExec(migration)) {
+			return false;
+		}
+	}
+
 	return true;
 }
 
-bool Database::addIssue(int issueId, const QString& subject, int projectId, int statusId, const QString& description,
-	const QDateTime& createdOn, const QDateTime& updatedOn)
+QList<int> Database::issueIdsWithoutProject(int limit)
+{
+	QList<int> ids;
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUE_IDS_WITHOUT_PROJECT, query)) {
+		return ids;
+	}
+	query.addBindValue(limit);
+	if (!evaluateQueryExec(query)) {
+		return ids;
+	}
+	while (query.next()) {
+		ids.append(query.value(0).toInt());
+	}
+	return ids;
+}
+
+bool Database::addIssue(int issueId, const QString& subject, int projectId, const QString& projectName, int statusId,
+	const QString& description, const QDateTime& createdOn, const QDateTime& updatedOn)
 {
 	QSqlQuery query;
 	// INSERT OR REPLACE
@@ -116,6 +150,7 @@ bool Database::addIssue(int issueId, const QString& subject, int projectId, int 
 	query.bindValue(":id", issueId);
 	query.bindValue(":subject", subject);
 	query.bindValue(":project_id", projectId);
+	query.bindValue(":project_name", projectName);
 	query.bindValue(":status_id", statusId);
 	query.bindValue(":description", description);
 	query.bindValue(":created_on", createdOn);
@@ -283,6 +318,8 @@ QJsonArray Database::getRecentEntries(int limit)
 		entry["spent_on"] = query.value("spent_on").toString();
 		entry["sync_status"] = query.value("sync_status").toInt();
 		entry["redmine_id"] = query.value("redmine_id").toInt();
+		entry["project_id"] = query.value("project_id").toInt();
+		entry["project_name"] = query.value("project_name").toString();
 		entries.append(entry);
 	}
 

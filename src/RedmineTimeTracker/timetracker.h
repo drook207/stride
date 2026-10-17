@@ -78,6 +78,12 @@ public:
 	Q_INVOKABLE void updateRecentEntry(int localId, const QVariantMap& changes);
 
 	/*!
+	 * \brief issueIdsWithoutProject Issues of recent entries whose project isn't known yet because
+	 * the issue isn't cached; fetching them (RedmineClient::getIssue) fills it in.
+	 */
+	Q_INVOKABLE QVariantList issueIdsWithoutProject() const;
+
+	/*!
 	 * \brief stageRedmineUpdate Remembers changes sent to Redmine for one of its time entries, to be
 	 * applied locally by applyRedmineUpdate() once Redmine confirms them, so the local data never
 	 * shows changes Redmine rejected

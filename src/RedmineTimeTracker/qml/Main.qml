@@ -29,6 +29,12 @@ ApplicationWindow {
     //! layout rather than flip to the mobile one.
     readonly property bool isMobile: Qt.platform.os === "android" || Qt.platform.os === "ios"
 
+    //! Redmine's active projects ({id, name, identifier, ...}), for picking one in Add Issue.
+    property var projects: []
+    //! The time entry custom field named "Special" (see RedmineClient::getTimeEntryCustomFields),
+    //! or null if the server has none; drives the Special combo boxes.
+    property var specialField: null
+
     RedmineClient {
         id: redmineClient
 
@@ -51,6 +57,43 @@ ApplicationWindow {
         redmineClient.getEnumerations(0);
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
+        redmineClient.getAllProjects();
+        redmineClient.getTimeEntryCustomFields();
+        // Recent entries show their issue's project, which needs the issue cached locally. Quietly:
+        // the user didn't ask for these, and one they can't fetch (e.g. no access any more) would
+        // otherwise report an error on every launch.
+        for (const issueId of timeTrackerInstance.issueIdsWithoutProject()) {
+            redmineClient.getIssue(issueId, true);
+        }
+    }
+
+    // Projects and the time entry custom fields depend on the API key (the keychain may also deliver
+    // it only after startup's requests), and fetching projects fails while offline: fetch them again
+    // after the key changed, once typing pauses, and projects when the connection comes back
+    // without them.
+    Timer {
+        id: apiKeyRefetchTimer
+        interval: 1000
+        onTriggered: {
+            redmineClient.getAllProjects();
+            redmineClient.getTimeEntryCustomFields();
+        }
+    }
+    Timer {
+        id: projectsRefetchTimer
+        interval: 1000
+        onTriggered: redmineClient.getAllProjects()
+    }
+    Connections {
+        target: redmineClient
+        function onApiKeyChanged() {
+            apiKeyRefetchTimer.restart();
+        }
+        function onConnectionStateChanged() {
+            if (redmineClient.connectionState === RedmineClient.ONLINE && window.projects.length === 0) {
+                projectsRefetchTimer.restart();
+            }
+        }
     }
     // The "Instance" suffix is deliberate: the shells below have properties named timeTracker and
     // activitiesModel, and inside `DesktopShell { activitiesModel: activitiesModel }` the right-hand
@@ -63,6 +106,14 @@ ApplicationWindow {
     }
     Connections {
         target: redmineClient
+        function onTimeEntryCustomFieldsReceived(fields) {
+            window.specialField = fields.find(field => field.name.toLowerCase() === "special") || null;
+        }
+        function onProjectsReceived(projects) {
+            // Closed and archived projects don't take new issues.
+            window.projects = projects.filter(project => project.status === 1);
+            activitiesModelInstance.setProjectActivities(projects);
+        }
         function onTimeEntryUpdated(timeEntryId, requestTag) {
             timeTrackerInstance.applyRedmineUpdate(timeEntryId, requestTag);
         }
@@ -102,6 +153,8 @@ ApplicationWindow {
             client: redmineClient
             timeTracker: timeTrackerInstance
             activitiesModel: activitiesModelInstance
+            projects: window.projects
+            specialField: window.specialField
             submitDialog: subDialog
         }
     }
@@ -112,6 +165,8 @@ ApplicationWindow {
             client: redmineClient
             timeTracker: timeTrackerInstance
             activitiesModel: activitiesModelInstance
+            projects: window.projects
+            specialField: window.specialField
             submitDialog: subDialog
         }
     }

@@ -28,6 +28,10 @@ Item {
     //! that need issue details (e.g. starting time tracking) on the issue actually being known.
     readonly property bool knownIssue: issueModel.hasIssue(value)
 
+    //! Project of the selected issue, or -1 while it isn't cached (see knownIssue). Callers use it
+    //! to offer the activities that project allows (ActivityComboBox).
+    readonly property int projectId: knownIssue ? issueModel.projectIdOf(value) : -1
+
     //! Emitted when Enter/Return is pressed in the field (mirrors TextField.accepted).
     signal accepted
 
@@ -97,11 +101,20 @@ Item {
 
     Popup {
         id: searchDropDown
-        width: issueField.width
-        height: suggestionListView.height
+        // At least wide enough for a subject next to its project, even in the narrow tracking bar.
+        width: Math.max(issueField.width, 340)
+        // Scrolls beyond a few suggestions rather than growing past the window.
+        height: Math.min(suggestionListView.contentHeight, 320)
         x: issueField.x
-        y: issueField.y + issueField.height
+        y: openAbove ? issueField.y - height : issueField.y + issueField.height
         modal: false
+
+        //! Whether the list opens above the field, because there isn't enough room below it, e.g.
+        //! in the tracking bar at the bottom of the window. Re-evaluated whenever the list or the
+        //! window changes size.
+        readonly property bool openAbove: visible && searchField.Window.height > 0
+                                          && issueField.mapToItem(null, 0, issueField.height).y + height
+                                          > searchField.Window.height
 
         padding: 0
         visible: false
@@ -112,13 +125,30 @@ Item {
             color: Material.backgroundColor
             ListView {
                 id: suggestionListView
-                width: parent.width
-                height: contentItem.childrenRect.height
+                anchors.fill: parent
 
                 spacing: 0
                 clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                ScrollBar.vertical: ScrollBar {}
 
                 model: filteredIssuesModel
+
+                // IssueModel is sorted by project, so each project's issues form one section.
+                section.property: "projectName"
+                section.criteria: ViewSection.FullString
+                section.delegate: Label {
+                    required property string section
+                    width: ListView.view.width
+                    leftPadding: 10
+                    topPadding: 8
+                    bottomPadding: 4
+                    text: section.length > 0 ? section : qsTr("No project")
+                    color: Material.accentColor
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                }
 
                 delegate: Button {
                     required property string id

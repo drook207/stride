@@ -18,6 +18,10 @@ Item {
     required property RedmineClient client
     required property TimeTracker timeTracker
     required property var activitiesModel
+    //! Redmine's projects, see Main.qml.
+    property var projects: []
+    //! The time entry custom field "Special", see Main.qml.
+    property var specialField: null
     required property SubmitDialog submitDialog
 
     MobileHeader {
@@ -73,6 +77,7 @@ Item {
     Component {
         id: recentEntriesView
         RecentEntriesView {
+            specialField: docroot.specialField
             timeTracker: docroot.timeTracker
             client: docroot.client
             activitiesModel: docroot.activitiesModel
@@ -82,6 +87,7 @@ Item {
     Component {
         id: addTimeEntryView
         AddTimeEntryView {
+            specialField: docroot.specialField
             timeTracker: docroot.timeTracker
             client: docroot.client
             activitiesModel: docroot.activitiesModel
@@ -92,6 +98,8 @@ Item {
         id: getTimeEntriesView
 
         GetTimeEntriesView {
+
+            specialField: docroot.specialField
             timeTracker: docroot.timeTracker
             client: docroot.client
             activitiesModel: docroot.activitiesModel
@@ -103,6 +111,7 @@ Item {
 
         AddIssueView {
             client: docroot.client
+            projects: docroot.projects
         }
     }
 
