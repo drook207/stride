@@ -333,3 +333,16 @@ TEST_F(TimeTrackerTest, ChangesMadeWhileSendingAreSentAfterwards)
 	EXPECT_EQ(updatedId, 900);
 	EXPECT_EQ(updatedComment.toStdString(), "New");
 }
+
+TEST_F(TimeTrackerTest, TimeWorkedBetweenWakingUpAndAnsweringCounts)
+{
+	tracker->startTracking(42);
+	const QDateTime now = QDateTime::currentDateTime();
+	tracker->noticeTick(now.addSecs(-3 * 3600)); // last tick before sleeping
+	tracker->noticeTick(now.addSecs(-1800)); // woke up half an hour ago, worked since
+	ASSERT_TRUE(tracker->interruptedBySleep());
+
+	tracker->resolveInterruption(false); // answered just now
+
+	EXPECT_NEAR(tracker->getElapsedHours(), 0.5, 0.01);
+}

@@ -151,8 +151,9 @@ void TimeTracker::resolveInterruption(bool countTimeAway)
 		// Stop the clock where it was when the app was last seen...
 		mTotalElapsedTime += std::max<qint64>(0, mStartTime.secsTo(mInterruptedAt));
 		if (mInterruptedBySleep) {
-			// ...and, after sleep, go on from now: the user is back at work.
-			mStartTime = QDateTime::currentDateTime();
+			// ...and, after sleep, go on from waking up: the user may have worked a while before
+			// answering.
+			mStartTime = mResumedAt.isValid() ? mResumedAt : QDateTime::currentDateTime();
 		} else {
 			mTimer.stop();
 			mIsPaused = true;
@@ -674,6 +675,7 @@ void TimeTracker::noticeTick(const QDateTime& now)
 	// hibernated). Like time the app was gone, that may not be working time: ask (interruptedAt).
 	if (mLastTick.isValid() && mLastTick.secsTo(now) > INTERRUPTION_THRESHOLD_SECONDS && !mInterruptedAt.isValid()) {
 		mInterruptedAt = mLastTick;
+		mResumedAt = now;
 		mInterruptedBySleep = true;
 		emit interruptedAtChanged();
 	}

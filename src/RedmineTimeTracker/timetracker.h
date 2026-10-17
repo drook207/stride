@@ -360,6 +360,8 @@ private:
 	//! When the timer last ticked while running, to notice the computer sleeping.
 	QDateTime mLastTick;
 	bool mInterruptedBySleep = false;
+	//! When the computer woke up from the sleep that interrupted the tracker.
+	QDateTime mResumedAt;
 	//! Local ids of entries changed while being sent, see linkCreatedTimeEntry().
 	QSet<int> mEditedWhileSubmitting;
 };

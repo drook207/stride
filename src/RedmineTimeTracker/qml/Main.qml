@@ -288,6 +288,7 @@ ApplicationWindow {
     Reminders {
         id: remindersInstance
         timeTracker: timeTrackerInstance
+        client: redmineClient
         // As a system notification where there's a tray, else in the window.
         onReminder: (title, message) => {
             if (trayIcon.available) {
