@@ -26,6 +26,8 @@ qt_add_qml_module(
  SOURCES
  redmineclient.cpp
  redmineclient.h
+ projectaccess.cpp
+ projectaccess.h
  OUTPUT_DIRECTORY
  ${CMAKE_BINARY_DIR}/qt/qml/QRedmine/Client
 )

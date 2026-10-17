@@ -5,7 +5,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
+#include <QSet>
 #include <algorithm>
+#include <cmath>
 
 Q_LOGGING_CATEGORY(lcTimeTracker, "qredmine.timetracker")
 
@@ -203,6 +205,72 @@ QVariantList TimeTracker::issueIdsWithoutProject() const
 		ids.append(id);
 	}
 	return ids;
+}
+
+//! How far back unlinked entries are linked (see linkExistingTimeEntries()). Older ones are left alone,
+//! so an entry that never matches doesn't make every launch fetch months of time entries.
+static constexpr int LINKING_MAX_AGE_DAYS = 31;
+
+QVariantMap TimeTracker::unlinkedEntriesRange() const
+{
+	const QString oldest = QDate::currentDate().addDays(-LINKING_MAX_AGE_DAYS).toString(Qt::ISODate);
+	QString from;
+	QString to;
+	for (const QVariant& value : mRecentEntries) {
+		const QVariantMap entry = value.toMap();
+		const QString day = entry["spent_on"].toString().left(10);
+		if (entry["redmine_id"].toInt() > 0 || day < oldest) {
+			continue;
+		}
+		if (from.isEmpty() || day < from) {
+			from = day;
+		}
+		if (to.isEmpty() || day > to) {
+			to = day;
+		}
+	}
+	if (from.isEmpty()) {
+		return {};
+	}
+	return { { "from", from }, { "to", to } };
+}
+
+void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
+{
+	QSet<int> taken = Database::linkedRedmineIds();
+	bool linked = false;
+	for (const QVariant& value : std::as_const(mRecentEntries)) {
+		const QVariantMap entry = value.toMap();
+		if (entry["redmine_id"].toInt() > 0) {
+			continue;
+		}
+		const int issueId = entry["issue_id"].toInt();
+		const QString day = entry["spent_on"].toString().left(10);
+		const double hours = entry["hours"].toDouble();
+		const QString comments = entry["comments"].toString().trimmed();
+
+		// Only an entry alike in every compared field counts: one with another comment may be an
+		// unrelated booking (e.g. made in the web UI after this entry's own submission failed), and
+		// linking to it would let edits here overwrite it. Alike entries are interchangeable, so
+		// the first one not linked yet will do.
+		const auto match = std::find_if(timeEntries.begin(), timeEntries.end(), [&](const QJsonValue& remoteValue) {
+			const QJsonObject remote = remoteValue.toObject();
+			return !taken.contains(remote["id"].toInt()) && remote["issue"].toObject()["id"].toInt() == issueId &&
+				remote["spent_on"].toString() == day && std::abs(remote["hours"].toDouble() - hours) < 0.01 &&
+				remote["comments"].toString().trimmed() == comments;
+		});
+		if (match == timeEntries.end()) {
+			continue;
+		}
+		const int redmineId = match->toObject()["id"].toInt();
+		if (Database::updateSyncStatus(entry["id"].toInt(), redmineId)) {
+			taken.insert(redmineId);
+			linked = true;
+		}
+	}
+	if (linked) {
+		loadRecentEntries();
+	}
 }
 
 void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)

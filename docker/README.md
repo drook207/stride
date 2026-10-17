@@ -55,8 +55,12 @@ touched. A project left half-seeded by a failed run isn't completed by a later r
 warns about it); use `--reset` then. `seed.sh` stops with an error if Redmine's default data
 (step 2) hasn't been loaded yet.
 
-Activities a project deactivates are listed in `seed_activity_overrides.json`, shared by both
-scripts: the config script applies them to the server, the seeder never books time on them. Further arguments go to `seed_redmine.py`, e.g. `--weeks 8` or `--seed 7` (the default
+Per-project activity settings are listed in `seed_activity_overrides.json`, shared by both
+scripts: activities under `inactive` are deactivated in the project (the seeder never books time
+on them); activities under `reactivated` are deactivated and activated again, which leaves the
+project listing them under a project-specific id that clients must use instead of the shared one.
+
+Further arguments go to `seed_redmine.py`, e.g. `--weeks 8` or `--seed 7` (the default
 seed makes runs reproducible). Use `PYTHON=/path/to/venv/bin/python docker/seed.sh` if
 `requests` isn't installed system-wide.
 
@@ -76,7 +80,8 @@ seed makes runs reproducible). Use `PYTHON=/path/to/venv/bin/python docker/seed.
   issue, and occasional overtime, training, travel and on-call weekends.
 - **Time entry activities**: Design, Development (default), Testing, Code review,
   Documentation, Meeting, Support, Deployment, Project management, plus the **inactive**
-  "Legacy maintenance". **Design is deactivated in Customer Support.**
+  "Legacy maintenance". **Design is deactivated in Customer Support.** In Internal Tools,
+  **Code review** has the project-specific id (booking it with the shared id fails with 422).
 - **Custom fields**:
     + time entries: *Special* (list: Overtime, On-call, Travel, Weekend, Training) and
       *Billable* (yes/no, default yes)

@@ -325,4 +325,17 @@ QJsonArray Database::getRecentEntries(int limit)
 
 	return entries;
 }
+
+QSet<int> Database::linkedRedmineIds()
+{
+	QSet<int> ids;
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_LINKED_REDMINE_IDS, query) || !evaluateQueryExec(query)) {
+		return ids;
+	}
+	while (query.next()) {
+		ids.insert(query.value(0).toInt());
+	}
+	return ids;
+}
 }

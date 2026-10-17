@@ -94,13 +94,23 @@ def apply_project_activity_overrides
       say "project '#{identifier}' not found, skipping its activity overrides (run seed_redmine.py first)"
       next
     end
-    settings = spec['inactive'].each_with_object({}) do |name, hash|
+    inactive = spec.fetch('inactive', [])
+    reactivated = spec.fetch('reactivated', [])
+    settings = (inactive + reactivated).each_with_object({}) do |name, hash|
       activity = TimeEntryActivity.shared.find_by!(name: name)
       # parent_id makes Redmine create a project-specific copy of the shared activity
       hash[activity.id.to_s] = { 'parent_id' => activity.id.to_s, 'active' => '0' }
     end
     project.update_or_create_time_entry_activities(settings)
-    say "project '#{identifier}': deactivated #{spec['inactive'].join(', ')}"
+    say "project '#{identifier}': deactivated #{inactive.join(', ')}" unless inactive.empty?
+
+    # Deactivating and activating again in the project settings leaves the project's copy in place:
+    # the project then lists the activity under the copy's id, and Redmine rejects the shared id.
+    reactivated.each do |name|
+      parent = TimeEntryActivity.shared.find_by!(name: name)
+      project.time_entry_activities.find_by!(parent_id: parent.id).update!(active: true)
+    end
+    say "project '#{identifier}': #{reactivated.join(', ')} listed under a project-specific id" unless reactivated.empty?
   end
 end
 

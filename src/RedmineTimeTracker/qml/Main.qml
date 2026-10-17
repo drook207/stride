@@ -29,8 +29,29 @@ ApplicationWindow {
     //! layout rather than flip to the mobile one.
     readonly property bool isMobile: Qt.platform.os === "android" || Qt.platform.os === "ios"
 
-    //! Redmine's active projects ({id, name, identifier, ...}), for picking one in Add Issue.
-    property var projects: []
+    //! All projects visible to the user ({id, name, identifier, status, is_public, enabled_modules, ...}).
+    property var allProjects: []
+    //! Projects to pick from in Add Issue: active ones the user may add issues to.
+    readonly property var projects: projectAccess.issueProjects
+    //! Whether the user's own time entries were fetched for linking since the last API key change.
+    property bool entriesLinked: false
+    //! Whether reconnectRefetchTimer already caught up since the last server or API key change. Only
+    //! once: with an invalid key, a server allowing anonymous access flips between online (anonymous
+    //! requests) and offline (the user's), which would otherwise retry endlessly.
+    property bool caughtUp: false
+
+    //! Asks Redmine for the user's time entries on the days of recent entries that aren't linked to
+    //! one (e.g. saved before linking existed), so TimeTracker can link them and they can be edited
+    //! on Redmine (see TimeTracker::linkExistingTimeEntries).
+    function linkUnlinkedEntries() {
+        const range = timeTrackerInstance.unlinkedEntriesRange();
+        if (range.from) {
+            redmineClient.getOwnTimeEntries(range.from, range.to);
+        } else {
+            window.entriesLinked = true;
+        }
+    }
+
     //! The time entry custom field named "Special" (see RedmineClient::getTimeEntryCustomFields),
     //! or null if the server has none; drives the Special combo boxes.
     property var specialField: null
@@ -58,7 +79,9 @@ ApplicationWindow {
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
         redmineClient.getAllProjects();
+        projectAccess.refresh();
         redmineClient.getTimeEntryCustomFields();
+        window.linkUnlinkedEntries();
         // Recent entries show their issue's project, which needs the issue cached locally. Quietly:
         // the user didn't ask for these, and one they can't fetch (e.g. no access any more) would
         // otherwise report an error on every launch.
@@ -67,33 +90,60 @@ ApplicationWindow {
         }
     }
 
-    // Projects and the time entry custom fields depend on the API key (the keychain may also deliver
-    // it only after startup's requests), and fetching projects fails while offline: fetch them again
-    // after the key changed, once typing pauses, and projects when the connection comes back
-    // without them.
+    // Projects, the user's permissions, the time entry custom fields and the user's own time entries
+    // depend on the server and API key (the keychain may also deliver the key only after startup's
+    // requests): fetch them again after either changed, once typing pauses.
     Timer {
         id: apiKeyRefetchTimer
         interval: 1000
         onTriggered: {
+            window.entriesLinked = false;
+            window.caughtUp = false;
             redmineClient.getAllProjects();
+            projectAccess.refresh();
             redmineClient.getTimeEntryCustomFields();
+            window.linkUnlinkedEntries();
         }
     }
+    // Fetching fails quietly while offline: when the connection comes back, catch up once on what's
+    // still missing (see caughtUp).
     Timer {
-        id: projectsRefetchTimer
+        id: reconnectRefetchTimer
         interval: 1000
-        onTriggered: redmineClient.getAllProjects()
+        onTriggered: {
+            if (window.caughtUp) {
+                return;
+            }
+            window.caughtUp = true;
+            if (window.allProjects.length === 0) {
+                redmineClient.getAllProjects();
+            }
+            if (!projectAccess.userKnown) {
+                projectAccess.refresh();
+            }
+            if (!window.entriesLinked) {
+                window.linkUnlinkedEntries();
+            }
+        }
     }
     Connections {
         target: redmineClient
         function onApiKeyChanged() {
             apiKeyRefetchTimer.restart();
         }
+        function onBaseUrlChanged() {
+            apiKeyRefetchTimer.restart();
+        }
         function onConnectionStateChanged() {
-            if (redmineClient.connectionState === RedmineClient.ONLINE && window.projects.length === 0) {
-                projectsRefetchTimer.restart();
+            if (redmineClient.connectionState === RedmineClient.ONLINE) {
+                reconnectRefetchTimer.restart();
             }
         }
+    }
+    ProjectAccess {
+        id: projectAccess
+        client: redmineClient
+        projects: window.allProjects
     }
     // The "Instance" suffix is deliberate: the shells below have properties named timeTracker and
     // activitiesModel, and inside `DesktopShell { activitiesModel: activitiesModel }` the right-hand
@@ -110,9 +160,12 @@ ApplicationWindow {
             window.specialField = fields.find(field => field.name.toLowerCase() === "special") || null;
         }
         function onProjectsReceived(projects) {
-            // Closed and archived projects don't take new issues.
-            window.projects = projects.filter(project => project.status === 1);
+            window.allProjects = projects;
             activitiesModelInstance.setProjectActivities(projects);
+        }
+        function onOwnTimeEntriesReceived(timeEntries) {
+            window.entriesLinked = true;
+            timeTrackerInstance.linkExistingTimeEntries(timeEntries);
         }
         function onTimeEntryUpdated(timeEntryId, requestTag) {
             timeTrackerInstance.applyRedmineUpdate(timeEntryId, requestTag);

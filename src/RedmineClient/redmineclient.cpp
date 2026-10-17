@@ -8,6 +8,7 @@
 #include <QTranslator>
 #include <QUrlQuery>
 #include <QtLogging>
+#include <utility>
 
 #include "qsettingshelper.h"
 #include "securestorage.h"
@@ -22,19 +23,20 @@ static const QString API_KEY_KEYCHAIN_KEY = QStringLiteral("apiKey");
 static const QString LEGACY_API_KEY_SETTING = QStringLiteral("client/apiKey");
 //! Request attribute carrying the requestTag of createTimeEntry()/updateTimeEntry() to the reply
 static constexpr auto REQUEST_TAG_ATTRIBUTE = QNetworkRequest::User;
-//! Request attribute marking a getIssue() whose failure isn't reported via errorOccurred()
+//! Request attribute marking a request whose failure isn't reported via errorOccurred()
 static constexpr auto QUIET_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1);
-//! Request attribute carrying the getAllProjects() call (mProjectsGeneration) a page belongs to
-static constexpr auto PROJECTS_GENERATION_ATTRIBUTE =
-	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 2);
+//! Request attribute carrying the generation of the paged fetch (PagedFetch) or permission lookup
+//! (mPermissionsGeneration) a reply belongs to, so replies of a superseded call are ignored
+static constexpr auto GENERATION_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 2);
 //! Request attribute carrying a RedmineClient::RequestTag (routing of separately handled replies)
 static constexpr auto ROUTING_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 3);
 //! Request attribute carrying the getTimeEntryCustomFields() call (mCustomFieldsGeneration) a reply
 //! belongs to
 static constexpr auto CUSTOM_FIELDS_GENERATION_ATTRIBUTE =
 	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 4);
-//! Page size used by getAllProjects(); 100 is the most Redmine returns per request
-static constexpr int PROJECTS_PAGE_SIZE = 100;
+//! Page size used by getAllProjects() and getOwnTimeEntries(); 100 is the most Redmine returns per
+//! request
+static constexpr int PAGE_SIZE = 100;
 
 // Service identifier the API key is stored under in the OS-native secure storage (see securestorage.h).
 // Derived from the application name rather than a fixed literal so that, e.g., the test binary
@@ -474,48 +476,126 @@ void RedmineClient::getProjects(int limit, int offset)
 	QUrlQuery query;
 	query.addQueryItem("limit", QString::number(limit));
 	query.addQueryItem("offset", QString::number(offset));
-	// The activities each project allows, which can differ from the shared ones.
-	query.addQueryItem("include", "time_entry_activities");
+	// The activities each project allows, which can differ from the shared ones, and its modules
+	// (e.g. whether it tracks issues at all).
+	query.addQueryItem("include", "time_entry_activities,enabled_modules");
 
 	mNetworkManager->get(createRequest(ApiResources::PROJECTS, query));
 }
 
-void RedmineClient::getAllProjects()
+void RedmineClient::getCurrentUser()
 {
-	++mProjectsGeneration;
-	mCollectedProjects = QJsonArray();
-	requestProjectsPage(0);
+	// Starts a new permission lookup: replies to the previous one (e.g. for another API key) are
+	// ignored from now on.
+	++mPermissionsGeneration;
+	QUrlQuery query;
+	query.addQueryItem("include", "memberships");
+	requestPermissionData(createRequest(ApiResources::CURRENT_USER, query));
 }
 
-void RedmineClient::requestProjectsPage(int offset)
+void RedmineClient::getRoles() { requestPermissionData(createRequest(ApiResources::ROLES)); }
+
+void RedmineClient::getRole(int roleId) { requestPermissionData(createRequest(ApiResources::ROLE.arg(roleId))); }
+
+void RedmineClient::requestPermissionData(QNetworkRequest request)
 {
 	setLoading(true);
-
-	QUrlQuery query;
-	query.addQueryItem("limit", QString::number(PROJECTS_PAGE_SIZE));
-	query.addQueryItem("offset", QString::number(offset));
-	// As in getProjects(): the activities each project allows.
-	query.addQueryItem("include", "time_entry_activities");
-
-	QNetworkRequest request = createRequest(ApiResources::PROJECTS, query);
-	request.setAttribute(PROJECTS_GENERATION_ATTRIBUTE, mProjectsGeneration);
+	request.setAttribute(ROUTING_ATTRIBUTE, PermissionsTag);
+	request.setAttribute(GENERATION_ATTRIBUTE, mPermissionsGeneration);
 	mNetworkManager->get(request);
 }
 
-void RedmineClient::collectProjectsPage(const QJsonObject& response)
+void RedmineClient::handlePermissionsReply(QNetworkReply* reply)
 {
-	const QJsonArray page = response["projects"].toArray();
-	for (const QJsonValue& project : page) {
-		mCollectedProjects.append(project);
+	if (reply->request().attribute(GENERATION_ATTRIBUTE).toInt() != mPermissionsGeneration) {
+		return;
+	}
+	if (reply->error() != QNetworkReply::NoError) {
+		qCWarning(lcRedmineClient) << "Could not fetch" << reply->url().path() << ":" << reply->errorString();
+		emit permissionLookupFailed();
+		return;
+	}
+	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
+	if (response.contains("user")) {
+		emit currentUserReceived(response["user"].toObject());
+	} else if (response.contains("roles")) {
+		emit rolesReceived(response["roles"].toArray());
+	} else if (response.contains("role")) {
+		emit roleReceived(response["role"].toObject());
+	}
+}
+
+void RedmineClient::getOwnTimeEntries(const QString& from, const QString& to)
+{
+	QUrlQuery query;
+	query.addQueryItem("user_id", "me");
+	query.addQueryItem("from", from);
+	query.addQueryItem("to", to);
+	startPagedFetch(OwnTimeEntriesTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"), true);
+}
+
+void RedmineClient::getAllProjects()
+{
+	QUrlQuery query;
+	// As in getProjects(): the activities each project allows and its modules.
+	query.addQueryItem("include", "time_entry_activities,enabled_modules");
+	startPagedFetch(AllProjectsTag, ApiResources::PROJECTS, query, QStringLiteral("projects"), false);
+}
+
+void RedmineClient::startPagedFetch(
+	RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key, bool quiet)
+{
+	PagedFetch& fetch = mPagedFetches[tag];
+	fetch = PagedFetch { resource, query, key, quiet, fetch.generation + 1, {} };
+	requestPage(tag, 0);
+}
+
+void RedmineClient::requestPage(RequestTag tag, int offset)
+{
+	setLoading(true);
+	const PagedFetch& fetch = mPagedFetches[tag];
+
+	QUrlQuery query = fetch.query;
+	query.addQueryItem("limit", QString::number(PAGE_SIZE));
+	query.addQueryItem("offset", QString::number(offset));
+
+	QNetworkRequest request = createRequest(fetch.resource, query);
+	request.setAttribute(ROUTING_ATTRIBUTE, tag);
+	request.setAttribute(GENERATION_ATTRIBUTE, fetch.generation);
+	mNetworkManager->get(request);
+}
+
+void RedmineClient::handlePagedReply(QNetworkReply* reply, RequestTag tag)
+{
+	PagedFetch& fetch = mPagedFetches[tag];
+	if (reply->request().attribute(GENERATION_ATTRIBUTE).toInt() != fetch.generation) {
+		return;
+	}
+	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
+	if (reply->error() != QNetworkReply::NoError) {
+		qCWarning(lcRedmineClient) << "Could not fetch" << fetch.key << ":" << reply->errorString();
+		if (!fetch.quiet && reply->error() != QNetworkReply::ContentNotFoundError) {
+			emit errorOccurred(userErrorMessage(reply, response));
+		}
+		return;
+	}
+
+	const QJsonArray page = response[fetch.key].toArray();
+	for (const QJsonValue& item : page) {
+		fetch.collected.append(item);
 	}
 
 	const int nextOffset = response["offset"].toInt() + page.size();
 	if (!page.isEmpty() && nextOffset < response["total_count"].toInt()) {
-		requestProjectsPage(nextOffset);
+		requestPage(tag, nextOffset);
 		return;
 	}
-	emit projectsReceived(mCollectedProjects);
-	mCollectedProjects = QJsonArray();
+	const QJsonArray items = std::exchange(fetch.collected, QJsonArray());
+	if (tag == AllProjectsTag) {
+		emit projectsReceived(items);
+	} else if (tag == OwnTimeEntriesTag) {
+		emit ownTimeEntriesReceived(items);
+	}
 }
 
 void RedmineClient::createProject(const QString& name, const QString& identifier, const QString& description)
@@ -583,12 +663,6 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 	}
 
 	mNetworkManager->get(createRequest(endpoint));
-}
-
-void RedmineClient::getCustomFields()
-{
-	setLoading(true);
-	mNetworkManager->get(createRequest(ApiResources::CUSTOM_FIELDS));
 }
 
 void RedmineClient::getTimeEntryCustomFields()
@@ -713,6 +787,16 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		handleTimeEntryCustomFieldsReply(reply, tag);
 		return;
 	}
+	if (tag == AllProjectsTag || tag == OwnTimeEntriesTag) {
+		updateConnectionStateFromReply(reply);
+		handlePagedReply(reply, tag);
+		return;
+	}
+	if (tag == PermissionsTag) {
+		updateConnectionStateFromReply(reply);
+		handlePermissionsReply(reply);
+		return;
+	}
 
 	if (reply->error() != QNetworkReply::NoError) {
 		QByteArray data = reply->readAll();
@@ -761,9 +845,6 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			if (response.contains("document_categories")) {
 				emit enumerationsReceived(response["document_categories"].toArray());
 			}
-			if (response.contains("custom_fields")) {
-				emit customFieldsReceived(response["custom_fields"].toArray());
-			}
 			if (response.contains("issue")) {
 				emit issueReceived(response["issue"].toObject());
 			}
@@ -774,12 +855,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 				emit projectReceived(response["project"].toObject());
 			}
 			if (response.contains("projects")) {
-				const QVariant generation = reply->request().attribute(PROJECTS_GENERATION_ATTRIBUTE);
-				if (!generation.isValid()) {
-					emit projectsReceived(response["projects"].toArray());
-				} else if (generation.toInt() == mProjectsGeneration) {
-					collectProjectsPage(response);
-				}
+				emit projectsReceived(response["projects"].toArray());
 			}
 			break;
 		case QNetworkAccessManager::PutOperation:
