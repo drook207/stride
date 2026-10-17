@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
@@ -55,7 +57,7 @@ Rectangle {
 
 	//! Icon filename per main nav item (under Assets/Icons/solid/), index-aligned with
 	//! componentsToLoad and buttonTitles. Must be kept the same length as those two.
-	readonly property var navIcons: ["clock-rotate-left.svg", "circle-plus.svg", "magnifying-glass.svg", "circle-plus.svg"]
+	readonly property var navIcons: ["clock-rotate-left.svg", "chart-column.svg", "circle-plus.svg", "magnifying-glass.svg", "circle-plus.svg"]
 
 	//! Active item: an accent-tinted pill with light lavender icon and text (the Material Design
 	//! navigation style); inactive items use the secondary text color.

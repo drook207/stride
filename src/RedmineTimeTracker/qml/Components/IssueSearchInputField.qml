@@ -1,6 +1,9 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import QRedmine.TimeTracker
 
 /*!
@@ -27,6 +30,9 @@ Item {
     //! app has previously fetched via RedmineClient::getIssue). Callers use this to gate actions
     //! that need issue details (e.g. starting time tracking) on the issue actually being known.
     readonly property bool knownIssue: issueModel.hasIssue(value)
+
+    //! Height of the window the field is in (0 while it isn't in one), for the drop-down.
+    readonly property real windowHeight: Window.height
 
     //! Project of the selected issue, or -1 while it isn't cached (see knownIssue). Callers use it
     //! to offer the activities that project allows (ActivityComboBox).
@@ -112,9 +118,9 @@ Item {
         //! Whether the list opens above the field, because there isn't enough room below it, e.g.
         //! in the tracking bar at the bottom of the window. Re-evaluated whenever the list or the
         //! window changes size.
-        readonly property bool openAbove: visible && searchField.Window.height > 0
+        readonly property bool openAbove: visible && searchField.windowHeight > 0
                                           && issueField.mapToItem(null, 0, issueField.height).y + height
-                                          > searchField.Window.height
+                                          > searchField.windowHeight
 
         padding: 0
         visible: false
@@ -151,6 +157,7 @@ Item {
                 }
 
                 delegate: Button {
+                    id: suggestion
                     required property string id
                     required property string subject
                     required property string idAndSubject
@@ -161,7 +168,7 @@ Item {
 
                     Material.roundedScale: Material.NotRounded
                     contentItem: Text {
-                        text: idAndSubject
+                        text: suggestion.idAndSubject
                         anchors.verticalCenter: parent.verticalCenter
                         horizontalAlignment: Text.AlignLeft
                         anchors.left: parent.left
@@ -170,8 +177,8 @@ Item {
                     }
 
                     onClicked: {
-                        issueField.text = idAndSubject
-                        searchField.value = id
+                        issueField.text = suggestion.idAndSubject
+                        searchField.value = suggestion.id
                         searchDropDown.visible = false
                     }
                 }

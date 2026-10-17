@@ -278,6 +278,40 @@ TEST_F(RedmineClientIntegrationTest, GetOwnTimeEntriesRequestsEveryPageWithoutEm
 	EXPECT_FALSE(searchResultsFired);
 }
 
+TEST_F(RedmineClientIntegrationTest, ReportsForDifferentPurposesDontSupersedeEachOther)
+{
+	server->enqueueResponse(
+		MockHttpResponse { 200, "OK", R"({"time_entries":[{"id":1}],"total_count":1,"offset":0})" });
+	server->enqueueResponse(
+		MockHttpResponse { 200, "OK", R"({"time_entries":[{"id":2}],"total_count":1,"offset":0})" });
+
+	QList<int> purposes;
+	QObject::connect(client.get(), &RedmineClient::timeEntryReportReceived,
+		[&](const QJsonArray&, const QString&, const QString&, int purpose) { purposes.append(purpose); });
+
+	client->getTimeEntryReport("2026-10-12", "2026-10-18", RedmineClient::OverviewReport);
+	client->getTimeEntryReport("2026-01-01", "2026-12-31", RedmineClient::ExportReport);
+	ASSERT_TRUE(waitUntil([&]() { return purposes.size() == 2; }));
+	EXPECT_TRUE(purposes.contains(RedmineClient::OverviewReport));
+	EXPECT_TRUE(purposes.contains(RedmineClient::ExportReport));
+}
+
+TEST_F(RedmineClientIntegrationTest, FailedReportIsReported)
+{
+	server->enqueueResponse(MockHttpResponse { 500, "Internal Server Error", "" });
+
+	int failedPurpose = -1;
+	bool errorFired = false;
+	QObject::connect(client.get(), &RedmineClient::timeEntryReportFailed,
+		[&](const QString&, const QString&, int purpose) { failedPurpose = purpose; });
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
+
+	client->getTimeEntryReport("2026-10-12", "2026-10-18", RedmineClient::ExportReport);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryReportFailed));
+	EXPECT_EQ(failedPurpose, RedmineClient::ExportReport);
+	EXPECT_FALSE(errorFired);
+}
+
 TEST_F(RedmineClientIntegrationTest, CreateProjectSendsPostBodyAndEmitsProjectCreated)
 {
 	server->enqueueResponse(MockHttpResponse { 201, "Created", R"({"project":{"id":8,"identifier":"proj"}})" });
@@ -648,6 +682,21 @@ TEST_F(RedmineClientIntegrationTest, NotFoundResponseDoesNotEmitErrorOccurred)
 	EXPECT_EQ(server->requests().size(), 1);
 }
 
+TEST_F(RedmineClientIntegrationTest, GetIssueCanIncludeTheAllowedStatuses)
+{
+	server->enqueueResponse(MockHttpResponse { 200, "OK",
+		R"({"issue":{"id":7,"status":{"id":2},"allowed_statuses":[{"id":2,"name":"In Progress"},{"id":5,"name":"Closed"}]}})" });
+
+	QJsonObject received;
+	QObject::connect(client.get(), &RedmineClient::issueReceived, [&](const QJsonObject& issue) { received = issue; });
+
+	client->getIssue(7, true, true);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueReceived));
+
+	EXPECT_EQ(server->requests().first().query.queryItemValue("include").toStdString(), "allowed_statuses");
+	EXPECT_EQ(received["allowed_statuses"].toArray().size(), 2);
+}
+
 TEST_F(RedmineClientIntegrationTest, QuietGetIssueDoesNotEmitErrorOccurred)
 {
 	server->enqueueResponse(MockHttpResponse { 403, "Forbidden", "" });
@@ -660,6 +709,20 @@ TEST_F(RedmineClientIntegrationTest, QuietGetIssueDoesNotEmitErrorOccurred)
 
 	EXPECT_FALSE(errorFired);
 	EXPECT_EQ(server->requests().size(), 1);
+}
+
+TEST_F(RedmineClientIntegrationTest, NoErrorIsReportedWhileNoServerIsSetUp)
+{
+	client->setBaseUrl(QString());
+
+	bool errorFired = false;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
+
+	client->getAllProjects();
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+	waitUntil([]() { return false; }, 200);
+
+	EXPECT_FALSE(errorFired);
 }
 
 TEST_F(RedmineClientIntegrationTest, ServerErrorResponseEmitsErrorOccurred)
