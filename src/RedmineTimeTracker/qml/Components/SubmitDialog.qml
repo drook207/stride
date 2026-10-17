@@ -46,10 +46,13 @@ Dialog {
 											   "comments": comments,
 											   "date": docroot.spentOn === "" ? Qt.formatDate(new Date(), "yyyy-MM-dd") : docroot.spentOn,
 											   "activityId": docroot.activityId,
-											   "customFields": docroot.customFields
+											   "customFields": docroot.customFields,
+											   "issueStatusId": statusPicker.statusId
 										   })
 		docroot.comment = ""
 	}
+
+	onAboutToShow: statusPicker.load(parseInt(docroot.issueId))
 
 	onRejected: {
 		docroot.timeTracker.stopTracking()
@@ -67,6 +70,12 @@ Dialog {
 		Label {
 			text: qsTr("Total time: %0").arg(docroot.timeTracker.elapsedTime)
 			font.bold: true
+		}
+
+		IssueStatusPicker {
+			id: statusPicker
+			Layout.fillWidth: true
+			client: docroot.client
 		}
 	}
 }

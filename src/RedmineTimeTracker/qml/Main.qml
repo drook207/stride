@@ -1,8 +1,10 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import QtQuick.Window
+import QtCore
 import QRedmine.TimeTracker
 import QRedmine.Client
 
@@ -80,6 +82,9 @@ ApplicationWindow {
         redmineClient.getEnumerations(0);
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
+        if (!isNaN(timeTrackerInstance.interruptedAt.getTime())) {
+            interruptionDialog.open();
+        }
         redmineClient.getAllProjects();
         projectAccess.refresh();
         redmineClient.getTimeEntryCustomFields();
@@ -171,6 +176,9 @@ ApplicationWindow {
         onSubmitTimeEntry: function (localId, issueId, hours, comments, spentOn, activityId, customFields) {
             redmineClient.createTimeEntry(issueId, hours, comments, spentOn, activityId, customFields, localId);
         }
+        onSetIssueStatus: function (issueId, statusId) {
+            redmineClient.updateIssue(issueId, "", "", statusId);
+        }
         onUpdateTimeEntryOnRedmine: function (redmineId, hours, comments, spentOn, activityId, customFields, tag) {
             redmineClient.updateTimeEntry(redmineId, hours, comments, spentOn, activityId, customFields, tag);
         }
@@ -196,6 +204,13 @@ ApplicationWindow {
         }
         function onTimeEntryUpdateFailed(timeEntryId, requestTag) {
             timeTrackerInstance.discardRedmineUpdate(timeEntryId, requestTag);
+        }
+        // Refreshes the cached issue, e.g. after its status was set with a time entry.
+        function onIssueUpdated(issueId) {
+            redmineClient.getIssue(issueId, true);
+        }
+        function onTimeEntryDeleted(timeEntryId) {
+            timeTrackerInstance.removeDeletedTimeEntry(timeEntryId);
         }
         function onTimeEntryActivitiesReceived(value) {
             activitiesModelInstance.addTimeEntryActivities(value);
@@ -229,6 +244,8 @@ ApplicationWindow {
         DesktopShell {
             client: redmineClient
             timeTracker: timeTrackerInstance
+            reminders: remindersInstance
+            trayAvailable: trayIcon.available
             activitiesModel: activitiesModelInstance
             projects: window.projects
             specialField: window.specialField
@@ -241,6 +258,8 @@ ApplicationWindow {
         MobileShell {
             client: redmineClient
             timeTracker: timeTrackerInstance
+            reminders: remindersInstance
+            trayAvailable: trayIcon.available
             activitiesModel: activitiesModelInstance
             projects: window.projects
             specialField: window.specialField
@@ -265,6 +284,83 @@ ApplicationWindow {
 
     MessageDialog {
         id: messageDialog
+    }
+
+    TrayIcon {
+        id: trayIcon
+        timeTracker: timeTrackerInstance
+        window: window
+    }
+
+    Reminders {
+        id: remindersInstance
+        timeTracker: timeTrackerInstance
+        client: redmineClient
+        // As a system notification where there's a tray, else in the window.
+        onReminder: (title, message) => {
+            if (trayIcon.available) {
+                trayIcon.showMessage(title, message);
+            } else {
+                messageDialog.text = message;
+                messageDialog.open();
+            }
+        }
+    }
+
+    // Settings shared with SettingsView (same keys); read when needed, since that view writes them.
+    Settings {
+        id: appSettings
+    }
+
+    // Closing the window can leave the app running in the tray (an option in the settings), e.g. so
+    // the tracker keeps going without a window in the way.
+    onClosing: close => {
+        if (trayIcon.available && String(appSettings.value("tray/closeToTray", false)) === "true") {
+            close.accepted = false;
+            window.hide();
+        }
+    }
+
+    // The tracker kept running while the app was closed (or crashed) or the computer was asleep: ask
+    // whether that time counts.
+    Dialog {
+        id: interruptionDialog
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        // Set when opened rather than bound to the window's width, which makes Material's Dialog
+        // report a binding loop with the wrapping label (see EditTimeEntryDialog).
+        width: 520
+        modal: true
+        closePolicy: Popup.NoAutoClose
+        Overlay.modal: DialogScrim {}
+        title: qsTr("Timer still running")
+        standardButtons: Dialog.Yes | Dialog.No
+
+        Label {
+            width: parent.width
+            wrapMode: Text.WordWrap
+            text: (timeTrackerInstance.interruptedBySleep
+                   ? qsTr("The computer was asleep since %2 while the timer for #%1 was running. Should that time count?")
+                   : qsTr("The timer for #%1 was running when the app was last used, on %2. Should the time since then count?"))
+                .arg(timeTrackerInstance.currentIssueId)
+                .arg(timeTrackerInstance.interruptedAt.toLocaleString(Qt.locale(), Locale.ShortFormat))
+        }
+
+        onAboutToShow: {
+            width = Math.min(parent.width - 32, 520);
+            standardButton(Dialog.Yes).text = qsTr("Count it");
+            standardButton(Dialog.No).text = timeTrackerInstance.interruptedBySleep ? qsTr("Leave it out") : qsTr("Stop it then");
+        }
+        onAccepted: timeTrackerInstance.resolveInterruption(true)
+        onRejected: timeTrackerInstance.resolveInterruption(false)
+    }
+    Connections {
+        target: timeTrackerInstance
+        function onInterruptedAtChanged() {
+            if (!isNaN(timeTrackerInstance.interruptedAt.getTime())) {
+                interruptionDialog.open();
+            }
+        }
     }
 
     SubmitDialog {

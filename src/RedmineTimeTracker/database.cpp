@@ -154,7 +154,8 @@ bool Database::execute(const QString& sql)
 // has been released, since existing databases have already run it.
 const QList<bool (*)()>& Database::migrations()
 {
-	static const QList<bool (*)()> list { &Database::migrateToVersion1, &Database::migrateToVersion2 };
+	static const QList<bool (*)()> list { &Database::migrateToVersion1, &Database::migrateToVersion2,
+		&Database::migrateToVersion3, &Database::migrateToVersion4, &Database::migrateToVersion5 };
 	return list;
 }
 
@@ -209,6 +210,99 @@ bool Database::migrateToVersion2()
 {
 	return execute(SqlQueries::ADD_ACTIVITY_ID_COLUMN) && execute(SqlQueries::ADD_CUSTOM_FIELDS_COLUMN) &&
 		execute(SqlQueries::ADD_SYNC_ERROR_COLUMN) && execute(SqlQueries::MARK_UNLINKED_UNCONFIRMED);
+}
+
+bool Database::migrateToVersion3() { return execute(SqlQueries::CREATE_TRACKING_STATE_TABLE); }
+
+bool Database::migrateToVersion4() { return execute(SqlQueries::CREATE_FAVORITE_ISSUES_TABLE); }
+
+bool Database::migrateToVersion5() { return execute(SqlQueries::ADD_ISSUE_STATUS_ID_COLUMN); }
+
+bool Database::clearIssueStatus(int id)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::CLEAR_ISSUE_STATUS_ID, query)) {
+		return false;
+	}
+	query.addBindValue(id);
+	return evaluateQueryExec(query);
+}
+
+bool Database::addFavoriteIssue(int issueId)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::ADD_FAVORITE_ISSUE, query)) {
+		return false;
+	}
+	query.addBindValue(issueId);
+	query.addBindValue(QDateTime::currentDateTime());
+	return evaluateQueryExec(query);
+}
+
+bool Database::removeFavoriteIssue(int issueId)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::REMOVE_FAVORITE_ISSUE, query)) {
+		return false;
+	}
+	query.addBindValue(issueId);
+	return evaluateQueryExec(query);
+}
+
+QVariantList Database::getFavoriteIssues()
+{
+	QVariantList favorites;
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_FAVORITE_ISSUES, query) || !evaluateQueryExec(query)) {
+		return favorites;
+	}
+	while (query.next()) {
+		favorites.append(QVariantMap { { "issue_id", query.value("issue_id").toInt() },
+			{ "subject", query.value("subject").toString() },
+			{ "project_name", query.value("project_name").toString() } });
+	}
+	return favorites;
+}
+
+bool Database::saveTrackingState(const QVariantMap& state)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::SAVE_TRACKING_STATE, query)) {
+		return false;
+	}
+	const QDateTime startedAt = state["started_at"].toDateTime();
+	query.addBindValue(state["issue_id"].toInt());
+	query.addBindValue(startedAt.isValid() ? QVariant(startedAt) : QVariant(QMetaType::fromType<QDateTime>()));
+	query.addBindValue(state["elapsed_seconds"].toLongLong());
+	query.addBindValue(state["comment"].toString());
+	query.addBindValue(state["activity_id"].toInt());
+	query.addBindValue(QDateTime::currentDateTime());
+	return evaluateQueryExec(query);
+}
+
+QVariantMap Database::loadTrackingState()
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_TRACKING_STATE, query) || !evaluateQueryExec(query) || !query.next()) {
+		return {};
+	}
+	return { { "issue_id", query.value("issue_id").toInt() },
+		{ "started_at", query.value("started_at").isNull() ? QDateTime() : query.value("started_at").toDateTime() },
+		{ "elapsed_seconds", query.value("elapsed_seconds").toLongLong() },
+		{ "comment", query.value("comment").toString() }, { "activity_id", query.value("activity_id").toInt() },
+		{ "last_seen", query.value("last_seen").toDateTime() } };
+}
+
+bool Database::clearTrackingState() { return execute(SqlQueries::CLEAR_TRACKING_STATE); }
+
+bool Database::touchTrackingState()
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::TOUCH_TRACKING_STATE, query)) {
+		return false;
+	}
+	query.addBindValue(QDateTime::currentDateTime());
+	return evaluateQueryExec(query);
 }
 
 QList<int> Database::issueIdsWithoutProject(int limit)
@@ -276,7 +370,7 @@ static QVariant customFieldsColumn(const QVariantList& customFields)
 }
 
 int Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn, int activityId,
-	const QVariantList& customFields)
+	const QVariantList& customFields, int issueStatusId)
 {
 	QSqlQuery query;
 	if (!evaluateQueryPrepare(SqlQueries::ADD_TIME_ENTRY, query)) {
@@ -290,6 +384,7 @@ int Database::addTimeEntry(int issueId, double hours, const QString& comments, c
 	query.addBindValue(spentOn);
 	query.addBindValue(activityId > 0 ? QVariant(activityId) : QVariant(QMetaType::fromType<int>()));
 	query.addBindValue(customFieldsColumn(customFields));
+	query.addBindValue(issueStatusId > 0 ? QVariant(issueStatusId) : QVariant(QMetaType::fromType<int>()));
 	query.addBindValue(now);
 	query.addBindValue(now);
 
@@ -351,6 +446,23 @@ bool Database::setSyncStatus(int id, SyncStatus status, const QString& error)
 	return evaluateQueryExec(query);
 }
 
+static int deleteWhere(const QString& sql, int key)
+{
+	QSqlQuery query;
+	if (!query.prepare(sql)) {
+		return -1;
+	}
+	query.addBindValue(key);
+	return query.exec() ? query.numRowsAffected() : -1;
+}
+
+int Database::deleteTimeEntry(int id) { return deleteWhere(SqlQueries::DELETE_TIME_ENTRY, id); }
+
+int Database::deleteTimeEntriesByRedmineId(int redmineId)
+{
+	return deleteWhere(SqlQueries::DELETE_TIME_ENTRIES_BY_REDMINE_ID, redmineId);
+}
+
 QJsonArray Database::getPendingEntries()
 {
 	QJsonArray entries;
@@ -390,6 +502,7 @@ QJsonObject Database::entryFromQuery(const QSqlQuery& query)
 	entry["redmine_id"] = query.value("redmine_id").toInt();
 	entry["activity_id"] = query.value("activity_id").toInt();
 	entry["custom_fields"] = QJsonDocument::fromJson(query.value("custom_fields").toString().toUtf8()).array();
+	entry["issue_status_id"] = query.value("issue_status_id").toInt();
 	return entry;
 }
 
@@ -456,6 +569,27 @@ QJsonArray Database::getRecentEntries(int limit)
 		entries.append(entry);
 	}
 
+	return entries;
+}
+
+QJsonArray Database::getEntriesBetween(const QDate& from, const QDate& to)
+{
+	QJsonArray entries;
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::GET_ENTRIES_BETWEEN, query)) {
+		return entries;
+	}
+	query.addBindValue(from.toString(Qt::ISODate));
+	query.addBindValue(to.toString(Qt::ISODate));
+	if (!evaluateQueryExec(query)) {
+		return entries;
+	}
+	while (query.next()) {
+		QJsonObject entry = entryFromQuery(query);
+		entry["project_id"] = query.value("project_id").toInt();
+		entry["project_name"] = query.value("project_name").toString();
+		entries.append(entry);
+	}
 	return entries;
 }
 

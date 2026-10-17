@@ -48,13 +48,12 @@ Dialog {
 											   "comments": commentsResult,
 											   "date": spentOnResult,
 											   "activityId": docroot.activityId,
-											   "customFields": docroot.customFields
+											   "customFields": docroot.customFields,
+											   "issueStatusId": statusPicker.statusId
 										   })
 	}
 
-	onRejected: {
-
-	}
+	onAboutToShow: statusPicker.load(parseInt(docroot.issueId))
 
 	contentItem: ColumnLayout {
 		id: content
@@ -67,6 +66,12 @@ Dialog {
 		Label {
 			text: qsTr("Total time: %1 spent on: %2").arg(docroot.hours).arg(docroot.spentOn)
 			font.bold: true
+		}
+
+		IssueStatusPicker {
+			id: statusPicker
+			Layout.fillWidth: true
+			client: docroot.client
 		}
 	}
 }

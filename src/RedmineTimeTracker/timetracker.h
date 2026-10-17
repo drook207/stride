@@ -25,12 +25,59 @@ class TimeTracker : public QObject {
 	Q_PROPERTY(QString elapsedTime READ elapsedTime NOTIFY elapsedTimeChanged)
 	Q_PROPERTY(QVariantList recentEntries READ recentEntries NOTIFY recentEntriesChanged)
 	Q_PROPERTY(QVariantList entriesFromId READ entriesFromId WRITE setEntriesFromId NOTIFY entriesFromIdChanged FINAL)
+	//! Comment and activity entered for the tracked time; kept with the tracker across restarts.
+	Q_PROPERTY(
+		QString trackingComment READ trackingComment WRITE setTrackingComment NOTIFY trackingDetailsChanged FINAL)
+	Q_PROPERTY(
+		int trackingActivityId READ trackingActivityId WRITE setTrackingActivityId NOTIFY trackingDetailsChanged FINAL)
+	//! When the app was last seen running while the tracker kept running: it was closed, crashed or
+	//! the computer was asleep since; invalid otherwise. See resolveInterruption().
+	Q_PROPERTY(QDateTime interruptedAt READ interruptedAt NOTIFY interruptedAtChanged FINAL)
+	//! Whether the interruption (interruptedAt) was the computer sleeping while the app ran, rather
+	//! than the app being gone.
+	Q_PROPERTY(bool interruptedBySleep READ interruptedBySleep NOTIFY interruptedAtChanged FINAL)
+	//! Issues pinned for quick access (Database::getFavoriteIssues()).
+	Q_PROPERTY(QVariantList favoriteIssues READ favoriteIssues NOTIFY favoriteIssuesChanged FINAL)
 public:
+	//! A restored running tracker whose app was gone for longer than this asks whether to count the
+	//! time in between (interruptedAt); shorter gaps (e.g. a quick restart) just count.
+	static constexpr int INTERRUPTION_THRESHOLD_SECONDS = 120;
+
 	/*!
 	 * \brief TimeTracker
 	 * \param parent
 	 */
 	explicit TimeTracker(QObject* parent = nullptr);
+	~TimeTracker() override;
+
+	QString trackingComment() const;
+	void setTrackingComment(const QString& comment);
+	int trackingActivityId() const;
+	void setTrackingActivityId(int activityId);
+	QDateTime interruptedAt() const;
+	bool interruptedBySleep() const;
+
+	/*!
+	 * \brief resolveInterruption Decides about the time the app was gone or the computer asleep
+	 * (interruptedAt): count it, or leave it out. Leaving it out pauses the tracker as it was when
+	 * the app was last seen; after sleep, the tracker keeps running from now instead.
+	 */
+	Q_INVOKABLE void resolveInterruption(bool countTimeAway);
+
+	//! Handles a tick of the running timer at now (called every second; public for tests).
+	void noticeTick(const QDateTime& now);
+
+	/*!
+	 * \brief continueTracking Starts tracking an issue with a comment and activity, e.g. to go on
+	 * with an earlier entry's work. Does nothing while already tracking, so no tracked time is lost.
+	 * \return Whether tracking started
+	 */
+	Q_INVOKABLE bool continueTracking(int issueId, const QString& comment = QString(), int activityId = 0);
+
+	QVariantList favoriteIssues() const;
+	Q_INVOKABLE bool isFavoriteIssue(int issueId) const;
+	//! Pins an issue, or unpins it if it's pinned.
+	Q_INVOKABLE void toggleFavoriteIssue(int issueId);
 
 	/*!
 	 * \brief isTracking
@@ -134,7 +181,8 @@ public slots:
 	/*!
 	 * \brief addRecentEntry Saves a time entry locally and sends it to Redmine (submitTimeEntry())
 	 * \param entry "issueId", "hours", "comments", "date" ("yyyy-MM-dd" or a Date) and optionally
-	 * "activityId" and "customFields" ([{"id", "value"}])
+	 * "activityId", "customFields" ([{"id", "value"}]) and "issueStatusId" (to set the issue to
+	 * once the entry is on Redmine, see setIssueStatus())
 	 * \return The new entry's local id; -1 if it couldn't be saved
 	 */
 	int addRecentEntry(const QVariantMap& entry);
@@ -150,6 +198,19 @@ public slots:
 	 * an entry Redmine refused is marked rejected with the reason, others are sent again later
 	 */
 	void submissionFailed(int localId, int httpStatus, const QString& error);
+
+	/*!
+	 * \brief deleteRecentEntry Deletes a local entry that isn't linked to a Redmine time entry (for a
+	 * linked one, delete the Redmine entry: RedmineClient::deleteTimeEntry())
+	 * \return false if it couldn't be deleted, e.g. because it's being sent to Redmine right now
+	 */
+	bool deleteRecentEntry(int localId);
+
+	/*!
+	 * \brief removeDeletedTimeEntry Forgets a time entry deleted on Redmine: its local copies and
+	 * its Search Issue result. Connected to RedmineClient::timeEntryDeleted.
+	 */
+	void removeDeletedTimeEntry(int redmineId);
 
 	/*!
 	 * \brief sendToRedmine Marks an entry pending and sends it, e.g. an unconfirmed one the user
@@ -232,6 +293,9 @@ signals:
 	void entriesFromIdChanged();
 
 	void issueAddedOrUpdated();
+	void trackingDetailsChanged();
+	void interruptedAtChanged();
+	void favoriteIssuesChanged();
 
 	/*!
 	 * \brief submitTimeEntry Asks to create a local entry on Redmine; connect it to
@@ -249,6 +313,12 @@ signals:
 	void updateTimeEntryOnRedmine(int redmineId, double hours, const QString& comments, const QString& spentOn,
 		int activityId, const QVariantList& customFields, int tag);
 
+	/*!
+	 * \brief setIssueStatus Asks to set an issue's status, chosen with a time entry that's on Redmine
+	 * now; connect it to RedmineClient::updateIssue(). Not asked for entries Redmine never took.
+	 */
+	void setIssueStatus(int issueId, int statusId);
+
 private slots:
 	/*!
 	 * \brief updateElapsedTime
@@ -260,6 +330,13 @@ private:
 	 * \brief loadRecentEntries
 	 */
 	void loadRecentEntries();
+
+	//! Saves the tracker to the database (or clears it there when not tracking).
+	void saveTrackingState();
+	//! Restores a tracker saved by a previous run.
+	void restoreTrackingState();
+	//! Emits setIssueStatus() for an entry on Redmine now, if a status was chosen with it.
+	void applyIssueStatus(int localId);
 
 	//! Entries linkExistingTimeEntries() tries to link, see unlinkedEntriesRange().
 	QVariantList linkCandidates() const;
@@ -283,6 +360,18 @@ private:
 	QSet<int> mSubmitting;
 	//! Local ids of entries the user just added, whose creation on Redmine is worth a message.
 	QSet<int> mInteractiveSubmissions;
+	QString mTrackingComment;
+	int mTrackingActivityId = 0;
+	QDateTime mInterruptedAt;
+	QVariantList mFavoriteIssues;
+	void loadFavoriteIssues();
+	//! Seconds since the saved tracker's last_seen was last updated.
+	int mSecondsSinceTouch = 0;
+	//! When the timer last ticked while running, to notice the computer sleeping.
+	QDateTime mLastTick;
+	bool mInterruptedBySleep = false;
+	//! When the computer woke up from the sleep that interrupted the tracker.
+	QDateTime mResumedAt;
 	//! Local ids of entries changed while being sent, see linkCreatedTimeEntry().
 	QSet<int> mEditedWhileSubmitting;
 };
