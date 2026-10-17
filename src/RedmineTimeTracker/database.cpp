@@ -155,7 +155,7 @@ bool Database::execute(const QString& sql)
 const QList<bool (*)()>& Database::migrations()
 {
 	static const QList<bool (*)()> list { &Database::migrateToVersion1, &Database::migrateToVersion2,
-		&Database::migrateToVersion3, &Database::migrateToVersion4 };
+		&Database::migrateToVersion3, &Database::migrateToVersion4, &Database::migrateToVersion5 };
 	return list;
 }
 
@@ -215,6 +215,18 @@ bool Database::migrateToVersion2()
 bool Database::migrateToVersion3() { return execute(SqlQueries::CREATE_TRACKING_STATE_TABLE); }
 
 bool Database::migrateToVersion4() { return execute(SqlQueries::CREATE_FAVORITE_ISSUES_TABLE); }
+
+bool Database::migrateToVersion5() { return execute(SqlQueries::ADD_ISSUE_STATUS_ID_COLUMN); }
+
+bool Database::clearIssueStatus(int id)
+{
+	QSqlQuery query;
+	if (!evaluateQueryPrepare(SqlQueries::CLEAR_ISSUE_STATUS_ID, query)) {
+		return false;
+	}
+	query.addBindValue(id);
+	return evaluateQueryExec(query);
+}
 
 bool Database::addFavoriteIssue(int issueId)
 {
@@ -358,7 +370,7 @@ static QVariant customFieldsColumn(const QVariantList& customFields)
 }
 
 int Database::addTimeEntry(int issueId, double hours, const QString& comments, const QDateTime& spentOn, int activityId,
-	const QVariantList& customFields)
+	const QVariantList& customFields, int issueStatusId)
 {
 	QSqlQuery query;
 	if (!evaluateQueryPrepare(SqlQueries::ADD_TIME_ENTRY, query)) {
@@ -372,6 +384,7 @@ int Database::addTimeEntry(int issueId, double hours, const QString& comments, c
 	query.addBindValue(spentOn);
 	query.addBindValue(activityId > 0 ? QVariant(activityId) : QVariant(QMetaType::fromType<int>()));
 	query.addBindValue(customFieldsColumn(customFields));
+	query.addBindValue(issueStatusId > 0 ? QVariant(issueStatusId) : QVariant(QMetaType::fromType<int>()));
 	query.addBindValue(now);
 	query.addBindValue(now);
 
@@ -489,6 +502,7 @@ QJsonObject Database::entryFromQuery(const QSqlQuery& query)
 	entry["redmine_id"] = query.value("redmine_id").toInt();
 	entry["activity_id"] = query.value("activity_id").toInt();
 	entry["custom_fields"] = QJsonDocument::fromJson(query.value("custom_fields").toString().toUtf8()).array();
+	entry["issue_status_id"] = query.value("issue_status_id").toInt();
 	return entry;
 }
 

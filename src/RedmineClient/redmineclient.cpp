@@ -386,10 +386,14 @@ void RedmineClient::deleteTimeEntry(int timeEntryId)
 	mNetworkManager->deleteResource(createRequest(ApiResources::TIME_ENTRY.arg(timeEntryId)));
 }
 
-void RedmineClient::getIssue(int issueId, bool quiet)
+void RedmineClient::getIssue(int issueId, bool quiet, bool withAllowedStatuses)
 {
 	setLoading(true);
-	QNetworkRequest request = createRequest(ApiResources::ISSUE.arg(QString::number(issueId)));
+	QUrlQuery query;
+	if (withAllowedStatuses) {
+		query.addQueryItem("include", "allowed_statuses");
+	}
+	QNetworkRequest request = createRequest(ApiResources::ISSUE.arg(QString::number(issueId)), query);
 	request.setAttribute(QUIET_ATTRIBUTE, quiet);
 	mNetworkManager->get(request);
 }

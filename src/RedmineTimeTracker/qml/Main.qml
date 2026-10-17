@@ -176,6 +176,9 @@ ApplicationWindow {
         onSubmitTimeEntry: function (localId, issueId, hours, comments, spentOn, activityId, customFields) {
             redmineClient.createTimeEntry(issueId, hours, comments, spentOn, activityId, customFields, localId);
         }
+        onSetIssueStatus: function (issueId, statusId) {
+            redmineClient.updateIssue(issueId, "", "", statusId);
+        }
         onUpdateTimeEntryOnRedmine: function (redmineId, hours, comments, spentOn, activityId, customFields, tag) {
             redmineClient.updateTimeEntry(redmineId, hours, comments, spentOn, activityId, customFields, tag);
         }
@@ -201,6 +204,10 @@ ApplicationWindow {
         }
         function onTimeEntryUpdateFailed(timeEntryId, requestTag) {
             timeTrackerInstance.discardRedmineUpdate(timeEntryId, requestTag);
+        }
+        // Refreshes the cached issue, e.g. after its status was set with a time entry.
+        function onIssueUpdated(issueId) {
+            redmineClient.getIssue(issueId, true);
         }
         function onTimeEntryDeleted(timeEntryId) {
             timeTrackerInstance.removeDeletedTimeEntry(timeEntryId);
