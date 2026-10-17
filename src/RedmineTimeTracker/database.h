@@ -11,6 +11,8 @@ namespace QRedmineClient {
 
 namespace SqlQueries {
 	STATIC_CONST_QSTRING(ENABLE_WAL_MODE, "PRAGMA journal_mode=WAL");
+	STATIC_CONST_QSTRING(GET_SCHEMA_VERSION, "PRAGMA user_version");
+	STATIC_CONST_QSTRING(SET_SCHEMA_VERSION, "PRAGMA user_version = %1");
 
 	STATIC_CONST_QSTRING(CREATE_TIME_ENTRY_TABLE,
 		"CREATE TABLE IF NOT EXISTS time_entries ("
@@ -93,7 +95,22 @@ namespace SqlQueries {
 
 class Database {
 public:
-	static bool initialize();
+	/*!
+	 * \brief initialize Opens the database and brings its schema up to date (see migrate()). Does
+	 * nothing if it's open already.
+	 * \param path Database file, or ":memory:"; defaultPath() if empty, where a database from the
+	 * location used before is moved to first
+	 */
+	static bool initialize(const QString& path = QString());
+
+	//! Closes the database, so initialize() can open another one (e.g. between tests).
+	static void close();
+
+	//! The database file in the platform's application data directory.
+	static QString defaultPath();
+
+	//! The schema version (SQLite's user_version): how many migrations have run.
+	static int schemaVersion();
 
 	/*!
 	 * \brief addTimeEntry Adds a local, not yet synced time entry
@@ -125,8 +142,6 @@ public:
 	 */
 	static QSet<int> linkedRedmineIds();
 
-	static bool createIssuesDatabase();
-
 	static bool addIssue(int issueId, const QString& subject, int projectId, const QString& projectName, int statusId,
 		const QString& description, const QDateTime& createdOn, const QDateTime& updatedOn);
 
@@ -143,6 +158,12 @@ public slots:
 	static bool updateSyncStatus(int id, int redmineId);
 
 private:
+	//! Runs the migrations the database hasn't had yet, each in a transaction.
+	static bool migrate();
+	static const QList<bool (*)()>& migrations();
+	static bool migrateToVersion1();
+	static bool execute(const QString& sql);
+
 	static bool evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& query);
 	static bool evaluateQueryExec(QSqlQuery& query);
 

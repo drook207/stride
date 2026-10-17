@@ -1,11 +1,14 @@
 #include "database.h"
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QJsonObject>
 #include <QLoggingCategory>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QStandardPaths>
 #include <qcontainerfwd.h>
 #include <qcoreapplication.h>
 #include <qjsonobject.h>
@@ -14,94 +17,152 @@
 Q_LOGGING_CATEGORY(lcDataBase, "qredmine.timeentry.database")
 
 namespace QRedmineClient {
-bool Database::initialize()
+
+static bool sInitialized = false;
+
+static const QString DATABASE_FILE_NAME = QStringLiteral("timeentries.db");
+
+QString Database::defaultPath()
 {
-	static bool initialized = false;
+	return QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)).absoluteFilePath(DATABASE_FILE_NAME);
+}
 
-	if (initialized) {
-		return initialized;
-	}
-
-	QDir tmpDir;
-	const auto homePath = QDir::homePath();
+// Where the database was kept before it moved to QStandardPaths::AppDataLocation: a directory named
+// after the application in ~/.config (Linux) or ~/AppData/Local (Windows). Elsewhere it ended up in
+// the working directory.
+static QString legacyPath()
+{
+	QString base;
 #ifdef Q_OS_WIN
-
-	tmpDir = QDir(homePath + "/AppData/Local");
+	base = QDir::homePath() + QStringLiteral("/AppData/Local");
+#elif defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+	base = QDir::homePath() + QStringLiteral("/.config");
+#else
+	return QDir::current().absoluteFilePath(QCoreApplication::applicationName() + "/" + DATABASE_FILE_NAME);
 #endif
-#ifdef Q_OS_LINUX
-	tmpDir = QDir(homePath + "/.config/");
-#endif
+	return QDir(base).absoluteFilePath(QCoreApplication::applicationName() + "/" + DATABASE_FILE_NAME);
+}
 
-	const QString databaseDirName = QCoreApplication::instance()->applicationName();
-
-	if (!tmpDir.exists(databaseDirName)) {
-		tmpDir.mkdir(databaseDirName);
+// Moves a database from its legacy location (with SQLite's -wal/-shm companions) to path, unless
+// there already is one at path.
+static void moveLegacyDatabase(const QString& path)
+{
+	const QString legacy = legacyPath();
+	if (legacy == path || !QFile::exists(legacy) || QFile::exists(path)) {
+		return;
 	}
-	QDir databaseDir(tmpDir.absoluteFilePath(databaseDirName));
+	for (const QString& suffix : { QString(), QStringLiteral("-wal"), QStringLiteral("-shm") }) {
+		if (!QFile::exists(legacy + suffix)) {
+			continue;
+		}
+		if (!QFile::rename(legacy + suffix, path + suffix) &&
+			!(QFile::copy(legacy + suffix, path + suffix) && QFile::remove(legacy + suffix))) {
+			qWarning(lcDataBase) << "Could not move the database from" << legacy << "to" << path;
+			return;
+		}
+	}
+	QDir().rmdir(QFileInfo(legacy).absolutePath()); // only if nothing else is left in it
+	qInfo(lcDataBase) << "Moved the database from" << legacy << "to" << path;
+}
+
+bool Database::initialize(const QString& path)
+{
+	if (sInitialized) {
+		return true;
+	}
+
+	const QString databaseName = path.isEmpty() ? defaultPath() : path;
+	if (path.isEmpty()) {
+		QDir().mkpath(QFileInfo(databaseName).absolutePath());
+		moveLegacyDatabase(databaseName);
+	}
 
 	QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-	const auto databaseName = databaseDir.absoluteFilePath("timeentries.db");
 	db.setDatabaseName(databaseName);
-
 	if (!db.open()) {
 		qWarning(lcDataBase) << QStringLiteral("Failed to open database: <%0>").arg(db.lastError().text());
 		return false;
 	}
 
-	QSqlQuery query;
-
-	if (!evaluateQueryPrepare(SqlQueries::ENABLE_WAL_MODE, query)) {
+	if (!execute(SqlQueries::ENABLE_WAL_MODE) || !migrate()) {
 		return false;
 	}
 
-	if (!evaluateQueryExec(query)) {
-		return false;
-	}
-
-	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRY_TABLE, query)) {
-		return false;
-	}
-
-	if (!evaluateQueryExec(query)) {
-		return false;
-	}
-
-	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRIES_CREATED_AT_INDEX, query)) {
-		return false;
-	}
-
-	if (!evaluateQueryExec(query)) {
-		return false;
-	}
-
-	if (!evaluateQueryPrepare(SqlQueries::CREATE_TIME_ENTRIES_SYNC_STATUS_INDEX, query)) {
-		return false;
-	}
-
-	if (!evaluateQueryExec(query)) {
-		return false;
-	}
-
-	if (!createIssuesDatabase()) {
-		return false;
-	}
-
-	initialized = true;
+	sInitialized = true;
 	return true;
 }
 
-bool Database::createIssuesDatabase()
+void Database::close()
+{
+	{
+		QSqlDatabase db = QSqlDatabase::database(QSqlDatabase::defaultConnection, false);
+		if (db.isValid()) {
+			db.close();
+		}
+	}
+	QSqlDatabase::removeDatabase(QSqlDatabase::defaultConnection);
+	sInitialized = false;
+}
+
+int Database::schemaVersion()
 {
 	QSqlQuery query;
-	if (!evaluateQueryPrepare(SqlQueries::CREATE_ISSUES_TABLE, query)) {
+	if (!evaluateQueryPrepare(SqlQueries::GET_SCHEMA_VERSION, query) || !evaluateQueryExec(query) || !query.next()) {
+		return -1;
+	}
+	return query.value(0).toInt();
+}
+
+bool Database::execute(const QString& sql)
+{
+	QSqlQuery query;
+	return evaluateQueryPrepare(sql, query) && evaluateQueryExec(query);
+}
+
+// Migration n brings the schema from version n to n + 1. Append new ones; never change one that
+// has been released, since existing databases have already run it.
+const QList<bool (*)()>& Database::migrations()
+{
+	static const QList<bool (*)()> list { &Database::migrateToVersion1 };
+	return list;
+}
+
+bool Database::migrate()
+{
+	const int version = schemaVersion();
+	if (version < 0) {
+		return false;
+	}
+	const auto& steps = migrations();
+	if (version > steps.size()) {
+		qWarning(lcDataBase) << "Database schema version" << version << "is newer than this app knows" << steps.size()
+							 << "- was it opened by a newer version?";
+		return true;
+	}
+	QSqlDatabase db = QSqlDatabase::database();
+	for (int next = version; next < steps.size(); ++next) {
+		db.transaction();
+		// PRAGMA doesn't take bound values; the version is an int, so formatting it in is safe.
+		if (!steps[next]() || !execute(SqlQueries::SET_SCHEMA_VERSION.arg(next + 1))) {
+			db.rollback();
+			qWarning(lcDataBase) << "Database migration to version" << next + 1 << "failed";
+			return false;
+		}
+		db.commit();
+		qCInfo(lcDataBase) << "Database migrated to schema version" << next + 1;
+	}
+	return true;
+}
+
+// The schema before versioning existed. Databases from then have version 0 too, so everything is
+// created only if missing, and the issues' project_name column (added later) is added if missing.
+bool Database::migrateToVersion1()
+{
+	if (!execute(SqlQueries::CREATE_TIME_ENTRY_TABLE) || !execute(SqlQueries::CREATE_TIME_ENTRIES_CREATED_AT_INDEX) ||
+		!execute(SqlQueries::CREATE_TIME_ENTRIES_SYNC_STATUS_INDEX) || !execute(SqlQueries::CREATE_ISSUES_TABLE)) {
 		return false;
 	}
 
-	if (!evaluateQueryExec(query)) {
-		return false;
-	}
-
-	// Migrate databases created before the project_name column existed.
 	QSqlQuery columns;
 	if (!evaluateQueryPrepare(SqlQueries::GET_ISSUES_COLUMNS, columns) || !evaluateQueryExec(columns)) {
 		return false;
@@ -110,15 +171,7 @@ bool Database::createIssuesDatabase()
 	while (columns.next()) {
 		hasProjectName = hasProjectName || columns.value("name").toString() == QStringLiteral("project_name");
 	}
-	if (!hasProjectName) {
-		QSqlQuery migration;
-		if (!evaluateQueryPrepare(SqlQueries::ADD_ISSUES_PROJECT_NAME_COLUMN, migration) ||
-			!evaluateQueryExec(migration)) {
-			return false;
-		}
-	}
-
-	return true;
+	return hasProjectName || execute(SqlQueries::ADD_ISSUES_PROJECT_NAME_COLUMN);
 }
 
 QList<int> Database::issueIdsWithoutProject(int limit)
