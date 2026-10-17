@@ -34,6 +34,8 @@ static constexpr auto ROUTING_ATTRIBUTE = static_cast<QNetworkRequest::Attribute
 //! belongs to
 static constexpr auto CUSTOM_FIELDS_GENERATION_ATTRIBUTE =
 	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 4);
+//! Request attribute carrying the RedmineClient::fetchKey() of a paged fetch's page
+static constexpr auto FETCH_KEY_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 6);
 //! Page size used by getAllProjects() and getOwnTimeEntries(); 100 is the most Redmine returns per
 //! request
 static constexpr int PAGE_SIZE = 100;
@@ -534,13 +536,14 @@ void RedmineClient::getOwnTimeEntries(const QString& from, const QString& to)
 	startPagedFetch(OwnTimeEntriesTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"), true);
 }
 
-void RedmineClient::getTimeEntryReport(const QString& from, const QString& to)
+void RedmineClient::getTimeEntryReport(const QString& from, const QString& to, int purpose)
 {
 	QUrlQuery query;
 	query.addQueryItem("user_id", "me");
 	query.addQueryItem("from", from);
 	query.addQueryItem("to", to);
-	startPagedFetch(TimeEntryReportTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"), true);
+	startPagedFetch(
+		TimeEntryReportTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"), true, purpose);
 }
 
 void RedmineClient::getAllProjects()
@@ -552,31 +555,34 @@ void RedmineClient::getAllProjects()
 }
 
 void RedmineClient::startPagedFetch(
-	RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key, bool quiet)
+	RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key, bool quiet, int purpose)
 {
-	PagedFetch& fetch = mPagedFetches[tag];
-	fetch = PagedFetch { resource, query, key, quiet, fetch.generation + 1, {} };
-	requestPage(tag, 0);
+	const int fetchKey = RedmineClient::fetchKey(tag, purpose);
+	PagedFetch& fetch = mPagedFetches[fetchKey];
+	fetch = PagedFetch { tag, purpose, resource, query, key, quiet, fetch.generation + 1, {} };
+	requestPage(fetchKey, 0);
 }
 
-void RedmineClient::requestPage(RequestTag tag, int offset)
+void RedmineClient::requestPage(int key, int offset)
 {
 	setLoading(true);
-	const PagedFetch& fetch = mPagedFetches[tag];
+	const PagedFetch& fetch = mPagedFetches[key];
 
 	QUrlQuery query = fetch.query;
 	query.addQueryItem("limit", QString::number(PAGE_SIZE));
 	query.addQueryItem("offset", QString::number(offset));
 
 	QNetworkRequest request = createRequest(fetch.resource, query);
-	request.setAttribute(ROUTING_ATTRIBUTE, tag);
+	request.setAttribute(ROUTING_ATTRIBUTE, fetch.tag);
+	request.setAttribute(FETCH_KEY_ATTRIBUTE, key);
 	request.setAttribute(GENERATION_ATTRIBUTE, fetch.generation);
 	mNetworkManager->get(request);
 }
 
-void RedmineClient::handlePagedReply(QNetworkReply* reply, RequestTag tag)
+void RedmineClient::handlePagedReply(QNetworkReply* reply)
 {
-	PagedFetch& fetch = mPagedFetches[tag];
+	const int key = reply->request().attribute(FETCH_KEY_ATTRIBUTE).toInt();
+	PagedFetch& fetch = mPagedFetches[key];
 	if (reply->request().attribute(GENERATION_ATTRIBUTE).toInt() != fetch.generation) {
 		return;
 	}
@@ -585,6 +591,10 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply, RequestTag tag)
 		qCWarning(lcRedmineClient) << "Could not fetch" << fetch.key << ":" << reply->errorString();
 		if (!fetch.quiet && reply->error() != QNetworkReply::ContentNotFoundError) {
 			emit errorOccurred(userErrorMessage(reply, response));
+		}
+		if (fetch.tag == TimeEntryReportTag) {
+			emit timeEntryReportFailed(
+				fetch.query.queryItemValue("from"), fetch.query.queryItemValue("to"), fetch.purpose);
 		}
 		return;
 	}
@@ -596,16 +606,17 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply, RequestTag tag)
 
 	const int nextOffset = response["offset"].toInt() + page.size();
 	if (!page.isEmpty() && nextOffset < response["total_count"].toInt()) {
-		requestPage(tag, nextOffset);
+		requestPage(key, nextOffset);
 		return;
 	}
 	const QJsonArray items = std::exchange(fetch.collected, QJsonArray());
-	if (tag == AllProjectsTag) {
+	if (fetch.tag == AllProjectsTag) {
 		emit projectsReceived(items);
-	} else if (tag == OwnTimeEntriesTag) {
+	} else if (fetch.tag == OwnTimeEntriesTag) {
 		emit ownTimeEntriesReceived(items);
-	} else if (tag == TimeEntryReportTag) {
-		emit timeEntryReportReceived(items, fetch.query.queryItemValue("from"), fetch.query.queryItemValue("to"));
+	} else if (fetch.tag == TimeEntryReportTag) {
+		emit timeEntryReportReceived(
+			items, fetch.query.queryItemValue("from"), fetch.query.queryItemValue("to"), fetch.purpose);
 	}
 }
 
@@ -800,7 +811,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	}
 	if (tag == AllProjectsTag || tag == OwnTimeEntriesTag || tag == TimeEntryReportTag) {
 		updateConnectionStateFromReply(reply);
-		handlePagedReply(reply, tag);
+		handlePagedReply(reply);
 		return;
 	}
 	if (tag == PermissionsTag) {

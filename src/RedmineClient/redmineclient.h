@@ -69,6 +69,11 @@ public:
 	};
 	Q_ENUM(ConnectionState)
 
+	//! What a getTimeEntryReport() is for. Reports for different purposes run side by side; a new
+	//! one supersedes only one for the same purpose still in progress.
+	enum ReportPurpose { OverviewReport, ExportReport, ReminderReport };
+	Q_ENUM(ReportPurpose)
+
 	static const QList<QNetworkReply::NetworkError> REASONS_FOR_CONNECTION_LOSS;
 
 	/*!
@@ -306,10 +311,11 @@ public slots:
 
 	/*!
 	 * \brief getTimeEntryReport Like getOwnTimeEntries(), for reports (e.g. a week's overview);
-	 * emits timeEntryReportReceived(). Separate so a report doesn't supersede the linking that
-	 * getOwnTimeEntries() serves, and vice versa.
+	 * emits timeEntryReportReceived(), or timeEntryReportFailed(). Separate so a report doesn't
+	 * supersede the linking that getOwnTimeEntries() serves, and vice versa.
+	 * \param purpose A ReportPurpose, passed on with the result
 	 */
-	void getTimeEntryReport(const QString& from, const QString& to);
+	void getTimeEntryReport(const QString& from, const QString& to, int purpose = OverviewReport);
 
 	/*!
 	 * \brief createProject
@@ -497,8 +503,15 @@ signals:
 	 * \param timeEntries All of the user's time entries asked for by getTimeEntryReport()
 	 * \param from The first day asked for, "yyyy-MM-dd"
 	 * \param to The last day asked for, "yyyy-MM-dd"
+	 * \param purpose As passed to getTimeEntryReport()
 	 */
-	void timeEntryReportReceived(const QJsonArray& timeEntries, const QString& from, const QString& to);
+	void timeEntryReportReceived(const QJsonArray& timeEntries, const QString& from, const QString& to, int purpose);
+
+	/*!
+	 * \brief timeEntryReportFailed Emitted when a getTimeEntryReport() request fails (quietly: not
+	 * reported via errorOccurred())
+	 */
+	void timeEntryReportFailed(const QString& from, const QString& to, int purpose);
 
 	/*!
 	 * \brief projectCreated
@@ -550,8 +563,10 @@ private:
 		PermissionsTag
 	};
 
-	//! A list fetched page after page (getAllProjects(), getOwnTimeEntries()).
+	//! A list fetched page after page (getAllProjects(), getOwnTimeEntries(), getTimeEntryReport()).
 	struct PagedFetch {
+		RequestTag tag = NoTag;
+		int purpose = 0; // ReportPurpose for reports
 		QString resource;
 		QUrlQuery query; // without limit/offset
 		QString key; // the list's key in each page's JSON
@@ -560,14 +575,18 @@ private:
 		QJsonArray collected; // items received so far
 	};
 
-	QHash<RequestTag, PagedFetch> mPagedFetches;
-	//! Starts fetching a list, superseding a fetch with the same tag still in progress.
-	void startPagedFetch(
-		RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key, bool quiet);
+	//! By fetchKey(): one fetch per tag and purpose at a time.
+	QHash<int, PagedFetch> mPagedFetches;
+
+	static int fetchKey(RequestTag tag, int purpose) { return tag * 100 + purpose; }
+
+	//! Starts fetching a list, superseding a fetch with the same tag and purpose still in progress.
+	void startPagedFetch(RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key,
+		bool quiet, int purpose = 0);
 	//! Requests the page starting at offset.
-	void requestPage(RequestTag tag, int offset);
+	void requestPage(int key, int offset);
 	//! Adds a received page, then requests the next one or emits all items.
-	void handlePagedReply(QNetworkReply* reply, RequestTag tag);
+	void handlePagedReply(QNetworkReply* reply);
 
 	//! Counts getCurrentUser() calls, so replies for a superseded permission lookup are ignored.
 	int mPermissionsGeneration = 0;
