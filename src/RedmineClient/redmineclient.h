@@ -158,12 +158,15 @@ public slots:
 
 	// Update an existing time entry
 	/*!
-	 * \brief updateTimeEntry
-	 * \param timeEntryId
+	 * \brief updateTimeEntry Changes an existing time entry; emits timeEntryUpdated() on success
+	 * \param timeEntryId Redmine's id of the time entry
 	 * \param hours
 	 * \param comments
+	 * \param spentOn New date as "yyyy-MM-dd", left unchanged if empty
+	 * \param activityId New activity, left unchanged if not positive
 	 */
-	void updateTimeEntry(int timeEntryId, double hours, const QString& comments);
+	void updateTimeEntry(
+		int timeEntryId, double hours, const QString& comments, const QString& spentOn = QString(), int activityId = 0);
 
 	// Get time entries for an issue
 	/*!

@@ -297,6 +297,58 @@ TEST_F(RedmineClientIntegrationTest, DeleteTimeEntrySendsDeleteAndEmitsTimeEntry
 	EXPECT_EQ(deletedId, 77);
 }
 
+TEST_F(RedmineClientIntegrationTest, UpdateTimeEntrySendsChangedFieldsAndEmitsTimeEntryUpdated)
+{
+	server->enqueueResponse(MockHttpResponse { 204, "No Content", "" });
+
+	int updatedId = -1;
+	QObject::connect(client.get(), &RedmineClient::timeEntryUpdated, [&](int id) { updatedId = id; });
+
+	client->updateTimeEntry(9, 2.5, "Reworked", "2026-10-15", 8);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryUpdated));
+
+	ASSERT_EQ(server->requests().size(), 1);
+	const RecordedHttpRequest& request = server->requests().first();
+	EXPECT_EQ(request.method.toStdString(), "PUT");
+	EXPECT_EQ(request.path.toStdString(), "/time_entries/9.json");
+
+	QJsonObject timeEntry = bodyAsObject(request)["time_entry"].toObject();
+	EXPECT_DOUBLE_EQ(timeEntry["hours"].toDouble(), 2.5);
+	EXPECT_EQ(timeEntry["comments"].toString().toStdString(), "Reworked");
+	EXPECT_EQ(timeEntry["spent_on"].toString().toStdString(), "2026-10-15");
+	EXPECT_EQ(timeEntry["activity_id"].toInt(), 8);
+
+	EXPECT_EQ(updatedId, 9);
+}
+
+TEST_F(RedmineClientIntegrationTest, UpdateTimeEntryLeavesDateAndActivityUnchangedWhenNotGiven)
+{
+	server->enqueueResponse(MockHttpResponse { 204, "No Content", "" });
+
+	client->updateTimeEntry(9, 1.0, "Only hours and comment");
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryUpdated));
+
+	QJsonObject timeEntry = bodyAsObject(server->requests().first())["time_entry"].toObject();
+	EXPECT_FALSE(timeEntry.contains("spent_on"));
+	EXPECT_FALSE(timeEntry.contains("activity_id"));
+}
+
+TEST_F(RedmineClientIntegrationTest, UpdatedIdIsParsedWhenBaseUrlHasASubpath)
+{
+	// Redmine installed under a subpath, e.g. https://host/redmine/
+	client->setBaseUrl(server->baseUrl() + QStringLiteral("redmine/"));
+	server->enqueueResponse(MockHttpResponse { 204, "No Content", "" });
+
+	int updatedId = -1;
+	QObject::connect(client.get(), &RedmineClient::timeEntryUpdated, [&](int id) { updatedId = id; });
+
+	client->updateTimeEntry(31, 1.0, "");
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryUpdated));
+
+	EXPECT_EQ(server->requests().first().path.toStdString(), "/redmine/time_entries/31.json");
+	EXPECT_EQ(updatedId, 31);
+}
+
 TEST_F(RedmineClientIntegrationTest, GetEnumerationsTimeEntryActivitiesEmitsTimeEntryActivitiesReceived)
 {
 	server->enqueueResponse(

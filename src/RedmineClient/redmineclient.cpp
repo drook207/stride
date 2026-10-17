@@ -3,6 +3,7 @@
 #include <QLoggingCategory>
 #include <QMetaEnum>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QStringLiteral>
 #include <QTranslator>
 #include <QUrlQuery>
@@ -28,6 +29,15 @@ static QString keychainService()
 {
 	const QString appName = QCoreApplication::applicationName();
 	return appName.isEmpty() ? QStringLiteral("QRedmineTimeTracker") : appName;
+}
+
+// Id of the resource a request was for, from the end of its path ("…/time_entries/42.json" -> 42),
+// so it works no matter how many path segments the base URL has (e.g. https://host/redmine/).
+static int resourceIdFromPath(const QString& path)
+{
+	static const QRegularExpression idPattern(QStringLiteral("/(\\d+)\\.json$"));
+	const auto match = idPattern.match(path);
+	return match.hasMatch() ? match.captured(1).toInt() : -1;
 }
 
 const QList<QNetworkReply::NetworkError> RedmineClient::REASONS_FOR_CONNECTION_LOSS = {
@@ -310,7 +320,8 @@ void RedmineClient::createTimeEntry(
 	mNetworkManager->post(createRequest(ApiResources::TIME_ENTRIES), data);
 }
 
-void RedmineClient::updateTimeEntry(int timeEntryId, double hours, const QString& comments)
+void RedmineClient::updateTimeEntry(
+	int timeEntryId, double hours, const QString& comments, const QString& spentOn, int activityId)
 {
 	setLoading(true);
 
@@ -318,6 +329,12 @@ void RedmineClient::updateTimeEntry(int timeEntryId, double hours, const QString
 	QJsonObject timeEntry;
 	timeEntry["hours"] = hours;
 	timeEntry["comments"] = comments;
+	if (!spentOn.isEmpty()) {
+		timeEntry["spent_on"] = spentOn;
+	}
+	if (activityId > 0) {
+		timeEntry["activity_id"] = activityId;
+	}
 	timeEntryData["time_entry"] = timeEntry;
 
 	QJsonDocument doc(timeEntryData);
@@ -580,10 +597,8 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			}
 			break;
 		case QNetworkAccessManager::PutOperation:
-			// TODO Add logic to ensure that the recepted id is the correct one
-			// TODO Make the split more obvious
 			path = reply->url().path();
-			id = path.split('/').at(2).split('.').at(0).toInt();
+			id = resourceIdFromPath(path);
 			if (path.contains("/time_entries/")) {
 				emit timeEntryUpdated(id);
 			} else if (path.contains("/issues/")) {
@@ -606,7 +621,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			break;
 		case QNetworkAccessManager::DeleteOperation:
 			path = reply->url().path();
-			id = path.split('/').at(2).split('.').at(0).toInt();
+			id = resourceIdFromPath(path);
 			if (path.contains("/time_entries/")) {
 				emit timeEntryDeleted(id);
 			} else if (path.contains("/issues/")) {
