@@ -32,6 +32,8 @@ Dialog {
 	property double hours: 0.0
 	//! Redmine time entry activity id; 0 lets Redmine use its default activity.
 	property int activityId: 0
+	//! Custom field values to submit ([{id, value}]), see SpecialFieldComboBox.
+	property var customFields: []
 
 	onAccepted: {
 
@@ -52,7 +54,7 @@ Dialog {
 										   })
 
 		// Submit to Redmine
-		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult, docroot.activityId)
+		docroot.client.createTimeEntry(issueIdResult, hoursResult, commentsResult, spentOnResult, docroot.activityId, docroot.customFields)
 	}
 
 	onRejected: {

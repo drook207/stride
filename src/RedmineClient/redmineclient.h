@@ -11,6 +11,7 @@
 #include <QString>
 #include <QTimer>
 #include <QUrlQuery>
+#include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 #include <QtQmlIntegration/qqmlintegration.h>
 
@@ -151,10 +152,13 @@ public slots:
 	 * \param comments
 	 * \param spentOn
 	 * \param activityId
+	 * \param customFields Custom field values as [{"id": <field id>, "value": <value>}], see
+	 * getTimeEntryCustomFields()
 	 */
 	void createTimeEntry(int issueId, double hours, const QString& comments,
 		const QString& spentOn = QDateTime::currentDateTime().toString("yyyy-MM-dd"),
-		int activityId = 4); // 4 is often "Development"
+		int activityId = 4, // 4 is often "Development"
+		const QVariantList& customFields = QVariantList());
 
 	// Update an existing time entry
 	/*!
@@ -164,9 +168,11 @@ public slots:
 	 * \param comments
 	 * \param spentOn New date as "yyyy-MM-dd", left unchanged if empty
 	 * \param activityId New activity, left unchanged if not positive
+	 * \param customFields Custom field values to change, as for createTimeEntry(); fields not
+	 * listed are left unchanged
 	 */
-	void updateTimeEntry(
-		int timeEntryId, double hours, const QString& comments, const QString& spentOn = QString(), int activityId = 0);
+	void updateTimeEntry(int timeEntryId, double hours, const QString& comments, const QString& spentOn = QString(),
+		int activityId = 0, const QVariantList& customFields = QVariantList());
 
 	// Get time entries for an issue
 	/*!
@@ -190,6 +196,18 @@ public slots:
 	 * \brief getCustomFields
 	 */
 	void getCustomFields();
+
+	/*!
+	 * \brief getTimeEntryCustomFields Fetches the custom fields of time entries, emitting
+	 * timeEntryCustomFieldsReceived()
+	 *
+	 * Redmine only lists custom fields with their possible values to admins (GET
+	 * /custom_fields.json). For everyone else, this falls back to the fields and values found on
+	 * the latest time entries the user can see: values nobody has used yet are missing then, and
+	 * each field's format is guessed (a field holding only "0"/"1" is taken as a boolean). Neither
+	 * request reports errors via errorOccurred().
+	 */
+	void getTimeEntryCustomFields();
 
 	/*!
 	 * \brief getIssue
@@ -240,7 +258,7 @@ public slots:
 	void getProject(int projectId);
 
 	/*!
-	 * \brief getProjects List projects
+	 * \brief getProjects List projects, including the time entry activities each one allows
 	 * \param limit Maximum number of projects to return
 	 * \param offset Skip this many projects (for pagination)
 	 */
@@ -322,6 +340,13 @@ signals:
 	void timeEntryActivitiesReceived(const QJsonArray& activities);
 
 	void customFieldsReceived(const QJsonArray& customFields);
+
+	/*!
+	 * \brief timeEntryCustomFieldsReceived Result of getTimeEntryCustomFields()
+	 * \param customFields Fields as listed by Redmine's /custom_fields.json:
+	 * [{"id", "name", "field_format", "possible_values": [{"value", "label"}], ...}]
+	 */
+	void timeEntryCustomFieldsReceived(const QJsonArray& customFields);
 
 	/*!
 	 * \brief errorOccurred Emitted when a request fails (except for 404 Not Found)
@@ -410,6 +435,12 @@ private slots:
 	void checkConnection();
 
 private:
+	//! Marks requests whose replies are handled separately from handleNetworkReply()'s generic
+	//! routing (stored in QNetworkRequest::User).
+	enum RequestTag { NoTag, TimeEntryCustomFieldsTag, TimeEntryCustomFieldsFallbackTag };
+
+	void handleTimeEntryCustomFieldsReply(QNetworkReply* reply, RequestTag tag);
+
 	/*!
 	 * \brief setLoading
 	 * \param loading

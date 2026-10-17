@@ -31,6 +31,9 @@ ApplicationWindow {
 
     //! Redmine's projects ({id, name, identifier, ...}), for picking one in Add Issue.
     property var projects: []
+    //! The time entry custom field named "Special" (see RedmineClient::getTimeEntryCustomFields),
+    //! or null if the server has none; drives the Special combo boxes.
+    property var specialField: null
 
     RedmineClient {
         id: redmineClient
@@ -54,6 +57,7 @@ ApplicationWindow {
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
         redmineClient.getProjects(100, 0);
+        redmineClient.getTimeEntryCustomFields();
         // Recent entries show their issue's project, which needs the issue cached locally.
         for (const issueId of timeTrackerInstance.issueIdsWithoutProject()) {
             redmineClient.getIssue(issueId);
@@ -70,8 +74,17 @@ ApplicationWindow {
     }
     Connections {
         target: redmineClient
+        function onTimeEntryCustomFieldsReceived(fields) {
+            window.specialField = fields.find(field => field.name.toLowerCase() === "special") || null;
+        }
+        // The API key is read from the keychain asynchronously, possibly after startup's requests;
+        // the custom fields depend on who is asking (see getTimeEntryCustomFields), so ask again.
+        function onApiKeyChanged() {
+            redmineClient.getTimeEntryCustomFields();
+        }
         function onProjectsReceived(projects) {
             window.projects = projects;
+            activitiesModelInstance.setProjectActivities(projects);
         }
         function onTimeEntryUpdated(timeEntryId) {
             timeTrackerInstance.applyRedmineUpdate(timeEntryId);
@@ -110,6 +123,7 @@ ApplicationWindow {
             timeTracker: timeTrackerInstance
             activitiesModel: activitiesModelInstance
             projects: window.projects
+            specialField: window.specialField
             submitDialog: subDialog
         }
     }
@@ -121,6 +135,7 @@ ApplicationWindow {
             timeTracker: timeTrackerInstance
             activitiesModel: activitiesModelInstance
             projects: window.projects
+            specialField: window.specialField
             submitDialog: subDialog
         }
     }

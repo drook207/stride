@@ -242,6 +242,21 @@ void TimeTracker::applyRedmineUpdate(int redmineId)
 			activity["id"] = changes["activity_id"];
 			entry["activity"] = activity;
 		}
+		// Changed custom field values ([{id, value}]) replace the entry's values of those fields.
+		if (changes.contains("custom_fields")) {
+			QVariantList fields = entry["custom_fields"].toList();
+			for (const auto& changed : changes["custom_fields"].toList()) {
+				const QVariantMap change = changed.toMap();
+				for (auto& existing : fields) {
+					QVariantMap field = existing.toMap();
+					if (field["id"].toInt() == change["id"].toInt()) {
+						field["value"] = change["value"];
+						existing = field;
+					}
+				}
+			}
+			entry["custom_fields"] = fields;
+		}
 		value = entry;
 		changed = true;
 	}

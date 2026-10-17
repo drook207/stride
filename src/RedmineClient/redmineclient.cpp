@@ -293,8 +293,8 @@ void RedmineClient::toggleConnectionState(ConnectionState newConnectionState)
 	setConnectionState(target);
 }
 
-void RedmineClient::createTimeEntry(
-	int issueId, double hours, const QString& comments, const QString& spentOn, int activityId)
+void RedmineClient::createTimeEntry(int issueId, double hours, const QString& comments, const QString& spentOn,
+	int activityId, const QVariantList& customFields)
 {
 	setLoading(true);
 
@@ -306,6 +306,9 @@ void RedmineClient::createTimeEntry(
 	timeEntry["comments"] = comments;
 	if (activityId > 0) {
 		timeEntry["activity_id"] = activityId;
+	}
+	if (!customFields.isEmpty()) {
+		timeEntry["custom_fields"] = QJsonArray::fromVariantList(customFields);
 	}
 
 	// FIXME Currently not supported
@@ -320,8 +323,8 @@ void RedmineClient::createTimeEntry(
 	mNetworkManager->post(createRequest(ApiResources::TIME_ENTRIES), data);
 }
 
-void RedmineClient::updateTimeEntry(
-	int timeEntryId, double hours, const QString& comments, const QString& spentOn, int activityId)
+void RedmineClient::updateTimeEntry(int timeEntryId, double hours, const QString& comments, const QString& spentOn,
+	int activityId, const QVariantList& customFields)
 {
 	setLoading(true);
 
@@ -334,6 +337,9 @@ void RedmineClient::updateTimeEntry(
 	}
 	if (activityId > 0) {
 		timeEntry["activity_id"] = activityId;
+	}
+	if (!customFields.isEmpty()) {
+		timeEntry["custom_fields"] = QJsonArray::fromVariantList(customFields);
 	}
 	timeEntryData["time_entry"] = timeEntry;
 
@@ -448,6 +454,8 @@ void RedmineClient::getProjects(int limit, int offset)
 	QUrlQuery query;
 	query.addQueryItem("limit", QString::number(limit));
 	query.addQueryItem("offset", QString::number(offset));
+	// The activities each project allows, which can differ from the shared ones.
+	query.addQueryItem("include", "time_entry_activities");
 
 	mNetworkManager->get(createRequest(ApiResources::PROJECTS, query));
 }
@@ -526,11 +534,104 @@ void RedmineClient::getCustomFields()
 	mNetworkManager->get(createRequest(endpoint));
 }
 
+void RedmineClient::getTimeEntryCustomFields()
+{
+	QNetworkRequest request = createRequest(QStringLiteral("custom_fields.json"));
+	request.setAttribute(QNetworkRequest::User, TimeEntryCustomFieldsTag);
+	mNetworkManager->get(request);
+}
+
+// Custom fields of time entries as seen on the entries themselves (id, name, value): used when
+// /custom_fields.json is admin-only. The possible values are the ones in use, and the format is
+// guessed from them.
+static QJsonArray timeEntryCustomFieldsFromEntries(const QJsonArray& entries)
+{
+	QMap<int, QString> names;
+	QMap<int, QStringList> values;
+	for (const auto& entry : entries) {
+		for (const auto& fieldValue : entry.toObject().value(QStringLiteral("custom_fields")).toArray()) {
+			const QJsonObject field = fieldValue.toObject();
+			const int id = field.value(QStringLiteral("id")).toInt();
+			names.insert(id, field.value(QStringLiteral("name")).toString());
+			QStringList& known = values[id];
+			const QJsonValue value = field.value(QStringLiteral("value"));
+			const QJsonArray used = value.isArray() ? value.toArray() : QJsonArray { value };
+			for (const auto& item : used) {
+				const QString text = item.toString();
+				if (!text.isEmpty() && !known.contains(text)) {
+					known.append(text);
+				}
+			}
+		}
+	}
+
+	QJsonArray fields;
+	for (auto it = names.cbegin(); it != names.cend(); ++it) {
+		QStringList used = values.value(it.key());
+		used.sort();
+		const bool boolean = !used.isEmpty() && std::all_of(used.cbegin(), used.cend(), [](const QString& value) {
+			return value == QStringLiteral("0") || value == QStringLiteral("1");
+		});
+		QJsonArray possibleValues;
+		for (const auto& value : std::as_const(used)) {
+			possibleValues.append(
+				QJsonObject { { QStringLiteral("value"), value }, { QStringLiteral("label"), value } });
+		}
+		fields.append(QJsonObject { { QStringLiteral("id"), it.key() }, { QStringLiteral("name"), it.value() },
+			{ QStringLiteral("customized_type"), QStringLiteral("time_entry") },
+			{ QStringLiteral("field_format"), boolean ? QStringLiteral("bool") : QStringLiteral("list") },
+			{ QStringLiteral("possible_values"), possibleValues } });
+	}
+	return fields;
+}
+
+void RedmineClient::handleTimeEntryCustomFieldsReply(QNetworkReply* reply, RequestTag tag)
+{
+	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
+
+	if (reply->error() != QNetworkReply::NoError) {
+		if (tag == TimeEntryCustomFieldsTag) {
+			// Typically 403: only admins may list custom fields. Look at recent time entries instead.
+			qCDebug(lcRedmineClient) << "Custom fields not listable (" << reply->errorString()
+									 << "), deriving them from time entries";
+			QUrlQuery query;
+			query.addQueryItem("limit", "100");
+			QNetworkRequest request = createRequest(ApiResources::TIME_ENTRIES, query);
+			request.setAttribute(QNetworkRequest::User, TimeEntryCustomFieldsFallbackTag);
+			mNetworkManager->get(request);
+		} else {
+			qCWarning(lcRedmineClient) << "Could not determine time entry custom fields:" << reply->errorString();
+		}
+		return;
+	}
+
+	if (tag == TimeEntryCustomFieldsTag) {
+		QJsonArray fields;
+		for (const auto& field : response.value(QStringLiteral("custom_fields")).toArray()) {
+			if (field.toObject().value(QStringLiteral("customized_type")).toString() == QStringLiteral("time_entry")) {
+				fields.append(field);
+			}
+		}
+		emit timeEntryCustomFieldsReceived(fields);
+	} else {
+		emit timeEntryCustomFieldsReceived(
+			timeEntryCustomFieldsFromEntries(response.value(QStringLiteral("time_entries")).toArray()));
+	}
+}
+
 void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 {
 	reply->deleteLater();
 	setLoading(false);
 	updateApiVersionFromReply(reply);
+
+	// Requests answered separately: kept out of the error reporting and the generic routing below
+	// (the fallback's time entries must not show up as e.g. timeEntriesReceived()).
+	const auto tag = static_cast<RequestTag>(reply->request().attribute(QNetworkRequest::User).toInt());
+	if (tag == TimeEntryCustomFieldsTag || tag == TimeEntryCustomFieldsFallbackTag) {
+		handleTimeEntryCustomFieldsReply(reply, tag);
+		return;
+	}
 
 	if (reply->error() != QNetworkReply::NoError) {
 		QByteArray data = reply->readAll();

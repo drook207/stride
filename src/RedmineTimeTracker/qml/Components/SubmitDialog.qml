@@ -23,6 +23,8 @@ Dialog {
 	property string comment: ""
 	property string spentOn: ""
 	property int activityId: 0
+	//! Custom field values to submit ([{id, value}]), see SpecialFieldComboBox.
+	property var customFields: []
 
 	title: qsTr("Submit Time Entry")
 	standardButtons: Dialog.Yes | Dialog.No
@@ -48,7 +50,7 @@ Dialog {
 										   })
 
 		// Submit to Redmine
-		docroot.client.createTimeEntry(issueId, hours, comments, docroot.spentOn === "" ? Qt.formatDate(new Date(), "yyyy-MM-dd") : docroot.spentOn, docroot.activityId)
+		docroot.client.createTimeEntry(issueId, hours, comments, docroot.spentOn === "" ? Qt.formatDate(new Date(), "yyyy-MM-dd") : docroot.spentOn, docroot.activityId, docroot.customFields)
 		docroot.comment = ""
 	}
 

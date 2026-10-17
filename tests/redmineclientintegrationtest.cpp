@@ -181,6 +181,8 @@ TEST_F(RedmineClientIntegrationTest, GetProjectsWithPaginationSendsQueryParamete
 	EXPECT_EQ(request.path.toStdString(), "/projects.json");
 	EXPECT_EQ(request.query.queryItemValue("limit").toStdString(), "25");
 	EXPECT_EQ(request.query.queryItemValue("offset").toStdString(), "50");
+	// The activities each project allows come along, see TimeEntryActivitiesModel.
+	EXPECT_EQ(request.query.queryItemValue("include").toStdString(), "time_entry_activities");
 }
 
 TEST_F(RedmineClientIntegrationTest, CreateProjectSendsPostBodyAndEmitsProjectCreated)
@@ -347,6 +349,86 @@ TEST_F(RedmineClientIntegrationTest, UpdatedIdIsParsedWhenBaseUrlHasASubpath)
 
 	EXPECT_EQ(server->requests().first().path.toStdString(), "/redmine/time_entries/31.json");
 	EXPECT_EQ(updatedId, 31);
+}
+
+TEST_F(RedmineClientIntegrationTest, TimeEntryCustomFieldsAreTakenFromCustomFieldsListForAdmins)
+{
+	server->enqueueResponse(MockHttpResponse { 200, "OK",
+		R"({"custom_fields":[
+			{"id":1,"name":"Special","customized_type":"time_entry","field_format":"list",
+			 "possible_values":[{"value":"Overtime","label":"Overtime"},{"value":"Weekend","label":"Weekend"}]},
+			{"id":3,"name":"Customer","customized_type":"issue","field_format":"list","possible_values":[]}]})" });
+
+	QJsonArray fields;
+	QObject::connect(client.get(), &RedmineClient::timeEntryCustomFieldsReceived,
+		[&](const QJsonArray& received) { fields = received; });
+
+	client->getTimeEntryCustomFields();
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryCustomFieldsReceived));
+
+	EXPECT_EQ(server->requests().first().path.toStdString(), "/custom_fields.json");
+	ASSERT_EQ(fields.size(), 1); // the issue field is left out
+	EXPECT_EQ(fields[0].toObject()["name"].toString().toStdString(), "Special");
+	EXPECT_EQ(fields[0].toObject()["possible_values"].toArray().size(), 2);
+}
+
+TEST_F(RedmineClientIntegrationTest, TimeEntryCustomFieldsFallBackToTimeEntriesWithoutReportingAnError)
+{
+	// Non-admins may not list custom fields; the fields are then derived from recent time entries.
+	server->enqueueResponse(MockHttpResponse { 403, "Forbidden", "" });
+	server->enqueueResponse(MockHttpResponse { 200, "OK",
+		R"({"time_entries":[
+			{"id":1,"custom_fields":[{"id":1,"name":"Special","value":"Overtime"},{"id":2,"name":"Billable","value":"1"}]},
+			{"id":2,"custom_fields":[{"id":1,"name":"Special","value":null},{"id":2,"name":"Billable","value":"0"}]},
+			{"id":3,"custom_fields":[{"id":1,"name":"Special","value":"On-call"},{"id":2,"name":"Billable","value":"1"}]}]})" });
+
+	bool errorFired = false;
+	bool entriesFired = false;
+	QJsonArray fields;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
+	QObject::connect(
+		client.get(), &RedmineClient::timeEntriesReceived, [&](const QJsonArray&) { entriesFired = true; });
+	QObject::connect(client.get(), &RedmineClient::timeEntryCustomFieldsReceived,
+		[&](const QJsonArray& received) { fields = received; });
+
+	client->getTimeEntryCustomFields();
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryCustomFieldsReceived));
+
+	ASSERT_EQ(server->requests().size(), 2);
+	EXPECT_EQ(server->requests()[1].path.toStdString(), "/time_entries.json");
+	EXPECT_FALSE(errorFired);
+	EXPECT_FALSE(entriesFired); // not mistaken for e.g. Search Issue results
+
+	ASSERT_EQ(fields.size(), 2);
+	const QJsonObject special = fields[0].toObject();
+	EXPECT_EQ(special["name"].toString().toStdString(), "Special");
+	EXPECT_EQ(special["field_format"].toString().toStdString(), "list");
+	const QJsonArray values = special["possible_values"].toArray();
+	ASSERT_EQ(values.size(), 2);
+	EXPECT_EQ(values[0].toObject()["value"].toString().toStdString(), "On-call");
+	EXPECT_EQ(values[1].toObject()["value"].toString().toStdString(), "Overtime");
+	EXPECT_EQ(fields[1].toObject()["field_format"].toString().toStdString(), "bool");
+}
+
+TEST_F(RedmineClientIntegrationTest, CreateAndUpdateTimeEntrySendCustomFields)
+{
+	const QVariantList customFields { QVariantMap { { "id", 1 }, { "value", "Overtime" } } };
+
+	server->enqueueResponse(MockHttpResponse { 201, "Created", R"({"time_entry":{"id":5}})" });
+	client->createTimeEntry(42, 1.0, "", "2026-10-16", 9, customFields);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryCreated));
+
+	server->enqueueResponse(MockHttpResponse { 204, "No Content", "" });
+	client->updateTimeEntry(5, 2.0, "", "", 0, customFields);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryUpdated));
+
+	ASSERT_EQ(server->requests().size(), 2);
+	for (const auto& request : server->requests()) {
+		const QJsonArray sent = bodyAsObject(request)["time_entry"].toObject()["custom_fields"].toArray();
+		ASSERT_EQ(sent.size(), 1);
+		EXPECT_EQ(sent[0].toObject()["id"].toInt(), 1);
+		EXPECT_EQ(sent[0].toObject()["value"].toString().toStdString(), "Overtime");
+	}
 }
 
 TEST_F(RedmineClientIntegrationTest, GetEnumerationsTimeEntryActivitiesEmitsTimeEntryActivitiesReceived)
