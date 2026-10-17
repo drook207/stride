@@ -175,6 +175,15 @@ if(IOS)
 endif()
 target_include_directories(QRedmineTimeTracker
          INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+# Application identity, used for QSettings and the data directory (see main.cpp). The version is
+# the top-level project's.
+target_compile_definitions(
+ QRedmineTimeTracker
+ PRIVATE APP_ORGANIZATION_NAME="QRedmine"
+         APP_ORGANIZATION_DOMAIN="drook207.gitlab.io"
+         APP_NAME="Stride"
+         APP_VERSION="${CMAKE_PROJECT_VERSION}")
+
 target_link_libraries(
  QRedmineTimeTracker
  PRIVATE Qt6::Core
