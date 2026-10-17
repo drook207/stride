@@ -74,6 +74,9 @@ qt_add_qml_module(
  qml/Components/TimePickerField.qml
  qml/Components/TimeRangeRow.qml
  qml/Components/EditTimeEntryDialog.qml
+ qml/Components/TrayIcon.qml
+ qml/Components/IssueStatusPicker.qml
+ qml/Components/ExportDialog.qml
  qml/Components/ActivityComboBox.qml
  qml/Components/SpecialFieldComboBox.qml
  qml/Desktop/DesktopShell.qml
@@ -90,6 +93,10 @@ qt_add_qml_module(
  timeentryactivitiesmodel.cpp
  timeoverview.h
  timeoverview.cpp
+ reminders.h
+ reminders.cpp
+ timeentryexport.h
+ timeentryexport.cpp
  RESOURCES
  qml/Assets/Fonts/Font-Awesome-6-Free-Regular-400.otf
  qml/Assets/Icons/solid/gear.svg

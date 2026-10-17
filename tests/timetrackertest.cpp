@@ -279,6 +279,23 @@ TEST_F(TimeTrackerTest, FavoriteIssuesAreToggledAndKept)
 	EXPECT_EQ(restarted.favoriteIssues().first().toMap()["issue_id"].toInt(), 7);
 }
 
+TEST_F(TimeTrackerTest, SleepCanBeLeftOutWhileTrackingGoesOn)
+{
+	tracker->startTracking(42);
+	const QDateTime now = QDateTime::currentDateTime();
+	tracker->noticeTick(now.addSecs(-3600)); // last tick before the computer slept for an hour
+	tracker->noticeTick(now);
+
+	ASSERT_TRUE(tracker->interruptedAt().isValid());
+	EXPECT_TRUE(tracker->interruptedBySleep());
+	tracker->resolveInterruption(false);
+
+	EXPECT_FALSE(tracker->interruptedAt().isValid());
+	EXPECT_TRUE(tracker->isTracking());
+	EXPECT_FALSE(tracker->isPaused());
+	EXPECT_LT(tracker->getElapsedHours(), 0.01); // the hour asleep isn't counted
+}
+
 TEST_F(TimeTrackerTest, PendingEntryThatReachedRedmineIsLinkedInsteadOfSentAgain)
 {
 	int sent = 0;
@@ -315,4 +332,38 @@ TEST_F(TimeTrackerTest, ChangesMadeWhileSendingAreSentAfterwards)
 
 	EXPECT_EQ(updatedId, 900);
 	EXPECT_EQ(updatedComment.toStdString(), "New");
+}
+
+TEST_F(TimeTrackerTest, TimeWorkedBetweenWakingUpAndAnsweringCounts)
+{
+	tracker->startTracking(42);
+	const QDateTime now = QDateTime::currentDateTime();
+	tracker->noticeTick(now.addSecs(-3 * 3600)); // last tick before sleeping
+	tracker->noticeTick(now.addSecs(-1800)); // woke up half an hour ago, worked since
+	ASSERT_TRUE(tracker->interruptedBySleep());
+
+	tracker->resolveInterruption(false); // answered just now
+
+	EXPECT_NEAR(tracker->getElapsedHours(), 0.5, 0.01);
+}
+
+TEST_F(TimeTrackerTest, IssueStatusIsSetOnlyOnceTheEntryIsOnRedmine)
+{
+	QList<QPair<int, int>> statuses;
+	QObject::connect(tracker.get(), &TimeTracker::setIssueStatus, [&](int issueId, int statusId) {
+		statuses.append({ issueId, statusId });
+	});
+
+	const int rejected = tracker->addRecentEntry(
+		{ { "issueId", 10 }, { "hours", 1.0 }, { "comments", "" }, { "date", day(1) }, { "issueStatusId", 3 } });
+	tracker->submissionFailed(rejected, 422, "Closed project");
+	EXPECT_TRUE(statuses.isEmpty());
+
+	const int created = tracker->addRecentEntry(
+		{ { "issueId", 11 }, { "hours", 1.0 }, { "comments", "" }, { "date", day(1) }, { "issueStatusId", 5 } });
+	tracker->linkCreatedTimeEntry(remote(950, 11, 1.0, ""), created);
+	tracker->linkCreatedTimeEntry(remote(950, 11, 1.0, ""), created); // set once only
+
+	ASSERT_EQ(statuses.size(), 1);
+	EXPECT_EQ(statuses.first(), qMakePair(11, 5));
 }

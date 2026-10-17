@@ -386,10 +386,14 @@ void RedmineClient::deleteTimeEntry(int timeEntryId)
 	mNetworkManager->deleteResource(createRequest(ApiResources::TIME_ENTRY.arg(timeEntryId)));
 }
 
-void RedmineClient::getIssue(int issueId, bool quiet)
+void RedmineClient::getIssue(int issueId, bool quiet, bool withAllowedStatuses)
 {
 	setLoading(true);
-	QNetworkRequest request = createRequest(ApiResources::ISSUE.arg(QString::number(issueId)));
+	QUrlQuery query;
+	if (withAllowedStatuses) {
+		query.addQueryItem("include", "allowed_statuses");
+	}
+	QNetworkRequest request = createRequest(ApiResources::ISSUE.arg(QString::number(issueId)), query);
 	request.setAttribute(QUIET_ATTRIBUTE, quiet);
 	mNetworkManager->get(request);
 }
@@ -589,7 +593,7 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply)
 	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
 	if (reply->error() != QNetworkReply::NoError) {
 		qCWarning(lcRedmineClient) << "Could not fetch" << fetch.key << ":" << reply->errorString();
-		if (!fetch.quiet && reply->error() != QNetworkReply::ContentNotFoundError) {
+		if (!fetch.quiet && reply->error() != QNetworkReply::ContentNotFoundError && !mBaseUrl.isEmpty()) {
 			emit errorOccurred(userErrorMessage(reply, response));
 		}
 		if (fetch.tag == TimeEntryReportTag) {
@@ -830,8 +834,10 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 		const bool createdTimeEntry = reply->operation() == QNetworkAccessManager::PostOperation &&
 			reply->url().path().endsWith(ApiResources::TIME_ENTRIES);
+		// Without a server set up (e.g. on first start) every request fails; that's no news.
 		if (reply->error() != QNetworkReply::ContentNotFoundError &&
-			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0)) {
+			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0) &&
+			!mBaseUrl.isEmpty()) {
 			emit errorOccurred(userErrorMessage(reply, response));
 		}
 		// A time entry that's gone on Redmine already is as good as deleted.

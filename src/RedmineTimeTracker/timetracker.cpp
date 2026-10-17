@@ -105,6 +105,8 @@ void TimeTracker::setTrackingActivityId(int activityId)
 
 QDateTime TimeTracker::interruptedAt() const { return mInterruptedAt; }
 
+bool TimeTracker::interruptedBySleep() const { return mInterruptedBySleep; }
+
 void TimeTracker::saveTrackingState()
 {
 	if (!isTracking()) {
@@ -146,15 +148,22 @@ void TimeTracker::resolveInterruption(bool countTimeAway)
 		return;
 	}
 	if (!countTimeAway && mTimer.isActive()) {
-		// Stop the clock where it was when the app was last seen.
+		// Stop the clock where it was when the app was last seen...
 		mTotalElapsedTime += std::max<qint64>(0, mStartTime.secsTo(mInterruptedAt));
-		mTimer.stop();
-		mIsPaused = true;
-		emit pausedChanged();
-		emit trackingChanged();
+		if (mInterruptedBySleep) {
+			// ...and, after sleep, go on from waking up: the user may have worked a while before
+			// answering.
+			mStartTime = mResumedAt.isValid() ? mResumedAt : QDateTime::currentDateTime();
+		} else {
+			mTimer.stop();
+			mIsPaused = true;
+			emit pausedChanged();
+			emit trackingChanged();
+		}
 		emit elapsedTimeChanged();
 	}
 	mInterruptedAt = QDateTime();
+	mInterruptedBySleep = false;
 	emit interruptedAtChanged();
 	saveTrackingState();
 }
@@ -206,6 +215,7 @@ void TimeTracker::startTracking(int issueId)
 	mStartTime = QDateTime::currentDateTime();
 	mTotalElapsedTime = 0;
 	mIsPaused = false;
+	mLastTick = QDateTime();
 	mTimer.start();
 	saveTrackingState();
 
@@ -248,6 +258,7 @@ void TimeTracker::resumeTracking()
 {
 	if (!mTimer.isActive() && mIsPaused) {
 		mStartTime = QDateTime::currentDateTime();
+		mLastTick = QDateTime();
 		mTimer.start();
 		mIsPaused = false;
 		saveTrackingState();
@@ -276,8 +287,8 @@ int TimeTracker::addRecentEntry(const QVariantMap& entry)
 	const QDate day = dateOf(entry["date"]);
 	const QDateTime spentOn(day.isValid() ? day : QDate::currentDate(), QTime(0, 0));
 
-	const int localId = Database::addTimeEntry(
-		issueId, hours, comment, spentOn, entry["activityId"].toInt(), entry["customFields"].toList());
+	const int localId = Database::addTimeEntry(issueId, hours, comment, spentOn, entry["activityId"].toInt(),
+		entry["customFields"].toList(), entry["issueStatusId"].toInt());
 	if (localId < 0) {
 		qWarning(lcTimeTracker) << "Could not save to database!";
 		return -1;
@@ -511,6 +522,7 @@ void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
 		if (Database::updateSyncStatus(entry["id"].toInt(), redmineId)) {
 			taken.insert(redmineId);
 			linked = true;
+			applyIssueStatus(entry["id"].toInt());
 		}
 	}
 	if (linked) {
@@ -631,6 +643,15 @@ void TimeTracker::discardRedmineUpdate(int redmineId, int tag)
 	}
 }
 
+void TimeTracker::applyIssueStatus(int localId)
+{
+	const QJsonObject entry = Database::getTimeEntry(localId);
+	const int statusId = entry["issue_status_id"].toInt();
+	if (statusId > 0 && Database::clearIssueStatus(localId)) {
+		emit setIssueStatus(entry["issue_id"].toInt(), statusId);
+	}
+}
+
 bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId)
 {
 	mSubmitting.remove(localId);
@@ -642,6 +663,7 @@ bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId
 	if (Database::updateSyncStatus(localId, redmineId)) {
 		loadRecentEntries();
 	}
+	applyIssueStatus(localId);
 	// Changed while it was being sent: Redmine got the old values, so send the current ones.
 	if (mEditedWhileSubmitting.remove(localId)) {
 		const QJsonObject entry = Database::getTimeEntry(localId);
@@ -656,8 +678,20 @@ bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId
 	return interactive;
 }
 
-void TimeTracker::updateElapsedTime()
+void TimeTracker::updateElapsedTime() { noticeTick(QDateTime::currentDateTime()); }
+
+void TimeTracker::noticeTick(const QDateTime& now)
 {
+	// The timer ticks every second; a much longer gap means the computer was asleep (suspended or
+	// hibernated). Like time the app was gone, that may not be working time: ask (interruptedAt).
+	if (mLastTick.isValid() && mLastTick.secsTo(now) > INTERRUPTION_THRESHOLD_SECONDS && !mInterruptedAt.isValid()) {
+		mInterruptedAt = mLastTick;
+		mResumedAt = now;
+		mInterruptedBySleep = true;
+		emit interruptedAtChanged();
+	}
+	mLastTick = now;
+
 	// Lets a restart tell how long the app was gone (see restoreTrackingState()).
 	if (++mSecondsSinceTouch >= 30) {
 		mSecondsSinceTouch = 0;

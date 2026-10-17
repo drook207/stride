@@ -682,6 +682,21 @@ TEST_F(RedmineClientIntegrationTest, NotFoundResponseDoesNotEmitErrorOccurred)
 	EXPECT_EQ(server->requests().size(), 1);
 }
 
+TEST_F(RedmineClientIntegrationTest, GetIssueCanIncludeTheAllowedStatuses)
+{
+	server->enqueueResponse(MockHttpResponse { 200, "OK",
+		R"({"issue":{"id":7,"status":{"id":2},"allowed_statuses":[{"id":2,"name":"In Progress"},{"id":5,"name":"Closed"}]}})" });
+
+	QJsonObject received;
+	QObject::connect(client.get(), &RedmineClient::issueReceived, [&](const QJsonObject& issue) { received = issue; });
+
+	client->getIssue(7, true, true);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueReceived));
+
+	EXPECT_EQ(server->requests().first().query.queryItemValue("include").toStdString(), "allowed_statuses");
+	EXPECT_EQ(received["allowed_statuses"].toArray().size(), 2);
+}
+
 TEST_F(RedmineClientIntegrationTest, QuietGetIssueDoesNotEmitErrorOccurred)
 {
 	server->enqueueResponse(MockHttpResponse { 403, "Forbidden", "" });
@@ -694,6 +709,20 @@ TEST_F(RedmineClientIntegrationTest, QuietGetIssueDoesNotEmitErrorOccurred)
 
 	EXPECT_FALSE(errorFired);
 	EXPECT_EQ(server->requests().size(), 1);
+}
+
+TEST_F(RedmineClientIntegrationTest, NoErrorIsReportedWhileNoServerIsSetUp)
+{
+	client->setBaseUrl(QString());
+
+	bool errorFired = false;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
+
+	client->getAllProjects();
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+	waitUntil([]() { return false; }, 200);
+
+	EXPECT_FALSE(errorFired);
 }
 
 TEST_F(RedmineClientIntegrationTest, ServerErrorResponseEmitsErrorOccurred)

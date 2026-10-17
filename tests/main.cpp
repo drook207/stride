@@ -1,12 +1,17 @@
 
-#include <QCoreApplication>
+#include <QGuiApplication>
 #include <QSettings>
 #include <QTimer>
 #include <gtest/gtest.h>
 
 int main(int argc, char* argv[])
 {
-	QCoreApplication app { argc, argv };
+	// A GUI application, as e.g. the PDF export lays out text with fonts; offscreen unless chosen
+	// otherwise, so the tests never need a display.
+	if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
+		qputenv("QT_QPA_PLATFORM", "offscreen");
+	}
+	QGuiApplication app { argc, argv };
 
 	// RedmineClient reads/writes its baseUrl and apiKey via QSettings (see qsettingshelper.h). Use a
 	// dedicated organization/application name so the test suite never reads or clobbers a developer's

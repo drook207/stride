@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QRedmine.TimeTracker
 import QRedmine.Client
+import QtCore
 
 /*!
  * \brief Connection settings: Redmine URL, API key, and SSL toggle.
@@ -13,6 +14,16 @@ Item {
     required property TimeTracker timeTracker
     required property RedmineClient client
     required property SubmitDialog submitDialog
+    required property Reminders reminders
+    //! Whether the platform offers a system tray, for the close-to-tray option.
+    property bool trayAvailable: false
+
+    // Read by Main.qml when the window is closed.
+    Settings {
+        id: traySettings
+        category: "tray"
+        property bool closeToTray: false
+    }
 
     FormPage {
         anchors.fill: parent
@@ -92,6 +103,65 @@ Item {
                     Component.onCompleted: currentIndex = indexOfValue(LanguageManager.language)
                     onActivated: LanguageManager.language = currentValue
                 }
+            }
+        }
+
+        Card {
+            Layout.fillWidth: true
+            title: qsTr("Reminders")
+
+            Switch {
+                Layout.leftMargin: -8
+                text: qsTr("Remind me of unbooked time and long-running timers")
+                checked: docroot.reminders.enabled
+                onToggled: docroot.reminders.enabled = checked
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                enabled: docroot.reminders.enabled
+                spacing: 12
+
+                LabeledField {
+                    Layout.fillWidth: true
+                    label: qsTr("Nothing booked on a workday by (HH:mm)")
+
+                    TextField {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        text: docroot.reminders.endOfDay
+                        inputMask: "99:99"
+                        onEditingFinished: docroot.reminders.endOfDay = text
+                    }
+                }
+
+                LabeledField {
+                    Layout.fillWidth: true
+                    label: qsTr("Timer running for (hours, 0 = never)")
+
+                    SpinBox {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Metrics.controlHeight
+                        from: 0
+                        to: 24
+                        editable: true
+                        value: docroot.reminders.longTrackingHours
+                        onValueModified: docroot.reminders.longTrackingHours = value
+                    }
+                }
+            }
+        }
+
+        Card {
+            Layout.fillWidth: true
+            visible: docroot.trayAvailable
+            title: qsTr("System tray")
+
+            Switch {
+                Layout.leftMargin: -8
+                text: qsTr("Keep running in the tray when the window is closed")
+                checked: traySettings.closeToTray
+                onToggled: traySettings.closeToTray = checked
             }
         }
 

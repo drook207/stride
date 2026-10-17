@@ -85,6 +85,23 @@ Rectangle {
 		}
 	}
 
+	// Keyboard shortcuts for the buttons: start, pause or resume; submit.
+	Shortcut {
+		sequence: "Ctrl+Space"
+		onActivated: {
+			if (playButton.enabled) {
+				playButton.clicked()
+			} else if (pauseButton.enabled) {
+				pauseButton.clicked()
+			}
+		}
+	}
+	Shortcut {
+		sequences: ["Ctrl+Return", "Ctrl+Enter"]
+		enabled: submitButton.enabled
+		onActivated: submitButton.clicked()
+	}
+
 	Timer {
 		id: inputValidatorTimer
 		interval: 500
@@ -110,6 +127,7 @@ Rectangle {
 		// labeled fields' inputs.
 
 		RoundButton {
+			id: playButton
 			Layout.alignment: Qt.AlignBottom
 			Layout.preferredWidth: docroot.controlHeight
 			Layout.preferredHeight: docroot.controlHeight
@@ -133,6 +151,7 @@ Rectangle {
 		}
 
 		RoundButton {
+			id: pauseButton
 			Layout.alignment: Qt.AlignBottom
 			Layout.preferredWidth: docroot.controlHeight
 			Layout.preferredHeight: docroot.controlHeight
@@ -257,6 +276,7 @@ Rectangle {
 		}
 
 		RoundButton {
+			id: submitButton
 			Layout.alignment: Qt.AlignBottom
 			Layout.preferredWidth: docroot.controlHeight
 			Layout.preferredHeight: docroot.controlHeight

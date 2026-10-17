@@ -30,9 +30,12 @@ class TimeTracker : public QObject {
 		QString trackingComment READ trackingComment WRITE setTrackingComment NOTIFY trackingDetailsChanged FINAL)
 	Q_PROPERTY(
 		int trackingActivityId READ trackingActivityId WRITE setTrackingActivityId NOTIFY trackingDetailsChanged FINAL)
-	//! When the app was last seen running while the restored tracker kept running (it was closed or
-	//! crashed meanwhile); invalid otherwise. See resolveInterruption().
+	//! When the app was last seen running while the tracker kept running: it was closed, crashed or
+	//! the computer was asleep since; invalid otherwise. See resolveInterruption().
 	Q_PROPERTY(QDateTime interruptedAt READ interruptedAt NOTIFY interruptedAtChanged FINAL)
+	//! Whether the interruption (interruptedAt) was the computer sleeping while the app ran, rather
+	//! than the app being gone.
+	Q_PROPERTY(bool interruptedBySleep READ interruptedBySleep NOTIFY interruptedAtChanged FINAL)
 	//! Issues pinned for quick access (Database::getFavoriteIssues()).
 	Q_PROPERTY(QVariantList favoriteIssues READ favoriteIssues NOTIFY favoriteIssuesChanged FINAL)
 public:
@@ -52,12 +55,17 @@ public:
 	int trackingActivityId() const;
 	void setTrackingActivityId(int activityId);
 	QDateTime interruptedAt() const;
+	bool interruptedBySleep() const;
 
 	/*!
-	 * \brief resolveInterruption Decides about the time the app was gone (interruptedAt): count it,
-	 * or stop the tracker as it was when the app was last seen (it's paused then)
+	 * \brief resolveInterruption Decides about the time the app was gone or the computer asleep
+	 * (interruptedAt): count it, or leave it out. Leaving it out pauses the tracker as it was when
+	 * the app was last seen; after sleep, the tracker keeps running from now instead.
 	 */
 	Q_INVOKABLE void resolveInterruption(bool countTimeAway);
+
+	//! Handles a tick of the running timer at now (called every second; public for tests).
+	void noticeTick(const QDateTime& now);
 
 	/*!
 	 * \brief continueTracking Starts tracking an issue with a comment and activity, e.g. to go on
@@ -173,7 +181,8 @@ public slots:
 	/*!
 	 * \brief addRecentEntry Saves a time entry locally and sends it to Redmine (submitTimeEntry())
 	 * \param entry "issueId", "hours", "comments", "date" ("yyyy-MM-dd" or a Date) and optionally
-	 * "activityId" and "customFields" ([{"id", "value"}])
+	 * "activityId", "customFields" ([{"id", "value"}]) and "issueStatusId" (to set the issue to
+	 * once the entry is on Redmine, see setIssueStatus())
 	 * \return The new entry's local id; -1 if it couldn't be saved
 	 */
 	int addRecentEntry(const QVariantMap& entry);
@@ -304,6 +313,12 @@ signals:
 	void updateTimeEntryOnRedmine(int redmineId, double hours, const QString& comments, const QString& spentOn,
 		int activityId, const QVariantList& customFields, int tag);
 
+	/*!
+	 * \brief setIssueStatus Asks to set an issue's status, chosen with a time entry that's on Redmine
+	 * now; connect it to RedmineClient::updateIssue(). Not asked for entries Redmine never took.
+	 */
+	void setIssueStatus(int issueId, int statusId);
+
 private slots:
 	/*!
 	 * \brief updateElapsedTime
@@ -320,6 +335,9 @@ private:
 	void saveTrackingState();
 	//! Restores a tracker saved by a previous run.
 	void restoreTrackingState();
+	//! Emits setIssueStatus() for an entry on Redmine now, if a status was chosen with it.
+	void applyIssueStatus(int localId);
+
 	//! Entries linkExistingTimeEntries() tries to link, see unlinkedEntriesRange().
 	QVariantList linkCandidates() const;
 
@@ -349,6 +367,11 @@ private:
 	void loadFavoriteIssues();
 	//! Seconds since the saved tracker's last_seen was last updated.
 	int mSecondsSinceTouch = 0;
+	//! When the timer last ticked while running, to notice the computer sleeping.
+	QDateTime mLastTick;
+	bool mInterruptedBySleep = false;
+	//! When the computer woke up from the sleep that interrupted the tracker.
+	QDateTime mResumedAt;
 	//! Local ids of entries changed while being sent, see linkCreatedTimeEntry().
 	QSet<int> mEditedWhileSubmitting;
 };
