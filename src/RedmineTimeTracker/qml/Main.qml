@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick.Controls.Material
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import QtQuick.Window
 import QRedmine.TimeTracker
 import QRedmine.Client

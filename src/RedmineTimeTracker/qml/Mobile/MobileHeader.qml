@@ -1,6 +1,5 @@
 import QtQuick.Controls.Material
 import QtQuick
-import QtQuick.Controls
 import QRedmine.Client
 
 /*!
