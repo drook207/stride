@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.16)
 project(
 	QRedmine
 	LANGUAGES CXX
-	VERSION 0.0.2)
+	VERSION 0.1.0)
 
 find_package(Qt6 REQUIRED Core)
 
