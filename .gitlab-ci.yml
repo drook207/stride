@@ -1,9 +1,13 @@
 # Checks every merge request and main: the pre-commit hooks, then build, unit tests and qmllint,
 # and the documentation website, which main also publishes on GitLab Pages.
+# A version tag (v1.2.3) also builds the Windows and Linux installers, uploads them to the
+# package registry and creates the GitLab release with notes generated from the commit
+# messages; on merge requests the installers can be built by hand.
 
 stages:
   - lint
   - build
+  - package
   - deploy
 
 variables:
@@ -11,11 +15,14 @@ variables:
   # Installed by aqtinstall below and cached between pipelines; CMakePresets.json reads QT_DIR.
   QT_DIR: "$CI_PROJECT_DIR/.qt/$QT_VERSION/gcc_64"
   GIT_DEPTH: "20"
+  # Release downloads: <package registry>/stride/<version>/<file>
+  PACKAGE_REGISTRY_URL: "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/stride"
 
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
 
 pre-commit:
   stage: lint
@@ -32,8 +39,8 @@ pre-commit:
     - pip install --quiet pre-commit
     - pre-commit run --all-files --show-diff-on-failure
 
-build-and-test:
-  stage: build
+# Ubuntu with the build dependencies and Qt from aqtinstall, cached per Qt version.
+.linux-qt:
   image: ubuntu:24.04
   cache:
     key: "qt-$QT_VERSION"
@@ -43,14 +50,18 @@ build-and-test:
     - apt-get update -qq
     - >
       DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends
-      build-essential cmake ninja-build git ca-certificates pkg-config python3-venv
+      build-essential cmake ninja-build git ca-certificates curl pkg-config python3-venv
       libgl1-mesa-dev libxkbcommon-dev libfontconfig1 libdbus-1-3 libsecret-1-dev libglib2.0-dev
+    - python3 -m venv /tmp/aqt
+    - /tmp/aqt/bin/pip install --quiet aqtinstall==3.3.0
     - |
       if [ ! -d "$QT_DIR" ]; then
-        python3 -m venv /tmp/aqt
-        /tmp/aqt/bin/pip install --quiet aqtinstall
         /tmp/aqt/bin/aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 --outputdir .qt
       fi
+
+build-and-test:
+  extends: .linux-qt
+  stage: build
   script:
     - cmake --preset linux-debug
     - cmake --build --preset linux-debug
@@ -67,6 +78,156 @@ build-and-test:
     paths:
       - qmllint.log
     expire_in: 1 week
+
+# Qt Installer Framework installers (see src/RedmineTimeTracker/packaging/ifw/README.md).
+# Built for every version tag, and on demand on merge requests to try packaging changes.
+.installer:
+  stage: package
+  needs: []
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: true
+  artifacts:
+    paths:
+      - installers/
+    expire_in: 1 week
+
+installer-linux:
+  extends:
+    - .linux-qt
+    - .installer
+  variables:
+    IFW_VERSION: "47"
+  script:
+    # The Installer Framework's binarycreator links against X11/xcb even when run headless.
+    - >
+      DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends
+      libbz2-1.0 libdbus-1-3 libfontconfig1 libfreetype6 libx11-6 libx11-xcb1 libxcb1
+      libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render0
+      libxcb-render-util0 libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-util1 libxcb-xfixes0
+      libxcb-xkb1 libxkbcommon-x11-0
+    # CMake finds the Installer Framework next to Qt, under .qt/Tools/QtInstallerFramework.
+    - |
+      if [ ! -d .qt/Tools/QtInstallerFramework ]; then
+        /tmp/aqt/bin/aqt install-tool linux desktop tools_ifw "qt.tools.ifw.$IFW_VERSION" --outputdir .qt
+      fi
+    - cmake --preset linux-release
+    - cmake --build --preset linux-release
+    - (cd build/linux-release && cpack) || { cat build/linux-release/_CPack_Packages/Linux/IFW/IFWOutput.log; exit 1; }
+    - VERSION="${CI_COMMIT_TAG#v}"; VERSION="${VERSION:-$CI_COMMIT_SHORT_SHA}"
+    - mkdir -p installers
+    - mv build/linux-release/QRedmineTimeTracker-*.run "installers/Stride-$VERSION-linux-x64.run"
+    # The version without the "v", for the release job's download links.
+    - echo "RELEASE_VERSION=$VERSION" > release.env
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        curl --fail-with-body --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          --upload-file "installers/Stride-$VERSION-linux-x64.run" \
+          "$PACKAGE_REGISTRY_URL/$VERSION/Stride-$VERSION-linux-x64.run"
+      fi
+  artifacts:
+    paths:
+      - installers/
+    reports:
+      dotenv: release.env
+    expire_in: 1 week
+
+# GitLab's Windows runner, with MinGW, CMake, Ninja, Qt and the Installer Framework all from
+# aqtinstall. aqtinstall 3.3.0 can't read the per-compiler Windows repositories Qt uses from
+# 6.11 on, so Windows stays on Qt 6.10 until it can.
+installer-windows:
+  extends: .installer
+  tags:
+    - saas-windows-medium-amd64
+  variables:
+    WIN_QT_VERSION: "6.10.2"
+    IFW_VERSION: "47"
+    QT_DIR: "$CI_PROJECT_DIR/.qt-win/$WIN_QT_VERSION/mingw_64"
+  cache:
+    key: "qt-win-$WIN_QT_VERSION"
+    paths:
+      - .qt-win
+  before_script:
+    - |
+      if (-not (Test-Path "$env:QT_DIR")) {
+        choco install python311 -y --no-progress
+        C:\Python311\python.exe -m pip install --quiet aqtinstall==3.3.0
+        C:\Python311\python.exe -m aqt install-qt windows desktop $env:WIN_QT_VERSION win64_mingw --outputdir .qt-win
+        C:\Python311\python.exe -m aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir .qt-win
+        C:\Python311\python.exe -m aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir .qt-win
+        C:\Python311\python.exe -m aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir .qt-win
+        C:\Python311\python.exe -m aqt install-tool windows desktop tools_ifw "qt.tools.ifw.$env:IFW_VERSION" --outputdir .qt-win
+        if (-not (Test-Path "$env:QT_DIR")) { throw "Qt was not installed" }
+      }
+    - $tools = "$env:CI_PROJECT_DIR\.qt-win\Tools"
+    - $env:PATH = "$tools\mingw1310_64\bin;$tools\CMake_64\bin;$tools\Ninja;$env:PATH"
+  script:
+    - cmake --preset windows-mingw-release
+    - cmake --build --preset windows-mingw-release
+    - Push-Location build\windows-mingw-release
+    - cpack
+    - Pop-Location
+    - $version = if ($env:CI_COMMIT_TAG) { $env:CI_COMMIT_TAG.TrimStart("v") } else { $env:CI_COMMIT_SHORT_SHA }
+    - $installer = "Stride-$version-windows-x64.exe"
+    - New-Item -ItemType Directory -Force installers | Out-Null
+    - Move-Item build\windows-mingw-release\QRedmineTimeTracker-*.exe "installers\$installer"
+    - |
+      if ($env:CI_COMMIT_TAG) {
+        Invoke-RestMethod -Method Put -Headers @{ "JOB-TOKEN" = $env:CI_JOB_TOKEN } `
+          -InFile "installers\$installer" -Uri "$env:PACKAGE_REGISTRY_URL/$version/$installer"
+      }
+
+# Release notes from the Conventional Commits messages since the previous tag (cliff.toml).
+release-notes:
+  stage: package
+  image: python:3.12
+  needs: []
+  variables:
+    # git-cliff needs the whole history and the earlier tags.
+    GIT_DEPTH: "0"
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - pip install --quiet git-cliff==2.14.2
+    - git fetch --tags --quiet
+    - git cliff --latest --strip all --output release-notes.md
+    - test -s release-notes.md || { echo "No feat or fix commits since the previous tag"; exit 1; }
+    - cat release-notes.md
+  artifacts:
+    paths:
+      - release-notes.md
+    expire_in: 1 week
+
+# The GitLab release for a version tag, with the notes and the installers from above.
+release:
+  stage: deploy
+  image: registry.gitlab.com/gitlab-org/cli:latest
+  needs:
+    - installer-linux
+    - installer-windows
+    - release-notes
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    # RELEASE_VERSION comes from installer-linux (dotenv). The tag must match the version
+    # CMake builds into the app and the installers.
+    - grep -Eq "^[[:space:]]VERSION $RELEASE_VERSION\)" CMakeLists.txt || { echo "CMakeLists.txt is not at version $RELEASE_VERSION"; exit 1; }
+  release:
+    tag_name: $CI_COMMIT_TAG
+    name: "Stride $RELEASE_VERSION"
+    description: ./release-notes.md
+    assets:
+      links:
+        - name: "Windows installer (x64)"
+          url: "$PACKAGE_REGISTRY_URL/$RELEASE_VERSION/Stride-$RELEASE_VERSION-windows-x64.exe"
+          filepath: "/installers/Stride-windows-x64.exe"
+          link_type: package
+        - name: "Linux installer (x64)"
+          url: "$PACKAGE_REGISTRY_URL/$RELEASE_VERSION/Stride-$RELEASE_VERSION-linux-x64.run"
+          filepath: "/installers/Stride-linux-x64.run"
+          link_type: package
 
 # MkDocs website from docs/ and mkdocs.yml; --strict fails on broken links and missing pages.
 # Needs nothing else, so it runs and deploys without waiting for the Qt build.

@@ -128,7 +128,9 @@ TEST_F(RedmineClientTest, DefaultLoadingIsFalse) { EXPECT_FALSE(client->loading(
 
 TEST_F(RedmineClientTest, DefaultApiVersionIsUnknown)
 {
-	EXPECT_EQ(client->apiVersion(), RedmineClient::UNKNOWN_API_VERSION);
+	// By value: EXPECT_EQ takes a reference, and MinGW then imports the constant from the DLL,
+	// which never exports it.
+	EXPECT_EQ(client->apiVersion(), int { RedmineClient::UNKNOWN_API_VERSION });
 }
 
 TEST_F(RedmineClientTest, HasApiVersionIsFalseWhileVersionUnknown)
