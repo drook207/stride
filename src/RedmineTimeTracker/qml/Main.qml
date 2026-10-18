@@ -267,17 +267,43 @@ ApplicationWindow {
         }
     }
 
+    // Shown in the middle of the window while a request runs, once it takes noticeably long, so
+    // quick requests don't make it flash.
     Popup {
         id: busyIndicator
-        BusyIndicator {
-            running: redmineClient.loading
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        padding: 16
+        modal: false
+        closePolicy: Popup.NoAutoClose
+        visible: redmineClient.loading && busyDelay.elapsed
 
-            onRunningChanged: {
-                if (running) {
-                    busyIndicator.open();
-                } else {
-                    busyIndicator.close();
-                }
+        background: Rectangle {
+            radius: Metrics.panelRadius
+            color: Material.dialogColor
+        }
+
+        BusyIndicator {
+            running: busyIndicator.visible
+        }
+    }
+    // Started by each request (restarted rather than bound to loading: a single-shot timer's
+    // running turns false when it fires).
+    Timer {
+        id: busyDelay
+        //! Whether the current request has been running for longer than the interval.
+        property bool elapsed: false
+        interval: 400
+        onTriggered: elapsed = true
+    }
+    Connections {
+        target: redmineClient
+        function onLoadingChanged() {
+            if (redmineClient.loading) {
+                busyDelay.restart();
+            } else {
+                busyDelay.stop();
+                busyDelay.elapsed = false;
             }
         }
     }
