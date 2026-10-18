@@ -162,4 +162,8 @@ to preview it locally.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+The app uses and ships third-party software under other licenses - Qt under the LGPL-3.0,
+QtKeychain under BSD-3-Clause, and Font Awesome icons and font under CC BY 4.0 and OFL-1.1. See
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the license texts in [LICENSES/](LICENSES/).
