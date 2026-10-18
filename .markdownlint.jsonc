@@ -6,8 +6,9 @@
     "MD003": {
         "style": "atx"
     },
+    // Use `-` on every list level, as mdformat writes them
     "MD004": {
-        "style": "sublist"
+        "style": "dash"
     },
     // Set list indentation to 4 spaces
     "ul-indent": {

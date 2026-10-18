@@ -8,7 +8,7 @@ connect it to Redmine, see [Getting started](getting-started.md).
 The desktop window has three parts:
 
 - the **sidebar** on the left, which switches between the views (the menu
-  button in the header collapses it),
+    button in the header collapses it),
 - the current **view** in the middle,
 - the **tracking bar** at the bottom, which stays visible in every view.
 
@@ -21,14 +21,14 @@ The tracking bar holds everything needed to track the issue you're working
 on:
 
 1. Enter an issue number, or type to search for an issue, in the **Issue**
-   field. Play is enabled once a known issue is selected.
+    field. Play is enabled once a known issue is selected.
 2. Press play to start the timer. Pause and resume as needed - the **Time**
-   field shows the elapsed time.
+    field shows the elapsed time.
 3. Add a **Comment**, choose an **Activity** and, if your Redmine has the
-   *Special* time entry field, a **Special** value.
+    *Special* time entry field, a **Special** value.
 4. Press **+** to submit. The confirmation dialog shows the total time and
-   lets you set a new **issue status** (e.g. *Resolved*) along with the
-   entry; *Unchanged* leaves the issue as it is.
+    lets you set a new **issue status** (e.g. *Resolved*) along with the
+    entry; *Unchanged* leaves the issue as it is.
 
 The running timer is saved continuously, so it survives closing the app or a
 crash. When the computer wakes up from sleep while a timer was running,
@@ -47,11 +47,11 @@ shows how many there are.
 
 - **Filter** the list by project, or **group** it by project.
 - **Continue** an earlier entry: hover it and press play to start tracking
-  the same issue, comment and activity again.
+    the same issue, comment and activity again.
 - **Pin** an issue with the star. Pinned issues show up as buttons above the
-  list and in the tray menu, and start tracking with one click.
+    list and in the tray menu, and start tracking with one click.
 - **Edit or delete** an entry by clicking it. Deleting an entry that is
-  already on Redmine deletes it there, too.
+    already on Redmine deletes it there, too.
 
 Entries that haven't reached Redmine yet are marked. Entries Redmine
 rejected show the reason, and are sent again once you change them.
@@ -102,14 +102,14 @@ allowed to add issues to.
 ![Settings view](assets/screenshots/desktop-settings.png)
 
 - **Connection Settings** - Redmine URL, API key and SSL, see
-  [Getting started](getting-started.md#connect-to-redmine).
+    [Getting started](getting-started.md#connect-to-redmine).
 - **Appearance** - the UI language. *System default* follows the system
-  locale; changes apply immediately.
+    locale; changes apply immediately.
 - **Reminders** - remind you when nothing is booked on a workday by a given
-  time, and when a timer has been running for a given number of hours
-  (0 turns that off).
+    time, and when a timer has been running for a given number of hours
+    (0 turns that off).
 - **System tray** - keep the app running in the tray when the window is
-  closed.
+    closed.
 
 ## System tray
 
@@ -125,12 +125,12 @@ can keep tracking and editing entries while offline.
 
 ## Keyboard shortcuts
 
-| Shortcut | Action |
-| --- | --- |
-| ++ctrl+space++ | Start, pause or resume the timer |
-| ++ctrl+enter++ | Submit the tracked time |
+| Shortcut                | Action                                                       |
+| ----------------------- | ------------------------------------------------------------ |
+| ++ctrl+space++          | Start, pause or resume the timer                             |
+| ++ctrl+enter++          | Submit the tracked time                                      |
 | ++ctrl+1++ … ++ctrl+5++ | Recent Entries, Overview, Add Entry, Search Issue, Add Issue |
-| ++ctrl+6++ | Settings |
+| ++ctrl+6++              | Settings                                                     |
 
 ## Mobile UI (Android and iOS)
 

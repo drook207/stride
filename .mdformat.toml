@@ -1,0 +1,3 @@
+# mdformat settings, used by the pre-commit hook and by running mdformat by hand.
+# Numbers ordered lists 1., 2., 3. instead of 1., 1., 1.
+number = true

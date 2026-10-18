@@ -29,9 +29,9 @@ the demo users, which `seed.sh` prints at the end.
 ## What you get
 
 - **Users** `alice`, `bob`, `carol`, `dave`, `erin`, `frank` and `grace`,
-  with the password `TestPass123!`.
+    with the password `TestPass123!`.
 - **Projects** Website Relaunch, Mobile App (with iOS and Android), Internal
-  Tools, Customer Support, Data Platform, and the closed - read-only - Legacy
-  CRM.
+    Tools, Customer Support, Data Platform, and the closed - read-only - Legacy
+    CRM.
 - About **70 issues** across bugs, features and support requests, and about
-  **830 time entries** over the last six weeks.
+    **830 time entries** over the last six weeks.
