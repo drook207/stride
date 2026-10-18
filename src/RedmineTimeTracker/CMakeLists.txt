@@ -245,6 +245,14 @@ if(UNIX AND NOT APPLE)
 		RENAME qredminetimetracker.svg)
 endif()
 
+# The app's license and the notices and license texts of the third-party
+# software shipped with it (Qt under the LGPL, QtKeychain, Font Awesome).
+install(FILES ${CMAKE_SOURCE_DIR}/LICENSE
+			  ${CMAKE_SOURCE_DIR}/THIRD_PARTY_NOTICES.md
+		DESTINATION ${CMAKE_INSTALL_DOCDIR})
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/LICENSES
+		DESTINATION ${CMAKE_INSTALL_DOCDIR})
+
 set(CPACK_PACKAGE_NAME "QRedmineTimeTracker")
 set(CPACK_PACKAGE_VENDOR "drook207")
 set(CPACK_PACKAGE_CONTACT "Pascal Berndt <berndt.pascal90@gmail.com>")
@@ -363,4 +371,5 @@ cpack_add_component(
 cpack_ifw_configure_component(
 	${CPACK_PACKAGE_NAME} FORCED_INSTALLATION
 	SCRIPT "${IFW_RESOURCE_DIR}/installscript.qs"
-	LICENSES "MIT License" "${CPACK_RESOURCE_FILE_LICENSE}")
+	LICENSES "MIT License" "${CPACK_RESOURCE_FILE_LICENSE}"
+			 "Third-party notices" "${CMAKE_SOURCE_DIR}/THIRD_PARTY_NOTICES.md")
