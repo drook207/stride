@@ -4,7 +4,7 @@ UI strings are marked with `qsTr()` in QML and extracted into Qt Linguist
 `.ts` files, one per language, compiled to `.qm` at build time and embedded
 into the binary under the `:/i18n/` resource prefix. `LanguageManager`
 (created in `main.cpp`) installs the `QTranslator` for the language chosen
-under *Settings > Appearance > Language*, persisted as `ui/language` in
+under _Settings > Appearance > Language_, persisted as `ui/language` in
 QSettings, or for `QLocale::system()` when "System default" is selected. It
 falls back to the English source strings when no matching catalog is found.
 Changing the language retranslates the running UI immediately. The language
@@ -24,9 +24,9 @@ Ubuntu.
 ## Supported languages
 
 - `QRedmineTimeTracker_en.ts` - English (the source language; effectively
-  unused at runtime since untranslated strings already fall back to the
-  English `qsTr()` source text, but kept for symmetry and so English shows
-  up explicitly in tooling like Qt Linguist).
+    unused at runtime since untranslated strings already fall back to the
+    English `qsTr()` source text, but kept for symmetry and so English shows
+    up explicitly in tooling like Qt Linguist).
 - `QRedmineTimeTracker_de.ts` - German.
 
 The build also merges in Qt's own upstream translations (`qtbase`,
@@ -58,10 +58,10 @@ no separate step needed.
 ## Adding a new language
 
 1. Add `i18n/QRedmineTimeTracker_<lang>.ts` to the `TS_FILES` list in
-   `CMakeLists.txt` (use the two-letter
-   [ISO 639-1](https://en.wikipedia.org/wiki/ISO_639-1) code, e.g. `fr`,
-   `es`).
+    `CMakeLists.txt` (use the two-letter
+    [ISO 639-1](https://en.wikipedia.org/wiki/ISO_639-1) code, e.g. `fr`,
+    `es`).
 2. Run the `update_translations` target (see above) - it creates the new
-   file if it doesn't exist yet and populates it with every extracted
-   string.
+    file if it doesn't exist yet and populates it with every extracted
+    string.
 3. Translate it, then build normally.

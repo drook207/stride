@@ -8,7 +8,7 @@ The configuration lives in the CPack section of
 ## Building the installer
 
 QtIFW must be installed, e.g. with the Qt Maintenance Tool (component
-*Qt Installer Framework* under *Developer and Designer Tools*). CPack finds
+_Qt Installer Framework_ under _Developer and Designer Tools_). CPack finds
 it under the usual Qt install locations. Otherwise, point it at the QtIFW
 directory (the one containing `bin`) via `-DCPACK_IFW_ROOT=<dir>` or the
 `QTIFWDIR` environment variable.
@@ -28,16 +28,16 @@ The installer matches the application's Qt Quick Controls Material Dark
 theme and accent color (see `qml/Main.qml`):
 
 - `style.qss` - Qt style sheet recoloring every wizard widget. Its header
-  comment lists the palette and where each color comes from.
+    comment lists the palette and where each color comes from.
 - `banner.png` - plain dark header background, used as the `Modern` wizard
-  style's banner. The thin separator lines below the header and above the
-  buttons are painted by Qt from fixed palette colors and can't be styled.
+    style's banner. The thin separator lines below the header and above the
+    buttons are painted by Qt from fixed palette colors and can't be styled.
 - `resources.qrc`, `check.png` - images referenced by the style sheet
-  (`url(:/qredmine/...)`), compiled into the installer binary.
+    (`url(:/qredmine/...)`), compiled into the installer binary.
 - `controlscript.qs` - hides the component selection page, since the
-  installer contains a single mandatory component.
+    installer contains a single mandatory component.
 - `logo.png`, `window-icon.png` - rendered from
-  `qml/Assets/Icons/app-icon.svg`.
+    `qml/Assets/Icons/app-icon.svg`.
 
 To regenerate the images after changing the app icon or palette:
 
@@ -58,5 +58,5 @@ uninstall entry) on Windows and a per-user desktop entry in
 ## Install locations
 
 - Windows: `C:\Program Files\QRedmineTimeTracker` (requires elevation, the
-  installer asks for it).
+    installer asks for it).
 - Linux: `~/QRedmineTimeTracker` (per user, no root privileges needed).

@@ -13,7 +13,7 @@ Applications using the library load the catalog matching a locale with:
 QRedmineClient::RedmineClient::installTranslations(QLocale::system());
 ```
 
-Log output (`qDebug`/`qWarning`) is intentionally *not* translated.
+Log output (`qDebug`/`qWarning`) is intentionally _not_ translated.
 
 ## Supported languages
 

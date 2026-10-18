@@ -7,14 +7,14 @@ user guide, and developer docs (sources in [docs/](docs/)).
 
 ## Screenshots
 
-| Recent entries | Week overview |
-| --- | --- |
+| Recent entries                                                        | Week overview                                                  |
+| --------------------------------------------------------------------- | -------------------------------------------------------------- |
 | ![Recent entries](docs/assets/screenshots/desktop-recent-entries.png) | ![Week overview](docs/assets/screenshots/desktop-overview.png) |
-| **Add time entry** | **Settings** |
-| ![Add time entry](docs/assets/screenshots/desktop-add-time-entry.png) | ![Settings](docs/assets/screenshots/desktop-settings.png) |
+| **Add time entry**                                                    | **Settings**                                                   |
+| ![Add time entry](docs/assets/screenshots/desktop-add-time-entry.png) | ![Settings](docs/assets/screenshots/desktop-settings.png)      |
 
-| Mobile | Mobile, tracking panel expanded |
-| --- | --- |
+| Mobile                                                                                                | Mobile, tracking panel expanded                                                                                   |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | <img src="docs/assets/screenshots/mobile-recent-entries.png" alt="Mobile recent entries" width="300"> | <img src="docs/assets/screenshots/mobile-tracking-expanded.png" alt="Mobile tracking panel expanded" width="300"> |
 
 See the [User Guide](https://drook207.gitlab.io/QRedmineTimeTracker/user-guide/) for a walkthrough of every view, on both desktop and mobile.
@@ -23,51 +23,51 @@ See the [User Guide](https://drook207.gitlab.io/QRedmineTimeTracker/user-guide/)
 
 ### Time Tracking
 
-* Start/Stop/Pause functionality with real-time elapsed time display
-* The running timer survives closing the app or a crash; time the app was gone or the computer
-  was asleep can be counted or left out
-* Continue an earlier entry's work with one click, and pin favorite issues for quick access
-* Set the issue's status (e.g. to "Resolved") when submitting time
-* Keyboard shortcuts: Ctrl+Space (start/pause/resume), Ctrl+Enter (submit), Ctrl+1 .. Ctrl+6 (views)
-* System tray icon with pause/resume and favorites, optionally keeping the app running when the
-  window is closed
-* Reminders of a workday without booked time and of long-running timers
+- Start/Stop/Pause functionality with real-time elapsed time display
+- The running timer survives closing the app or a crash; time the app was gone or the computer
+    was asleep can be counted or left out
+- Continue an earlier entry's work with one click, and pin favorite issues for quick access
+- Set the issue's status (e.g. to "Resolved") when submitting time
+- Keyboard shortcuts: Ctrl+Space (start/pause/resume), Ctrl+Enter (submit), Ctrl+1 .. Ctrl+6 (views)
+- System tray icon with pause/resume and favorites, optionally keeping the app running when the
+    window is closed
+- Reminders of a workday without booked time and of long-running timers
 
 ### Overview and Export
 
-* Week overview: hours per day against a daily target, hours still missing, and hours per project
-* Export the time entries of a period as CSV (for spreadsheets) or PDF
+- Week overview: hours per day against a daily target, hours still missing, and hours per project
+- Export the time entries of a period as CSV (for spreadsheets) or PDF
 
 ### Redmine Integration
 
-* Full issue and project management (create, update, list, delete)
-* Create, update, and delete time entries directly from the app
-* View and manage existing time entries, with activities and the "Special" custom field
-* Add Issue offers only the projects you may add issues to
-* API key stored in the OS-native secure storage (e.g. Windows Credential Manager, Secret Service/KWallet on Linux, the Keychain on Apple platforms, the Android Keystore) - never in plain text
-* Automatic Redmine REST API version detection, so newer features can be gated on server capability
-* Error handling, connection-state indicator, and retry mechanisms
+- Full issue and project management (create, update, list, delete)
+- Create, update, and delete time entries directly from the app
+- View and manage existing time entries, with activities and the "Special" custom field
+- Add Issue offers only the projects you may add issues to
+- API key stored in the OS-native secure storage (e.g. Windows Credential Manager, Secret Service/KWallet on Linux, the Keychain on Apple platforms, the Android Keystore) - never in plain text
+- Automatic Redmine REST API version detection, so newer features can be gated on server capability
+- Error handling, connection-state indicator, and retry mechanisms
 
 ### Offline Support
 
-* Time entries are saved locally first and sent to Redmine when it's reachable - right away, or
-  once the connection comes back
-* Entries Redmine rejects are marked with the reason and sent again once changed
-* SQLite database with versioned schema migrations, in the platform's application data directory
+- Time entries are saved locally first and sent to Redmine when it's reachable - right away, or
+    once the connection comes back
+- Entries Redmine rejects are marked with the reason and sent again once changed
+- SQLite database with versioned schema migrations, in the platform's application data directory
 
 ### Localization
 
-* Available in English and German, selected automatically from the system locale
-* More languages can be added via the Qt Linguist `.ts` files in [src/RedmineTimeTracker/i18n](src/RedmineTimeTracker/i18n) - see that directory's README for the workflow
+- Available in English and German, selected automatically from the system locale
+- More languages can be added via the Qt Linguist `.ts` files in [src/RedmineTimeTracker/i18n](src/RedmineTimeTracker/i18n) - see that directory's README for the workflow
 
 ## Requirements
 
-* Qt 6.8 or higher
-* CMake 3.16 or higher (3.25+ to use the provided CMake Presets)
-* C++17 compatible compiler
-* SQLite
-* Linux, or Windows with MSVC or MinGW
-* Internet access on first configure - GoogleTest and [QtKeychain](https://github.com/frankosterfeld/qtkeychain) are fetched automatically via CMake `FetchContent`
+- Qt 6.8 or higher
+- CMake 3.16 or higher (3.25+ to use the provided CMake Presets)
+- C++17 compatible compiler
+- SQLite
+- Linux, or Windows with MSVC or MinGW
+- Internet access on first configure - GoogleTest and [QtKeychain](https://github.com/frankosterfeld/qtkeychain) are fetched automatically via CMake `FetchContent`
 
 ## Building
 
@@ -86,8 +86,8 @@ cmake --build --preset linux-debug
 ```
 
 Run `cmake --list-presets` for the full list - `linux-{debug,release,relwithdebinfo}`,
-`windows-msvc-{debug,release,relwithdebinfo}` (run from an *x64 Native Tools Command
-Prompt for VS*, or after calling `vcvarsall.bat x64`, so `cl.exe` is on `PATH`), and
+`windows-msvc-{debug,release,relwithdebinfo}` (run from an _x64 Native Tools Command
+Prompt for VS_, or after calling `vcvarsall.bat x64`, so `cl.exe` is on `PATH`), and
 `windows-mingw-{debug,release,relwithdebinfo}`. Only the presets matching your current
 OS are shown.
 
@@ -117,7 +117,7 @@ For manual testing against a real server, a disposable local Redmine instance
 1. Launch the application
 2. Enter your Redmine URL in the settings
 3. Add your API key from Redmine - it's written straight to the OS-native secure storage,
-   never persisted in plain text
+    never persisted in plain text
 4. (Optional) Configure default activity types
 
 ## Usage
@@ -133,15 +133,15 @@ For manual testing against a real server, a disposable local Redmine instance
 
 Time entries are stored in SQLite with the following structure:
 
-* `id`: Primary key
-* `issue_id`: Redmine issue identifier
-* `hours`: Time spent in decimal hours
-* `comments`: Work description
-* `spent_on`: Date/time of work
-* `sync_status`: Synchronization state
-* `redmine_id`: ID from Redmine after sync
-* `created_at`: Local creation timestamp
-* `updated_at`: Last modification timestamp
+- `id`: Primary key
+- `issue_id`: Redmine issue identifier
+- `hours`: Time spent in decimal hours
+- `comments`: Work description
+- `spent_on`: Date/time of work
+- `sync_status`: Synchronization state
+- `redmine_id`: ID from Redmine after sync
+- `created_at`: Local creation timestamp
+- `updated_at`: Last modification timestamp
 
 ## Documentation
 
@@ -154,8 +154,8 @@ to preview it locally.
 1. Fork the repository
 2. Create a feature branch
 3. Install the pre-commit hooks: `pip install pre-commit && pre-commit install`
-   (runs clang-format/clang-tidy/cppcheck/codespell/markdownlint, and enforces
-   [Conventional Commits](https://www.conventionalcommits.org) on commit messages)
+    (runs clang-format/clang-tidy/cppcheck/codespell/markdownlint, and enforces
+    [Conventional Commits](https://www.conventionalcommits.org) on commit messages)
 4. Commit your changes
 5. Push to the branch
 6. Create a Pull Request
