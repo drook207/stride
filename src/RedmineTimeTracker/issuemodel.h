@@ -12,6 +12,9 @@ class IssueModel : public QAbstractListModel {
 	QML_ELEMENT
 
 	Q_DISABLE_COPY_MOVE(IssueModel)
+	//! Counts reloads of the issue list. hasIssue() and projectIdOf() are functions, which QML can't
+	//! tell have changed: bindings calling them also read revision, so they're evaluated again.
+	Q_PROPERTY(int revision READ revision NOTIFY revisionChanged FINAL)
 public:
 	enum IssueRoles {
 		IdRole = Qt::UserRole + 1,
@@ -40,6 +43,12 @@ public:
 	 * \return The project id, or -1 if the issue isn't cached
 	 */
 	Q_INVOKABLE int projectIdOf(int issueId) const;
+
+	int revision() const;
+
+signals:
+	void revisionChanged();
+
 public slots:
 	void updateIssueList();
 
@@ -57,6 +66,8 @@ private:
 		QDateTime createdOn;
 		QDateTime updatedOn;
 	};
+
+	int mRevision = 0;
 
 	QList<Issue> mIssues;
 };

@@ -231,8 +231,9 @@ public slots:
 	void addIssueToDatabase(const QJsonObject& issue);
 
 	/*!
-	 * \brief forgetIssue Removes an issue Redmine doesn't know (any more) from the cache, so it's no
-	 * longer suggested or trackable. Connected to RedmineClient::issueNotFound.
+	 * \brief forgetIssue Removes an issue Redmine doesn't know (any more) from the cache and the
+	 * favorites, so it's no longer suggested or trackable; not while it's being tracked. Connected
+	 * to RedmineClient::issueNotFound.
 	 */
 	void forgetIssue(int issueId);
 
@@ -298,7 +299,8 @@ signals:
 
 	void entriesFromIdChanged();
 
-	void issueAddedOrUpdated();
+	//! An issue was added to, updated in or removed from the cache.
+	void issueCacheChanged();
 	void trackingDetailsChanged();
 	void interruptedAtChanged();
 	void favoriteIssuesChanged();

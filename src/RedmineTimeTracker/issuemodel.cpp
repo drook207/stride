@@ -32,7 +32,11 @@ void IssueModel::updateIssueList()
 	});
 
 	endResetModel();
+	++mRevision;
+	emit revisionChanged();
 }
+
+int IssueModel::revision() const { return mRevision; }
 
 IssueModel::IssueModel(QObject* parent)
 	: QAbstractListModel(parent)

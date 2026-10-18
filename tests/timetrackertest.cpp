@@ -376,11 +376,28 @@ TEST_F(TimeTrackerTest, IssuesRedmineDoesntKnowAreForgotten)
 	ASSERT_EQ(tracker->recentEntries().first().toMap()["project_name"].toString().toStdString(), "Old project");
 
 	int cacheChanges = 0;
-	QObject::connect(tracker.get(), &TimeTracker::issueAddedOrUpdated, [&]() { ++cacheChanges; });
+	QObject::connect(tracker.get(), &TimeTracker::issueCacheChanged, [&]() { ++cacheChanges; });
 	tracker->forgetIssue(15);
 	tracker->forgetIssue(15); // not cached any more: nothing to do
 
 	EXPECT_EQ(cacheChanges, 1);
 	EXPECT_TRUE(tracker->recentEntries().first().toMap()["project_name"].toString().isEmpty());
 	EXPECT_EQ(tracker->issueIdsWithoutProject(), QVariantList { 15 });
+}
+
+TEST_F(TimeTrackerTest, ForgottenIssueIsUnpinnedButNotWhileTracked)
+{
+	for (int id : { 15, 16 }) {
+		ASSERT_TRUE(Database::addIssue(
+			id, "Gone", 1, "Old", 1, "", QDateTime::currentDateTime(), QDateTime::currentDateTime()));
+	}
+	tracker->toggleFavoriteIssue(15);
+	tracker->forgetIssue(15);
+	EXPECT_FALSE(tracker->isFavoriteIssue(15));
+
+	tracker->startTracking(16);
+	tracker->forgetIssue(16); // still needed for the tracking bar's activities
+	QSqlQuery query("SELECT COUNT(*) FROM issues WHERE id = 16");
+	ASSERT_TRUE(query.next());
+	EXPECT_EQ(query.value(0).toInt(), 1);
 }

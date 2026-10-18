@@ -27,7 +27,7 @@ TimeTracker::TimeTracker(QObject* parent)
 	restoreTrackingState();
 	loadFavoriteIssues();
 	// A pinned issue's subject and project may only be known once the issue is cached.
-	connect(this, &TimeTracker::issueAddedOrUpdated, this, &TimeTracker::loadFavoriteIssues);
+	connect(this, &TimeTracker::issueCacheChanged, this, &TimeTracker::loadFavoriteIssues);
 }
 
 bool TimeTracker::continueTracking(int issueId, const QString& comment, int activityId)
@@ -396,7 +396,7 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 	if (!Database::addIssue(id, subject, project, projectName, status, description, createdOn, updatedOn)) {
 		qWarning() << "Could not add issue  " << issue;
 	} else {
-		emit issueAddedOrUpdated();
+		emit issueCacheChanged();
 		// Recent entries show their issue's project, which may only now be known or have changed.
 		// Reload only then: reloading rebuilds the list and loses its scroll position.
 		const bool shownProjectChanged =
@@ -412,9 +412,18 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 
 void TimeTracker::forgetIssue(int issueId)
 {
-	if (Database::removeIssue(issueId) > 0) {
+	// Kept while it's tracked, so the tracking bar keeps offering its project's activities; it's
+	// found unknown again once picked or refreshed later.
+	if (isTracking() && mCurrentIssueId == issueId) {
+		return;
+	}
+	const bool wasFavorite = isFavoriteIssue(issueId);
+	if (wasFavorite) {
+		Database::removeFavoriteIssue(issueId);
+	}
+	if (Database::removeIssue(issueId) > 0 || wasFavorite) {
 		qCInfo(lcTimeTracker) << "Issue" << issueId << "is unknown to Redmine, removed it from the cache";
-		emit issueAddedOrUpdated();
+		emit issueCacheChanged(); // also reloads the favorites
 		loadRecentEntries(); // its entries no longer show a project
 	}
 }
