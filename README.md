@@ -2,13 +2,22 @@
 
 A desktop application built with Qt 6 for tracking time spent on Redmine issues, for Linux and Windows, with a dedicated portrait UI for Android and iOS. Features automatic time tracking, offline support, and seamless integration with Redmine's REST API.
 
+📖 **Documentation:** <https://drook207.gitlab.io/QRedmineTimeTracker/> - getting started, a full
+user guide, and developer docs (sources in [docs/](docs/)).
+
 ## Screenshots
 
-| Recent entries | Add time entry | Mobile |
-| --- | --- | --- |
-| ![Recent entries](docs/screenshots/desktop-recent-entries.png) | ![Add time entry](docs/screenshots/desktop-add-time-entry.png) | ![Mobile recent entries](docs/screenshots/mobile-recent-entries.png) |
+| Recent entries | Week overview |
+| --- | --- |
+| ![Recent entries](docs/assets/screenshots/desktop-recent-entries.png) | ![Week overview](docs/assets/screenshots/desktop-overview.png) |
+| **Add time entry** | **Settings** |
+| ![Add time entry](docs/assets/screenshots/desktop-add-time-entry.png) | ![Settings](docs/assets/screenshots/desktop-settings.png) |
 
-See the [User Guide](docs/USER_GUIDE.md) for a full walkthrough with screenshots of every view, on both desktop and mobile.
+| Mobile | Mobile, tracking panel expanded |
+| --- | --- |
+| <img src="docs/assets/screenshots/mobile-recent-entries.png" alt="Mobile recent entries" width="300"> | <img src="docs/assets/screenshots/mobile-tracking-expanded.png" alt="Mobile tracking panel expanded" width="300"> |
+
+See the [User Guide](https://drook207.gitlab.io/QRedmineTimeTracker/user-guide/) for a walkthrough of every view, on both desktop and mobile.
 
 ## Features
 
@@ -35,7 +44,7 @@ See the [User Guide](docs/USER_GUIDE.md) for a full walkthrough with screenshots
 * Create, update, and delete time entries directly from the app
 * View and manage existing time entries, with activities and the "Special" custom field
 * Add Issue offers only the projects you may add issues to
-* API key stored in the OS-native secure storage (Windows Credential Manager, Linux Secret Service/KWallet) - never in plain text
+* API key stored in the OS-native secure storage (e.g. Windows Credential Manager, Secret Service/KWallet on Linux, the Keychain on Apple platforms, the Android Keystore) - never in plain text
 * Automatic Redmine REST API version detection, so newer features can be gated on server capability
 * Error handling, connection-state indicator, and retry mechanisms
 
@@ -54,7 +63,7 @@ See the [User Guide](docs/USER_GUIDE.md) for a full walkthrough with screenshots
 ## Requirements
 
 * Qt 6.8 or higher
-* CMake 3.16 or higher (3.23+ to use the provided CMake Presets)
+* CMake 3.16 or higher (3.25+ to use the provided CMake Presets)
 * C++17 compatible compiler
 * SQLite
 * Linux, or Windows with MSVC or MinGW
@@ -133,6 +142,12 @@ Time entries are stored in SQLite with the following structure:
 * `redmine_id`: ID from Redmine after sync
 * `created_at`: Local creation timestamp
 * `updated_at`: Last modification timestamp
+
+## Documentation
+
+The documentation website is built with MkDocs from [docs/](docs/) and published on GitLab Pages from
+`main` - see [Working on the documentation](https://drook207.gitlab.io/QRedmineTimeTracker/development/contributing/#working-on-the-documentation)
+to preview it locally.
 
 ## Contributing
 

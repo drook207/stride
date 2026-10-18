@@ -517,3 +517,6 @@ src/.cache/
 .qmlls.ini
 
 build-kdevelop
+# MkDocs output: mkdocs serve/build locally, CI builds into public/
+site/
+public/
