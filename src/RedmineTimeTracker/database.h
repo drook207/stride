@@ -56,6 +56,7 @@ namespace SqlQueries {
 		"ORDER BY created_at, id");
 	STATIC_CONST_QSTRING(GET_TIME_ENTRY, "SELECT * FROM time_entries WHERE id = ?");
 	STATIC_CONST_QSTRING(DELETE_TIME_ENTRY, "DELETE FROM time_entries WHERE id = ?");
+	STATIC_CONST_QSTRING(DELETE_ISSUE, "DELETE FROM issues WHERE id = ?");
 	STATIC_CONST_QSTRING(DELETE_TIME_ENTRIES_BY_REDMINE_ID, "DELETE FROM time_entries WHERE redmine_id = ?");
 
 	// Schema version 2: what's needed to send an entry (again) later, and why Redmine rejected it.
@@ -232,6 +233,9 @@ public:
 	 * \brief setSyncStatus Sets an entry's SyncStatus and why it was rejected (empty otherwise)
 	 */
 	static bool setSyncStatus(int id, SyncStatus status, const QString& error = QString());
+
+	//! Removes an issue from the cache; returns the number removed (0 or 1), or -1 on failure.
+	static int removeIssue(int issueId);
 
 	//! Deletes a local entry; returns the number deleted (0 or 1), or -1 on failure.
 	static int deleteTimeEntry(int id);

@@ -725,6 +725,18 @@ TEST_F(RedmineClientIntegrationTest, NoErrorIsReportedWhileNoServerIsSetUp)
 	EXPECT_FALSE(errorFired);
 }
 
+TEST_F(RedmineClientIntegrationTest, UnknownIssueEmitsIssueNotFound)
+{
+	server->enqueueResponse(MockHttpResponse { 404, "Not Found", "" });
+
+	int missing = -1;
+	QObject::connect(client.get(), &RedmineClient::issueNotFound, [&](int issueId) { missing = issueId; });
+
+	client->getIssue(15);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueNotFound));
+	EXPECT_EQ(missing, 15);
+}
+
 TEST_F(RedmineClientIntegrationTest, ServerErrorResponseEmitsErrorOccurred)
 {
 	server->enqueueResponse(MockHttpResponse { 500, "Internal Server Error", R"({"errors":["boom"]})" });

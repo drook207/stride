@@ -367,3 +367,20 @@ TEST_F(TimeTrackerTest, IssueStatusIsSetOnlyOnceTheEntryIsOnRedmine)
 	ASSERT_EQ(statuses.size(), 1);
 	EXPECT_EQ(statuses.first(), qMakePair(11, 5));
 }
+
+TEST_F(TimeTrackerTest, IssuesRedmineDoesntKnowAreForgotten)
+{
+	ASSERT_TRUE(Database::addIssue(
+		15, "Gone after a reset", 1, "Old project", 1, "", QDateTime::currentDateTime(), QDateTime::currentDateTime()));
+	addOfflineEntry(15, 1.0, "Booked on it");
+	ASSERT_EQ(tracker->recentEntries().first().toMap()["project_name"].toString().toStdString(), "Old project");
+
+	int cacheChanges = 0;
+	QObject::connect(tracker.get(), &TimeTracker::issueAddedOrUpdated, [&]() { ++cacheChanges; });
+	tracker->forgetIssue(15);
+	tracker->forgetIssue(15); // not cached any more: nothing to do
+
+	EXPECT_EQ(cacheChanges, 1);
+	EXPECT_TRUE(tracker->recentEntries().first().toMap()["project_name"].toString().isEmpty());
+	EXPECT_EQ(tracker->issueIdsWithoutProject(), QVariantList { 15 });
+}

@@ -29,14 +29,18 @@ Item {
     //! True if `value` refers to an issue already present in the local issue cache (i.e. one the
     //! app has previously fetched via RedmineClient::getIssue). Callers use this to gate actions
     //! that need issue details (e.g. starting time tracking) on the issue actually being known.
-    readonly property bool knownIssue: issueModel.hasIssue(value)
+    readonly property bool knownIssue: searchField.cacheRevision >= 0 && issueModel.hasIssue(value)
+
+    //! Counts changes of the issue cache, so the bindings above that call into issueModel are
+    //! evaluated again (a function call alone doesn't tell QML when its result changes).
+    property int cacheRevision: 0
 
     //! Height of the window the field is in (0 while it isn't in one), for the drop-down.
     readonly property real windowHeight: Window.height
 
     //! Project of the selected issue, or -1 while it isn't cached (see knownIssue). Callers use it
     //! to offer the activities that project allows (ActivityComboBox).
-    readonly property int projectId: knownIssue ? issueModel.projectIdOf(value) : -1
+    readonly property int projectId: knownIssue && searchField.cacheRevision >= 0 ? issueModel.projectIdOf(value) : -1
 
     //! Emitted when Enter/Return is pressed in the field (mirrors TextField.accepted).
     signal accepted
@@ -55,6 +59,7 @@ Item {
             target: searchField.timeTracker
 			function onIssueAddedOrUpdated() {
                 issueModel.updateIssueList()
+                searchField.cacheRevision++
             }
         }
 

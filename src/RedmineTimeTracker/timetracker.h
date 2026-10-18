@@ -231,6 +231,12 @@ public slots:
 	void addIssueToDatabase(const QJsonObject& issue);
 
 	/*!
+	 * \brief forgetIssue Removes an issue Redmine doesn't know (any more) from the cache, so it's no
+	 * longer suggested or trackable. Connected to RedmineClient::issueNotFound.
+	 */
+	void forgetIssue(int issueId);
+
+	/*!
 	 * \brief applyRedmineUpdate Applies the changes staged for a Redmine time entry (see
 	 * stageRedmineUpdate()) to the local entries linked to it and to entriesFromId. Connected to
 	 * RedmineClient::timeEntryUpdated.

@@ -376,6 +376,12 @@ signals:
 	void timeEntryCreateFailed(int requestTag, int httpStatus, const QString& error);
 
 	/*!
+	 * \brief issueNotFound Emitted when Redmine doesn't know an issue asked for with getIssue() (404),
+	 * e.g. because it was deleted, or it's another server than the cached issue came from
+	 */
+	void issueNotFound(int issueId);
+
+	/*!
 	 * \brief timeEntryUpdated
 	 * \param timeEntryId
 	 * \param requestTag As passed to updateTimeEntry()

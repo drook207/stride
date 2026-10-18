@@ -410,6 +410,15 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 	}
 }
 
+void TimeTracker::forgetIssue(int issueId)
+{
+	if (Database::removeIssue(issueId) > 0) {
+		qCInfo(lcTimeTracker) << "Issue" << issueId << "is unknown to Redmine, removed it from the cache";
+		emit issueAddedOrUpdated();
+		loadRecentEntries(); // its entries no longer show a project
+	}
+}
+
 void TimeTracker::loadRecentEntries()
 {
 	const auto entries = Database::getRecentEntries();
