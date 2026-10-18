@@ -312,6 +312,22 @@ TEST_F(RedmineClientIntegrationTest, FailedReportIsReported)
 	EXPECT_FALSE(errorFired);
 }
 
+TEST_F(RedmineClientIntegrationTest, LoadingStaysOnAcrossPagesAndEndsWithTheLastRequest)
+{
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"projects":[{"id":1}],"total_count":2,"offset":0})" });
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"projects":[{"id":2}],"total_count":2,"offset":1})" });
+
+	QList<bool> loadingStates;
+	QObject::connect(client.get(), &RedmineClient::loadingChanged, [&]() { loadingStates.append(client->loading()); });
+
+	client->getAllProjects();
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::projectsReceived));
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	// On once, off once: not off and on again between the pages.
+	EXPECT_EQ(loadingStates, (QList<bool> { true, false }));
+}
+
 TEST_F(RedmineClientIntegrationTest, CreateProjectSendsPostBodyAndEmitsProjectCreated)
 {
 	server->enqueueResponse(MockHttpResponse { 201, "Created", R"({"project":{"id":8,"identifier":"proj"}})" });

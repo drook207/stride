@@ -4,10 +4,12 @@
 #include <QMetaEnum>
 #include <QPointer>
 #include <QRegularExpression>
+#include <QScopeGuard>
 #include <QStringLiteral>
 #include <QTranslator>
 #include <QUrlQuery>
 #include <QtLogging>
+#include <algorithm>
 #include <utility>
 
 #include "qsettingshelper.h"
@@ -802,10 +804,19 @@ void RedmineClient::updateConnectionStateFromReply(QNetworkReply* reply)
 	}
 }
 
+void RedmineClient::updateLoading()
+{
+	const auto replies = mNetworkManager->findChildren<QNetworkReply*>(Qt::FindDirectChildrenOnly);
+	setLoading(
+		std::any_of(replies.cbegin(), replies.cend(), [](QNetworkReply* reply) { return !reply->isFinished(); }));
+}
+
 void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 {
 	reply->deleteLater();
-	setLoading(false);
+	// Loading ends once no request is left, checked after this reply was handled: handling it may
+	// start follow-up requests (e.g. the next page), so loading doesn't flicker in between.
+	const auto updateLoadingWhenDone = qScopeGuard([this]() { updateLoading(); });
 	updateApiVersionFromReply(reply);
 
 	// Requests answered separately: kept out of the error reporting and the generic routing below

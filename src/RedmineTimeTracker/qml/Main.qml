@@ -270,17 +270,42 @@ ApplicationWindow {
         }
     }
 
-    Popup {
+    // Shown in the middle of the window while requests run, once they take noticeably long, so
+    // quick requests don't make it flash. A plain item rather than a popup: it stays below dialogs
+    // (which live on the overlay) and lets clicks through.
+    Rectangle {
         id: busyIndicator
-        BusyIndicator {
-            running: redmineClient.loading
+        anchors.centerIn: parent
+        z: 1
+        width: busySpinner.implicitWidth + 32
+        height: busySpinner.implicitHeight + 32
+        radius: Metrics.panelRadius
+        color: Material.dialogColor
+        visible: redmineClient.loading && busyDelay.elapsed
 
-            onRunningChanged: {
-                if (running) {
-                    busyIndicator.open();
-                } else {
-                    busyIndicator.close();
-                }
+        BusyIndicator {
+            id: busySpinner
+            anchors.centerIn: parent
+            running: busyIndicator.visible
+        }
+    }
+    // Restarted by each start of loading (rather than bound to it: a single-shot timer's running
+    // turns false when it fires). RedmineClient keeps loading on until the last request finished.
+    Timer {
+        id: busyDelay
+        //! Whether loading has been going on for longer than the interval.
+        property bool elapsed: false
+        interval: 400
+        onTriggered: elapsed = true
+    }
+    Connections {
+        target: redmineClient
+        function onLoadingChanged() {
+            if (redmineClient.loading) {
+                busyDelay.restart();
+            } else {
+                busyDelay.stop();
+                busyDelay.elapsed = false;
             }
         }
     }
