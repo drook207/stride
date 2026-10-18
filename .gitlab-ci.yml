@@ -1,8 +1,10 @@
-# Checks every merge request and main: the pre-commit hooks, then build, unit tests and qmllint.
+# Checks every merge request and main: the pre-commit hooks, then build, unit tests and qmllint,
+# and the documentation website, which main also publishes on GitLab Pages.
 
 stages:
   - lint
   - build
+  - deploy
 
 variables:
   QT_VERSION: "6.11.2"
@@ -65,3 +67,34 @@ build-and-test:
     paths:
       - qmllint.log
     expire_in: 1 week
+
+# MkDocs website from docs/ and mkdocs.yml; --strict fails on broken links and missing pages.
+# Needs nothing else, so it runs and deploys without waiting for the Qt build.
+.docs:
+  image: python:3.12
+  needs: []
+  variables:
+    PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  cache:
+    key: pip-docs
+    paths:
+      - .cache/pip
+  before_script:
+    - pip install --quiet -r docs/requirements.txt
+  script:
+    - mkdocs build --strict --site-dir public
+
+docs:
+  extends: .docs
+  stage: build
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+pages:
+  extends: .docs
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  artifacts:
+    paths:
+      - public
