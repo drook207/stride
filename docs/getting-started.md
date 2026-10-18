@@ -2,7 +2,16 @@
 
 ## Install
 
-Stride is built from source with CMake and Qt 6.8 or newer - see
+Download the installer for your system from the
+[latest release](https://gitlab.com/drook207/QRedmineTimeTracker/-/releases/permalink/latest):
+
+- **Windows:** `Stride-<version>-windows-x64.exe` - run it and follow the steps.
+- **Linux:** `Stride-<version>-linux-x64.run` - make it executable with
+    `chmod +x Stride-*-linux-x64.run`, then run it.
+
+### Build from source
+
+Stride is built with CMake and Qt 6.8 or newer - see
 [Building](development/building.md) for the requirements and the exact
 commands. In short:
 
