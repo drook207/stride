@@ -154,7 +154,7 @@ to preview it locally.
 1. Fork the repository
 2. Create a feature branch
 3. Install the pre-commit hooks: `pip install pre-commit && pre-commit install`
-    (runs clang-format/clang-tidy/cppcheck/codespell/markdownlint, and enforces
+    (runs clang-format/clang-tidy/cppcheck/cmake-format/mdformat/codespell/markdownlint, and enforces
     [Conventional Commits](https://www.conventionalcommits.org) on commit messages)
 4. Commit your changes
 5. Push to the branch
