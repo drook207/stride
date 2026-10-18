@@ -725,6 +725,36 @@ TEST_F(RedmineClientIntegrationTest, NoErrorIsReportedWhileNoServerIsSetUp)
 	EXPECT_FALSE(errorFired);
 }
 
+TEST_F(RedmineClientIntegrationTest, UnknownIssueEmitsIssueNotFound)
+{
+	MockHttpResponse notFound { 404, "Not Found", "" };
+	notFound.headers.insert("Content-Type", "application/json"); // Redmine's own answer
+	server->enqueueResponse(notFound);
+
+	int missing = -1;
+	QObject::connect(client.get(), &RedmineClient::issueNotFound, [&](int issueId) { missing = issueId; });
+
+	client->getIssue(15);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueNotFound));
+	EXPECT_EQ(missing, 15);
+}
+
+TEST_F(RedmineClientIntegrationTest, NotFoundPageFromSomethingElseSaysNothingAboutTheIssue)
+{
+	// E.g. a wrong server URL or a proxy answering with an HTML 404 page.
+	MockHttpResponse page { 404, "Not Found", "<html>Not here</html>" };
+	page.headers.insert("Content-Type", "text/html");
+	server->enqueueResponse(page);
+
+	bool notFound = false;
+	QObject::connect(client.get(), &RedmineClient::issueNotFound, [&](int) { notFound = true; });
+
+	client->getIssue(15);
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+	waitUntil([]() { return false; }, 200);
+	EXPECT_FALSE(notFound);
+}
+
 TEST_F(RedmineClientIntegrationTest, ServerErrorResponseEmitsErrorOccurred)
 {
 	server->enqueueResponse(MockHttpResponse { 500, "Internal Server Error", R"({"errors":["boom"]})" });

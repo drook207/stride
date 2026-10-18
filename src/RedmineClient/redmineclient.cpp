@@ -36,6 +36,8 @@ static constexpr auto CUSTOM_FIELDS_GENERATION_ATTRIBUTE =
 	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 4);
 //! Request attribute carrying the RedmineClient::fetchKey() of a paged fetch's page
 static constexpr auto FETCH_KEY_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 6);
+//! Request attribute carrying the issue id of a getIssue() request
+static constexpr auto ISSUE_ID_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 7);
 //! Page size used by getAllProjects() and getOwnTimeEntries(); 100 is the most Redmine returns per
 //! request
 static constexpr int PAGE_SIZE = 100;
@@ -395,6 +397,7 @@ void RedmineClient::getIssue(int issueId, bool quiet, bool withAllowedStatuses)
 	}
 	QNetworkRequest request = createRequest(ApiResources::ISSUE.arg(QString::number(issueId)), query);
 	request.setAttribute(QUIET_ATTRIBUTE, quiet);
+	request.setAttribute(ISSUE_ID_ATTRIBUTE, issueId);
 	mNetworkManager->get(request);
 }
 
@@ -839,6 +842,13 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0) &&
 			!mBaseUrl.isEmpty()) {
 			emit errorOccurred(userErrorMessage(reply, response));
+		}
+		// Only Redmine's own answer (JSON) says the issue is unknown; a 404 page from something else
+		// (a wrong server URL, a proxy) says nothing about the issue.
+		const QVariant issueId = reply->request().attribute(ISSUE_ID_ATTRIBUTE);
+		if (issueId.isValid() && httpStatus == 404 &&
+			reply->header(QNetworkRequest::ContentTypeHeader).toString().startsWith("application/json")) {
+			emit issueNotFound(issueId.toInt());
 		}
 		// A time entry that's gone on Redmine already is as good as deleted.
 		if (reply->operation() == QNetworkAccessManager::DeleteOperation && httpStatus == 404 &&

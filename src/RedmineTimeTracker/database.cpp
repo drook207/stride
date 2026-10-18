@@ -458,6 +458,8 @@ static int deleteWhere(const QString& sql, int key)
 
 int Database::deleteTimeEntry(int id) { return deleteWhere(SqlQueries::DELETE_TIME_ENTRY, id); }
 
+int Database::removeIssue(int issueId) { return deleteWhere(SqlQueries::DELETE_ISSUE, issueId); }
+
 int Database::deleteTimeEntriesByRedmineId(int redmineId)
 {
 	return deleteWhere(SqlQueries::DELETE_TIME_ENTRIES_BY_REDMINE_ID, redmineId);
