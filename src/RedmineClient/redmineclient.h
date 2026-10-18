@@ -607,6 +607,8 @@ private:
 	 * \param loading
 	 */
 	void setLoading(bool loading);
+	//! Sets loading to whether any request is still running.
+	void updateLoading();
 
 	ConnectionState mConnectionState = ConnectionState::OFFLINE;
 	QTimer mConnectionCheckTimer;
