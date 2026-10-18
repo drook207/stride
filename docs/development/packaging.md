@@ -23,16 +23,25 @@ Pushing a version tag such as `v0.1.0` releases that version from GitLab CI:
 
 1. `installer-linux` and `installer-windows` build the installers and upload
     them to the project's package registry.
-2. `release` checks that the tag matches the version in the root
-    `CMakeLists.txt`, takes the release notes from the tag's section of
-    `CHANGELOG.md`, and creates the GitLab release with the installers as
-    downloads.
+2. `release-notes` writes the release notes with
+    [git-cliff](https://git-cliff.org) from the commit messages since the
+    previous tag: `feat` commits become *Features*, `fix` commits *Bug fixes*,
+    other types are left out (see `cliff.toml`). The notes are only as good as
+    the commit subjects, so write them for users.
+3. `release` checks that the tag matches the version in the root
+    `CMakeLists.txt` and creates the GitLab release with the notes and the
+    installers as downloads.
 
 To release a version:
 
 1. Set the version in the root `CMakeLists.txt` (`project(QRedmine VERSION …)`).
 
-2. Add its section to `CHANGELOG.md`.
+2. Update `CHANGELOG.md` with the same notes:
+
+    ```bash
+    pip install git-cliff
+    git cliff --tag v0.1.0 --output CHANGELOG.md
+    ```
 
 3. Merge both to `main`, then tag that commit and push the tag:
 

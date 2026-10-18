@@ -1,8 +1,8 @@
 # Checks every merge request and main: the pre-commit hooks, then build, unit tests and qmllint,
 # and the documentation website, which main also publishes on GitLab Pages.
 # A version tag (v1.2.3) also builds the Windows and Linux installers, uploads them to the
-# package registry and creates the GitLab release; on merge requests the installers can be
-# built by hand.
+# package registry and creates the GitLab release with notes generated from the commit
+# messages; on merge requests the installers can be built by hand.
 
 stages:
   - lint
@@ -172,22 +172,41 @@ installer-windows:
           -InFile "installers\$installer" -Uri "$env:PACKAGE_REGISTRY_URL/$version/$installer"
       }
 
-# The GitLab release for a version tag: its notes are the tag's section of CHANGELOG.md, its
-# assets the installers uploaded above.
+# Release notes from the Conventional Commits messages since the previous tag (cliff.toml).
+release-notes:
+  stage: package
+  image: python:3.12
+  needs: []
+  variables:
+    # git-cliff needs the whole history and the earlier tags.
+    GIT_DEPTH: "0"
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - pip install --quiet git-cliff==2.14.2
+    - git fetch --tags --quiet
+    - git cliff --latest --strip all --output release-notes.md
+    - test -s release-notes.md || { echo "No feat or fix commits since the previous tag"; exit 1; }
+    - cat release-notes.md
+  artifacts:
+    paths:
+      - release-notes.md
+    expire_in: 1 week
+
+# The GitLab release for a version tag, with the notes and the installers from above.
 release:
   stage: deploy
   image: registry.gitlab.com/gitlab-org/cli:latest
   needs:
     - installer-linux
     - installer-windows
+    - release-notes
   rules:
     - if: $CI_COMMIT_TAG
   script:
     # RELEASE_VERSION comes from installer-linux (dotenv). The tag must match the version
     # CMake builds into the app and the installers.
     - grep -Eq "^[[:space:]]VERSION $RELEASE_VERSION\)" CMakeLists.txt || { echo "CMakeLists.txt is not at version $RELEASE_VERSION"; exit 1; }
-    - awk -v v="$RELEASE_VERSION" '/^## \[/ { found = index($0, "## [" v "]") == 1; next } found' CHANGELOG.md > release-notes.md
-    - test -s release-notes.md || { echo "CHANGELOG.md has no section for $RELEASE_VERSION"; exit 1; }
   release:
     tag_name: $CI_COMMIT_TAG
     name: "Stride $RELEASE_VERSION"

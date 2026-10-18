@@ -1,33 +1,81 @@
 # Changelog
 
-All notable changes to Stride are listed here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
+All notable changes to Stride. Generated from the commit messages by
+[git-cliff](https://git-cliff.org); the project uses
 [Semantic Versioning](https://semver.org/).
 
 ## [0.1.0] - 2026-10-18
 
-The first release of Stride, with installers for Windows and Linux.
+### Features
 
-### Added
+- **redmine-client:** Add issue and project CRUD operations ([fcc0c45](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/fcc0c45ca8c03bc3c326f3e0a57ffe375c527179))
+- **redmine-client:** Detect Redmine REST API version ([44a5fc1](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/44a5fc111016c198c3eaf84d9d433842618ebb3d))
+- **security:** Store Redmine API key in OS-native secure storage ([ca7aec8](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/ca7aec8431ee88a59633594db7d226a5b3ebc96e))
+- **redmine-client:** Send activity_id when creating time entries ([5705845](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/57058458784d0f4cb2681e915d2fdb6988f0c034))
+- **ui:** Rebrand as "Stride" with a persistent sidebar and tracking bar ([cfdc1d7](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/cfdc1d7973cac94c7b8055f83c4f948ff8397949))
+- **ui:** Add separate portrait UI for Android and iOS ([da0ac78](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/da0ac783f547f56d2933f142fc3f263ed29ac00d))
+- **i18n:** Wire up Qt Linguist translation build and runtime loading ([59895e1](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/59895e1d4bbcb590b27002a8504b277d0a6a2a8b))
+- **i18n:** Add English and German translation catalogs ([82f374c](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/82f374c041d0fc60b94d6065e1bc74fc31e8e608))
+- **i18n:** Add German translations for the RedmineClient library ([6b66151](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/6b66151cb6fa362da149553dfcc647533360240b))
+- **settings:** Add a language selection to the settings view ([22a6197](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/22a6197292e76c5364bdf8755424257fe11ec2f0))
+- **packaging:** Add themed Qt Installer Framework installer for Windows and Linux ([02de1ed](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/02de1ed734778566c283587eec55093fb6b2bbc3))
+- **ui:** Redesign the application icon to match the dark theme ([367001d](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/367001d4e2b3b09b5f1bbffbc9ea2c9014b4d55c))
+- **ui:** Use the application icon as window icon ([9fdeb7c](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/9fdeb7c6fee2a6a93e9805a00299c15c890c6658))
+- **ui:** Make the sidebar navigable with the keyboard ([0afa648](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/0afa64876755faad9d851838d5fd01589d61a642))
+- **ui:** Unify the tracking bar layout and make it scale ([8748197](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/8748197802d3bc551229151e1c5cc7cde423d512))
+- **ui:** Apply the tracking bar layout to the mobile tracking bar ([e7099ea](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/e7099ea03d82f1b9dc3859984f1aa698e4e1d708))
+- **ui:** Restyle the subpages with shared layout components ([c82a9c4](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/c82a9c435cebfccb63ace17b897c8f1df9ce7887))
+- **ui:** Add date, time range and activity inputs to Add Entry ([428912c](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/428912cd17516fd0d6d627ad3c0c617170994a49))
+- **redmineclient:** Update a time entry's date and activity, fix id parsing ([f3e85d4](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/f3e85d4c790b84d11471a11688b2a38bd48d2b58))
+- **ui:** Edit time entries from Recent Entries and Search Issue ([c10e46e](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/c10e46ea53a21afb8f4561bdc75f25d3841205ab))
+- **data:** Keep the project of cached issues and recent entries ([27c4842](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/27c4842cbf1fcc68df6796bc00efd1fcc7e22c3a))
+- **ui:** Show, group and filter by Redmine project ([755834c](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/755834c471c118cf709b333b820cd5c0208694de))
+- **projects:** Offer only projects the user may add issues to ([671f5a2](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/671f5a225ca821e6ff2e5acf61fbe2c286ccb280))
+- **timetracker:** Link existing local entries to their Redmine time entries ([d841914](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/d841914417364432b45a54f70b70f0a3f7a090ca))
+- **sync:** Send time entries saved while Redmine wasn't reachable ([01e3f75](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/01e3f750c5b928ec6993761f984d30e5a095b2ad))
+- **tracking:** Keep the running tracker across restarts ([dcf9e4b](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/dcf9e4b07bd99d286614f55a0adac85ad4bf582a))
+- **ui:** Delete time entries ([23a8de1](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/23a8de13dfcc9656f4f177917b6f42c8b9fcbc10))
+- **overview:** Week overview of booked time ([8862b0c](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/8862b0c8066d96b915778b5b8d7e81baf62e6738))
+- **tracking:** Continue earlier work and pin favorite issues ([ffc72ba](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/ffc72baf61c67b50e7b5a01a239339593d5fa9b9))
+- **desktop:** Tray, shortcuts, sleep detection and reminders ([ba24f51](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/ba24f5147ec9c96d4c948b656d53a9fcef7c7d5d))
+- **issues:** Set the issue status when submitting time ([1a42f68](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/1a42f6852fdbd25735eaabc6c5a8ef4cb2f59e9e))
+- **export:** Export the time entries of a period as CSV or PDF ([810b2b3](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/810b2b37d2bbd70887ff3dfc8cd9367776f1df57))
 
-- Time tracking from a bar that stays on screen: start, pause, resume and
-    submit, also with Ctrl+Space and Ctrl+Enter. The running timer survives
-    closing the app, a crash or the computer going to sleep.
-- Offline support: time entries are saved locally first and sent to Redmine
-    once it's reachable. Entries Redmine rejects are marked with the reason and
-    sent again once changed.
-- Recent entries, filtered or grouped by project, with continuing earlier work
-    in one click, pinned favorite issues, and editing and deleting entries.
-- Adding time entries by hand, looking up the time entries of an issue, and
-    creating issues in the projects you may add issues to.
-- Setting the issue status when submitting time.
-- Week overview of the hours per day against a daily target and per project,
-    and export of a period's time entries as CSV or PDF.
-- System tray icon, keyboard shortcuts, and reminders of unbooked workdays and
-    long-running timers.
-- The Redmine API key is kept in the OS keychain, never in plain text.
-- English and German user interface.
-- Portrait user interface for Android and iOS.
-- Qt Installer Framework installers for Windows and Linux.
+### Bug fixes
 
-[0.1.0]: https://gitlab.com/drook207/QRedmineTimeTracker/-/releases/v0.1.0
+- **database:** Fix scalability issues and harden query handling ([30e1ddd](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/30e1ddd73fa119b6f701ba647d97bac020d1b490))
+- **redmine-client:** Normalize base URL and enumeration endpoint paths ([1038f1f](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/1038f1fd65ad375d2bdc377b9154745c4921f38b))
+- **qml:** Remove self-referential apiKey/baseUrl default bindings ([996133c](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/996133c67dd5c79547f46f8be0db75c4d494f015))
+- **qml:** Fix broken issue-list refresh connection in IssueSearchInputField ([0ba5a62](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/0ba5a621d7627a246a62482502f1088d1994731f))
+- **ui:** Remove leftover header separator line ([52f47d4](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/52f47d4ccd89190fbe76c7eebd49b7e68124f396))
+- **ui:** Size tracking-bar fields to fit their boxes ([f6801db](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/f6801db7c754d851c1bfa2f620af2c95b528031b))
+- **ui:** Make sidebar background transparent to match design ([282f5bc](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/282f5bcdd1e5d80bfd16c3ae525a84872f926b26))
+- **ui:** Replace stock SpinBox styling with a plain TextField in Add Issue ([27401c5](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/27401c5e07c6ee99a601b5c21d019f11c143fd8f))
+- **ui:** Remove redundant placeholder text that broke field styling ([9445237](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/9445237b12bca8023ca2ccb689bf86815ce76988))
+- **ui:** Align Get button with its input field ([5565230](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/556523075ab2e8fa978457546f87eb5e8d35bc6c))
+- **build:** Exclude GoogleTest's install rules from packaged app ([4db5713](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/4db57134fdcd27d7fa502a89429e71a891f1128d))
+- **build:** Exclude QtKeychain's install rules from packaged app ([c041fe5](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/c041fe5810f08bc4814f2f2bb266d9b5bf020e25))
+- **ui:** Pass the activities model to the shells instead of binding it to itself ([200924c](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/200924cf790d24429f1edb079eeb78a3847e4ee2))
+- **i18n:** Wrap remaining hardcoded UI strings in qsTr() ([76150a4](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/76150a4765ed7efbdb6f3628acbc747acf91a62c))
+- **ui:** Dim the window behind modal dialogs with a dark scrim ([802f451](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/802f4515f9d93977bfe4756630b857dea3ace2bb))
+- **ui:** Submit the activity the tracking bars show ([74f71af](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/74f71af900104a08224fa10874beb93cdc270027))
+- **redmineclient:** Stop leaking build-mode macro to consumers ([cdfe4d1](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/cdfe4d1014b1d2f0df507a8109edc7b2cbfde7e2))
+- **timetracker:** Stop double-inserting and mis-keying new recent entries ([6b767e3](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/6b767e3306e27f69331bb83794fef792fca2d942))
+- **ui:** Offer only bookable activities and wire up the Special field ([bc6055b](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/bc6055b36e84f0a09cd497810293457422d1321c))
+- **timetracker:** Link and stage time entry edits per request ([a96b186](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/a96b1869e650c47decd17ab791e18bfd6da35d62))
+- **projects:** Address review findings on projects and recent entries ([f32260b](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/f32260b0e1e037ccc1778e2040a4fd2b4c659df6))
+- **activities:** Address review findings on activities and custom fields ([6a191d0](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/6a191d06e548202a0c5057fc4c40b46287cb9649))
+- **docker:** Address review findings on the Redmine seeding ([59dd560](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/59dd560d6077020d9d0dbdf72a14bc7a534b22fd))
+- Address review findings on linking and project permissions ([04f7d1a](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/04f7d1ad5aead0323dffd377e86b276bc653a321))
+- **app:** Take the application identity from CMake ([78f33f2](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/78f33f2b5cf54b3da70b329bb9759e4a03a1dc7b))
+- **database:** Move the old database completely or not at all ([09df950](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/09df950b6cee5c1806b2003fbdbe28572b33b076))
+- **sync:** Link before every resend, retry while online, send edits made while sending ([cc03e61](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/cc03e612955587ceee9f127a76e5e0ce2d8a6ac5))
+- **overview:** Debounce fetching the week, reports per purpose ([e8c9d0d](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/e8c9d0dd50a5de6d3533697c2347916206eda207))
+- **desktop:** Keep time worked after waking, ask Redmine before reminding ([7495302](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/7495302e9ac7a8686cec1b1c02c2410853584cf2))
+- **issues:** Set the chosen status once the time entry is on Redmine ([6ea085d](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/6ea085d16380039263221b64471cdf0921de1a4d))
+- **export:** Own report request, fall back only on failure, documents folder ([d88d576](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/d88d5764540a6bda24c4ad7cbf537ffd4dccd14a))
+- **issues:** Forget cached issues Redmine doesn't know ([9cc6e9f](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/9cc6e9f0868b50be037d0648061d6d85a7aec4c4))
+- **issues:** Forget issues only on Redmine's own 404, and tidy up after ([87f681b](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/87f681bafcc7daee816532c5db723121a1291de0))
+- **ui:** Show the loading indicator in the middle of the window ([a6fd960](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/a6fd9607a45aa85fe0cc3a59615b3ec7c8639c35))
+- **client:** Keep loading on until the last request finished ([c2a809e](https://gitlab.com/drook207/QRedmineTimeTracker/-/commit/c2a809e6de99751a578b244b0d16055f31fd283e))
+<!-- generated by git-cliff -->
