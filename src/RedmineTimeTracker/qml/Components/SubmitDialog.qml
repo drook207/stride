@@ -40,7 +40,7 @@ Dialog {
 		const issueId = parseInt(docroot.issueId)
 		const comments = docroot.comment
 		// Saved locally and sent to Redmine from there, now or once it's reachable (see Main.qml).
-		docroot.timeTracker.addRecentEntry({
+		const entryId = docroot.timeTracker.addRecentEntry({
 											   "issueId": issueId,
 											   "hours": hours,
 											   "comments": comments,
@@ -49,7 +49,11 @@ Dialog {
 											   "customFields": docroot.customFields,
 											   "issueStatusId": statusPicker.statusId
 										   })
-		docroot.comment = ""
+		// Saved: the next tracking starts from scratch. If saving failed, everything is kept.
+		if (entryId >= 0) {
+			docroot.timeTracker.clearTracking()
+			docroot.comment = ""
+		}
 	}
 
 	onAboutToShow: statusPicker.load(parseInt(docroot.issueId))

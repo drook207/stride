@@ -81,6 +81,7 @@ qt_add_qml_module(
 	qml/Components/TimeEntryDelegate.qml
 	qml/Components/DatePickerField.qml
 	qml/Components/TimePickerField.qml
+	qml/Components/StartTimeField.qml
 	qml/Components/TimeRangeRow.qml
 	qml/Components/EditTimeEntryDialog.qml
 	qml/Components/TrayIcon.qml

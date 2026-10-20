@@ -110,15 +110,95 @@ QDateTime TimeTracker::interruptedAt() const { return mInterruptedAt; }
 
 bool TimeTracker::interruptedBySleep() const { return mInterruptedBySleep; }
 
+QDateTime TimeTracker::startedAt() const { return mStartedAt; }
+
+//! The longest the start may lie back, see TimeTracker::setStartedAt().
+static constexpr int MAX_START_AGE_SECONDS = 24 * 60 * 60;
+
+bool TimeTracker::setStartedAt(const QDateTime& startedAt)
+{
+	const QDateTime now = QDateTime::currentDateTime();
+	const char* reason = nullptr;
+	const qint64 elapsed = elapsedSeconds();
+	// Earlier by N seconds adds N seconds.
+	const qint64 shift = startedAt.isValid() ? startedAt.secsTo(mStartedAt) : 0;
+	if (!isTracking()) {
+		reason = "not tracking";
+	} else if (mInterruptedAt.isValid()) {
+		reason = "the time away is undecided";
+	} else if (!startedAt.isValid()) {
+		reason = "invalid date";
+	} else if (startedAt > now) {
+		reason = "in the future";
+	} else if (startedAt.secsTo(now) > MAX_START_AGE_SECONDS) {
+		reason = "more than 24 hours ago";
+	} else if (elapsed + shift < 0) {
+		reason = "more time would be taken off than tracked";
+	}
+	if (reason) {
+		QR_DEBUG(lcTimeTracker, QStringLiteral("Rejected a new start time: %1").arg(QLatin1String(reason)),
+			{ { "issueId", mCurrentIssueId }, { "startedAt", startedAt.toString(Qt::ISODate) } });
+		return false;
+	}
+	const QDateTime oldStart = mStartedAt;
+	mStartedAt = startedAt;
+	mTotalElapsedTime += shift;
+	saveTrackingState();
+	QR_INFO(lcTimeTracker,
+		QStringLiteral("Changed the start of issue %1 from %2 to %3")
+			.arg(mCurrentIssueId)
+			.arg(oldStart.toString(Qt::ISODate), startedAt.toString(Qt::ISODate)),
+		{ { "issueId", mCurrentIssueId }, { "oldStartedAt", oldStart.toString(Qt::ISODate) },
+			{ "startedAt", startedAt.toString(Qt::ISODate) }, { "elapsedSeconds", elapsed + shift } });
+	emit startedAtChanged();
+	emit elapsedTimeChanged();
+	return true;
+}
+
+void TimeTracker::clearTracking()
+{
+	const bool wasTracking = isTracking();
+	stopTracking();
+	const bool hadIssue = mCurrentIssueId != 0;
+	const bool hadDetails = !mTrackingComment.isEmpty();
+	const bool hadStart = mStartedAt.isValid();
+	mCurrentIssueId = 0;
+	mTotalElapsedTime = 0;
+	mTrackingComment.clear();
+	mStartedAt = QDateTime();
+	mStartTime = QDateTime();
+	if (!wasTracking) {
+		Database::clearTrackingState(); // stopTracking() did it otherwise
+	}
+	QR_INFO(lcTimeTracker, QStringLiteral("Cleared the tracker"), { { "hadIssue", hadIssue } });
+	if (hadIssue) {
+		emit currentIssueChanged();
+	}
+	if (hadDetails) {
+		emit trackingDetailsChanged();
+	}
+	if (hadStart) {
+		emit startedAtChanged();
+	}
+	emit elapsedTimeChanged();
+	emit trackingCleared();
+}
+
+qint64 TimeTracker::elapsedSeconds() const
+{
+	return mTotalElapsedTime + (mTimer.isActive() ? mStartTime.secsTo(QDateTime::currentDateTime()) : 0);
+}
+
 void TimeTracker::saveTrackingState()
 {
 	if (!isTracking()) {
 		Database::clearTrackingState();
 		return;
 	}
-	Database::saveTrackingState({ { "issue_id", mCurrentIssueId },
-		{ "started_at", mTimer.isActive() ? mStartTime : QDateTime() }, { "elapsed_seconds", mTotalElapsedTime },
-		{ "comment", mTrackingComment }, { "activity_id", mTrackingActivityId } });
+	Database::saveTrackingState(
+		{ { "issue_id", mCurrentIssueId }, { "started_at", mTimer.isActive() ? mStartTime : QDateTime() },
+			{ "elapsed_seconds", mTotalElapsedTime }, { "comment", mTrackingComment },
+			{ "activity_id", mTrackingActivityId }, { "tracking_started_at", mStartedAt } });
 	mSecondsSinceTouch = 0;
 }
 
@@ -134,15 +214,24 @@ void TimeTracker::restoreTrackingState()
 	mTrackingActivityId = state["activity_id"].toInt();
 	mStartTime = state["started_at"].toDateTime();
 	mIsPaused = !mStartTime.isValid();
+	mStartedAt = state["tracking_started_at"].toDateTime();
+	const QDateTime now = QDateTime::currentDateTime();
+	const QDateTime lastSeen = state["last_seen"].toDateTime();
 	if (!mIsPaused) {
 		mTimer.start();
-		const QDateTime lastSeen = state["last_seen"].toDateTime();
-		if (lastSeen.isValid() && lastSeen.secsTo(QDateTime::currentDateTime()) > INTERRUPTION_THRESHOLD_SECONDS) {
+		if (lastSeen.isValid() && lastSeen.secsTo(now) > INTERRUPTION_THRESHOLD_SECONDS) {
 			mInterruptedAt = lastSeen;
 			QR_INFO(lcTimeTracker,
 				QStringLiteral("The app was gone since %1 while tracking").arg(lastSeen.toString(Qt::ISODate)),
 				{ { "issueId", mCurrentIssueId }, { "lastSeen", lastSeen.toString(Qt::ISODate) } });
 		}
+	}
+	if (!mStartedAt.isValid()) {
+		// Saved before the start was kept: what's tracked so far ends now, or where the app was last
+		// seen if the time away is still to be decided.
+		const QDateTime end = mInterruptedAt.isValid() ? mInterruptedAt : now;
+		const qint64 segment = mIsPaused ? 0 : std::max<qint64>(0, mStartTime.secsTo(end));
+		mStartedAt = end.addSecs(-(mTotalElapsedTime + segment));
 	}
 	QR_INFO(lcTimeTracker,
 		QStringLiteral("Restored the tracker for issue %1 (%2)")
@@ -193,11 +282,7 @@ int TimeTracker::currentIssueId() const { return mCurrentIssueId; }
 
 QString TimeTracker::elapsedTime() const
 {
-	qint64 elapsed = mTotalElapsedTime;
-
-	if (mTimer.isActive()) {
-		elapsed += mStartTime.secsTo(QDateTime::currentDateTime());
-	}
+	const qint64 elapsed = elapsedSeconds();
 
 	int hours = elapsed / 3600;
 	int minutes = (elapsed % 3600) / 60;
@@ -211,16 +296,7 @@ QString TimeTracker::elapsedTime() const
 
 QVariantList TimeTracker::recentEntries() const { return mRecentEntries; }
 
-double TimeTracker::getElapsedHours() const
-{
-	qint64 elapsed = mTotalElapsedTime;
-
-	if (mTimer.isActive()) {
-		elapsed += mStartTime.secsTo(QDateTime::currentDateTime());
-	}
-
-	return elapsed / 3600.0;
-}
+double TimeTracker::getElapsedHours() const { return elapsedSeconds() / 3600.0; }
 
 void TimeTracker::startTracking(int issueId)
 {
@@ -230,6 +306,7 @@ void TimeTracker::startTracking(int issueId)
 
 	mCurrentIssueId = issueId;
 	mStartTime = QDateTime::currentDateTime();
+	mStartedAt = mStartTime;
 	mTotalElapsedTime = 0;
 	mIsPaused = false;
 	mLastTick = QDateTime();
@@ -240,6 +317,7 @@ void TimeTracker::startTracking(int issueId)
 	emit trackingChanged();
 	emit currentIssueChanged();
 	emit pausedChanged();
+	emit startedAtChanged();
 }
 
 void TimeTracker::stopTracking()
@@ -260,6 +338,10 @@ void TimeTracker::stopTracking()
 		}
 		emit trackingChanged();
 		emit pausedChanged();
+		if (mStartedAt.isValid()) {
+			mStartedAt = QDateTime();
+			emit startedAtChanged();
+		}
 	}
 }
 

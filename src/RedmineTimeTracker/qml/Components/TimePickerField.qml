@@ -13,7 +13,8 @@ import QRedmine.TimeTracker
  * Starts empty (`hasTime` false); picking a time sets `hours`/`minutes` and emits timePicked(),
  * the small clear button empties it again. Shown in the UI language selected in the settings
  * (LanguageManager): 24-hour clock where that locale uses one ("13:00"), otherwise 12-hour with
- * an AM/PM wheel ("1:00 PM"). Minutes are picked in 5-minute steps.
+ * an AM/PM wheel ("1:00 PM"). Minutes are picked in 5-minute steps; the wheels
+ * preselect the step at or before the shown time, never a later one.
  */
 TextField {
 	id: field
@@ -29,6 +30,9 @@ TextField {
 	//! Time the wheels start at while no time is picked, as minutes since midnight; 9:00 if
 	//! negative.
 	property int initialMinutes: -1
+	//! Whether the wheels can be opened. Unlike `enabled`, the field still receives hover, so it can
+	//! explain with a tooltip why it is locked.
+	property bool pickable: true
 
 	//! Emitted when a time is picked (not when it's cleared).
 	signal timePicked
@@ -40,12 +44,15 @@ TextField {
 	readonly property bool twelveHour: field.uiLocale.timeFormat(Locale.ShortFormat).toLowerCase().indexOf("ap") >= 0
 
 	function open() {
+		if (!field.pickable) {
+			return
+		}
 		// Preselect the picked time, or initialMinutes (9:00 by default) when there is none.
 		const start = field.hasTime ? field.totalMinutes : field.initialMinutes >= 0 ? field.initialMinutes % (24 * 60) : 9 * 60
 		const hour = Math.floor(start / 60)
 		const hour12 = hour % 12 === 0 ? 12 : hour % 12
 		hourTumbler.currentIndex = field.twelveHour ? hour12 - 1 : hour
-		minuteTumbler.currentIndex = Math.round((start % 60) / 5) % 12
+		minuteTumbler.currentIndex = Math.floor((start % 60) / 5)
 		amPmTumbler.currentIndex = hour >= 12 ? 1 : 0
 		popup.open()
 	}

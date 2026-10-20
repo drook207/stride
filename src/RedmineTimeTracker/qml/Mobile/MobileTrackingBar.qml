@@ -71,6 +71,11 @@ Rectangle {
                 issueField.value = docroot.timeTracker.currentIssueId
             }
         }
+        // Submitted: ready for the next entry; the activity stays selected.
+        function onTrackingCleared() {
+            issueField.value = -1
+            commentsField.clear()
+        }
         function onTrackingDetailsChanged() {
             if (commentsField.text !== docroot.timeTracker.trackingComment) {
                 commentsField.text = docroot.timeTracker.trackingComment
@@ -231,6 +236,18 @@ Rectangle {
                         visible: commentsField.text.length > 0
                         onClicked: commentsField.clear()
                     }
+                }
+            }
+
+            LabeledField {
+                Layout.fillWidth: true
+                visible: docroot.timeTracker.isTracking
+                label: qsTr("Start")
+
+                StartTimeField {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: docroot.controlHeight
+                    timeTracker: docroot.timeTracker
                 }
             }
 
