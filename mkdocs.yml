@@ -60,6 +60,7 @@ nav:
       - Building: development/building.md
       - Testing: development/testing.md
       - Local Redmine: development/test-environment.md
+      - Logging: development/logging.md
       - Translations: development/translations.md
       - Installer: development/packaging.md
       - Contributing: development/contributing.md

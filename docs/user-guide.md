@@ -110,6 +110,29 @@ allowed to add issues to.
     (0 turns that off).
 - **System tray** - keep the app running in the tray when the window is
     closed.
+- **Logging** - how much the app writes to its log, see
+    [Logging](#logging).
+
+## Logging
+
+Stride keeps a log of what it does: every request to Redmine with its
+result and duration, connection changes, tracking, sending time entries and
+anything that went wrong. If something behaves oddly, the log shows why -
+attach it when you report a problem.
+
+Under **Settings** -> **Logging**:
+
+- **Level** - *Normal* logs every request and every event; *Detailed* adds
+    the details of each request and of sending time entries; *Debug* logs
+    everything, including the comments of time entries. Changes apply at once.
+- **Show log** - the latest messages in the app, filtered by severity,
+    category and text. Tap a message to see all of it and copy it.
+- **Open log folder** - the log files themselves.
+- **Export logs…** - saves all log files as one `.jsonl` file, e.g. to send
+    it along with a bug report.
+
+The log never contains your API key. Time entry comments are only logged at
+the *Debug* level.
 
 ## System tray
 

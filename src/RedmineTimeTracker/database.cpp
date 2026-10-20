@@ -1,4 +1,5 @@
 #include "database.h"
+#include "logging.h"
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -16,6 +17,12 @@
 #include <qstringliteral.h>
 
 Q_LOGGING_CATEGORY(lcDataBase, "qredmine.timeentry.database")
+
+namespace {
+//! The error of the query that failed last, for a migration to report it: after rollback() the database's
+//! own lastError() no longer tells
+thread_local QString sLastQueryError;
+}
 
 namespace QRedmineClient {
 
@@ -174,14 +181,19 @@ bool Database::migrate()
 	QSqlDatabase db = QSqlDatabase::database();
 	for (int next = version; next < steps.size(); ++next) {
 		db.transaction();
+		sLastQueryError.clear();
 		// PRAGMA doesn't take bound values; the version is an int, so formatting it in is safe.
 		if (!steps[next]() || !execute(SqlQueries::SET_SCHEMA_VERSION.arg(next + 1))) {
+			// Before rollback(), which would be the last one
+			const QString error = sLastQueryError;
 			db.rollback();
-			qWarning(lcDataBase) << "Database migration to version" << next + 1 << "failed";
+			QR_WARNING(lcDataBase, QStringLiteral("Database migration to version %1 failed").arg(next + 1),
+				{ { "from", next }, { "to", next + 1 }, { "error", error } });
 			return false;
 		}
 		db.commit();
-		qCInfo(lcDataBase) << "Database migrated to schema version" << next + 1;
+		QR_INFO(lcDataBase, QStringLiteral("Database migrated to schema version %1").arg(next + 1),
+			{ { "from", next }, { "to", next + 1 } });
 	}
 	return true;
 }
@@ -532,6 +544,7 @@ bool Database::evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& qu
 		return false;
 	}
 	if (!query.prepare(sqlCommand.toString())) {
+		sLastQueryError = query.lastError().text();
 		qWarning(lcDataBase()) << QStringLiteral("SQL Query prepare <%0> failed with: <%1>")
 									  .arg(query.lastQuery(), query.lastError().text());
 		return false;
@@ -543,6 +556,7 @@ bool Database::evaluateQueryPrepare(const QStringView& sqlCommand, QSqlQuery& qu
 bool Database::evaluateQueryExec(QSqlQuery& query)
 {
 	if (!query.exec()) {
+		sLastQueryError = query.lastError().text();
 		qWarning(lcDataBase())
 			<< QStringLiteral("SQL Query exec <%0> failed with: <%1>").arg(query.lastQuery(), query.lastError().text());
 		return false;

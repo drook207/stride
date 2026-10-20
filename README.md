@@ -55,6 +55,12 @@ See the [User Guide](https://drook207.gitlab.io/QRedmineTimeTracker/user-guide/)
 - Entries Redmine rejects are marked with the reason and sent again once changed
 - SQLite database with versioned schema migrations, in the platform's application data directory
 
+### Logging
+
+- Structured log (JSON Lines) of every Redmine request, connection change and tracking event, in
+    rotating files - see [Logging](https://drook207.gitlab.io/QRedmineTimeTracker/development/logging/)
+- Log level, log view, log folder and log export in the settings
+
 ### Localization
 
 - Available in English and German, selected automatically from the system locale
