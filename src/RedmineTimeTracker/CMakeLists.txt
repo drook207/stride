@@ -231,13 +231,14 @@ target_link_libraries(
 			QRedmine::Client
 			QRedmine::Utils)
 
-# The tray icon's menu (Qt.labs.platform) falls back to a Qt Widgets menu where the platform has no
-# native one (e.g. Windows, Linux desktops without a DBus menu), which needs a QApplication; see
-# main.cpp. Mobile has no tray.
+# The tray icon's menu (Qt.labs.platform) falls back to a Qt Widgets menu where
+# the platform has no native one (e.g. Windows, Linux desktops without a DBus
+# menu), which needs a QApplication; see main.cpp. Mobile has no tray.
 if(NOT ANDROID AND NOT IOS)
 	find_package(Qt6 REQUIRED COMPONENTS Widgets)
 	target_link_libraries(QRedmineTimeTracker PRIVATE Qt6::Widgets)
-	target_compile_definitions(QRedmineTimeTracker PRIVATE STRIDE_WIDGETS_APPLICATION)
+	target_compile_definitions(QRedmineTimeTracker
+							   PRIVATE STRIDE_WIDGETS_APPLICATION)
 endif()
 install(
 	TARGETS QRedmineTimeTracker
