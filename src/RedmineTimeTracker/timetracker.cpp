@@ -1,6 +1,7 @@
 // timetracker.cpp
 #include "timetracker.h"
 #include "database.h"
+#include "logging.h"
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -10,6 +11,8 @@
 #include <cmath>
 
 Q_LOGGING_CATEGORY(lcTimeTracker, "qredmine.timetracker")
+// What the user entered (e.g. comments), only logged at the "debug" log level
+Q_LOGGING_CATEGORY(lcTimeTrackerContent, "qredmine.content")
 
 namespace QRedmineClient {
 TimeTracker::TimeTracker(QObject* parent)
@@ -136,10 +139,18 @@ void TimeTracker::restoreTrackingState()
 		const QDateTime lastSeen = state["last_seen"].toDateTime();
 		if (lastSeen.isValid() && lastSeen.secsTo(QDateTime::currentDateTime()) > INTERRUPTION_THRESHOLD_SECONDS) {
 			mInterruptedAt = lastSeen;
+			QR_INFO(lcTimeTracker,
+				QStringLiteral("The app was gone since %1 while tracking").arg(lastSeen.toString(Qt::ISODate)),
+				{ { "issueId", mCurrentIssueId }, { "lastSeen", lastSeen.toString(Qt::ISODate) } });
 		}
 	}
-	qCInfo(lcTimeTracker) << "Restored the tracker for issue" << mCurrentIssueId
-						  << (mIsPaused ? "(paused)" : "(running)");
+	QR_INFO(lcTimeTracker,
+		QStringLiteral("Restored the tracker for issue %1 (%2)")
+			.arg(mCurrentIssueId)
+			.arg(mIsPaused ? QStringLiteral("paused") : QStringLiteral("running")),
+		{ { "issueId", mCurrentIssueId }, { "paused", mIsPaused }, { "elapsedSeconds", mTotalElapsedTime },
+			{ "interruptedAt", mInterruptedAt.isValid() ? mInterruptedAt.toString(Qt::ISODate) : QString() } });
+	QR_DEBUG(lcTimeTrackerContent, QStringLiteral("Restored tracker comment"), { { "comment", mTrackingComment } });
 }
 
 void TimeTracker::resolveInterruption(bool countTimeAway)
@@ -147,6 +158,12 @@ void TimeTracker::resolveInterruption(bool countTimeAway)
 	if (!mInterruptedAt.isValid()) {
 		return;
 	}
+	QR_INFO(lcTimeTracker,
+		QStringLiteral("Interruption since %1: the user chose to %2 the time away")
+			.arg(
+				mInterruptedAt.toString(Qt::ISODate), countTimeAway ? QStringLiteral("count") : QStringLiteral("skip")),
+		{ { "countTimeAway", countTimeAway }, { "interruptedAt", mInterruptedAt.toString(Qt::ISODate) },
+			{ "bySleep", mInterruptedBySleep } });
 	if (!countTimeAway && mTimer.isActive()) {
 		// Stop the clock where it was when the app was last seen...
 		mTotalElapsedTime += std::max<qint64>(0, mStartTime.secsTo(mInterruptedAt));
@@ -218,6 +235,7 @@ void TimeTracker::startTracking(int issueId)
 	mLastTick = QDateTime();
 	mTimer.start();
 	saveTrackingState();
+	QR_INFO(lcTimeTracker, QStringLiteral("Started tracking issue %1").arg(issueId), { { "issueId", issueId } });
 
 	emit trackingChanged();
 	emit currentIssueChanged();
@@ -233,6 +251,9 @@ void TimeTracker::stopTracking()
 		mTimer.stop();
 		mIsPaused = false;
 		saveTrackingState();
+		QR_INFO(lcTimeTracker,
+			QStringLiteral("Stopped tracking issue %1 after %2 s").arg(mCurrentIssueId).arg(mTotalElapsedTime),
+			{ { "issueId", mCurrentIssueId }, { "elapsedSeconds", mTotalElapsedTime } });
 		if (mInterruptedAt.isValid()) {
 			mInterruptedAt = QDateTime();
 			emit interruptedAtChanged();
@@ -249,6 +270,9 @@ void TimeTracker::pauseTracking()
 		mTimer.stop();
 		mIsPaused = true;
 		saveTrackingState();
+		QR_INFO(lcTimeTracker,
+			QStringLiteral("Paused tracking issue %1 at %2 s").arg(mCurrentIssueId).arg(mTotalElapsedTime),
+			{ { "issueId", mCurrentIssueId }, { "elapsedSeconds", mTotalElapsedTime } });
 		emit pausedChanged();
 		emit trackingChanged();
 	}
@@ -262,6 +286,9 @@ void TimeTracker::resumeTracking()
 		mTimer.start();
 		mIsPaused = false;
 		saveTrackingState();
+		QR_INFO(lcTimeTracker,
+			QStringLiteral("Resumed tracking issue %1 at %2 s").arg(mCurrentIssueId).arg(mTotalElapsedTime),
+			{ { "issueId", mCurrentIssueId }, { "elapsedSeconds", mTotalElapsedTime } });
 		emit pausedChanged();
 		emit trackingChanged();
 	}
@@ -294,6 +321,12 @@ int TimeTracker::addRecentEntry(const QVariantMap& entry)
 		return -1;
 	}
 
+	QR_INFO(lcTimeTracker,
+		QStringLiteral("Saved local time entry %1 (issue %2, %3 h)").arg(localId).arg(issueId).arg(hours),
+		{ { "localId", localId }, { "issueId", issueId }, { "hours", hours }, { "date", day.toString(Qt::ISODate) } });
+	QR_DEBUG(lcTimeTrackerContent, QStringLiteral("Comment of local time entry %1").arg(localId),
+		{ { "localId", localId }, { "comment", comment } });
+
 	// Reload rather than prepending the new entry ourselves, so it gets the same fields as the
 	// others, including its issue's project (see Database::getRecentEntries()).
 	loadRecentEntries();
@@ -320,21 +353,41 @@ bool TimeTracker::hasDueEntries() const
 		[this](const QJsonValue& entry) { return isDue(entry.toObject()["id"].toInt()); });
 }
 
-void TimeTracker::resetSubmissionBackoff() { mBackoff.clear(); }
+void TimeTracker::resetSubmissionBackoff()
+{
+	QR_DEBUG(lcTimeTracker, QStringLiteral("Reset the wait before submitting %1 entries again").arg(mBackoff.size()),
+		{ { "entries", static_cast<int>(mBackoff.size()) } });
+	mBackoff.clear();
+}
 
 void TimeTracker::connectionRestored()
 {
+	int reset = 0;
 	for (auto it = mBackoff.begin(); it != mBackoff.end();) {
-		it = it->notReached ? mBackoff.erase(it) : std::next(it);
+		if (it->notReached) {
+			it = mBackoff.erase(it);
+			++reset;
+		} else {
+			++it;
+		}
 	}
+	QR_DEBUG(lcTimeTracker, QStringLiteral("Connection restored, reset the wait of %1 entries").arg(reset),
+		{ { "reset", reset }, { "stillWaiting", static_cast<int>(mBackoff.size()) } });
 }
 
 void TimeTracker::submitPendingEntries()
 {
-	for (const QJsonValue& entry : Database::getPendingEntries()) {
+	const QJsonArray pending = Database::getPendingEntries();
+	int due = 0;
+	for (const QJsonValue& entry : pending) {
 		if (isDue(entry.toObject()["id"].toInt())) {
+			++due;
 			submitEntry(entry.toObject());
 		}
+	}
+	if (!pending.isEmpty()) {
+		QR_DEBUG(lcTimeTracker, QStringLiteral("Submitting pending entries: %1 due of %2").arg(due).arg(pending.size()),
+			{ { "pending", pending.size() }, { "due", due }, { "waiting", static_cast<int>(pending.size()) - due } });
 	}
 }
 
@@ -342,9 +395,21 @@ void TimeTracker::submitEntry(const QJsonObject& entry)
 {
 	const int localId = entry["id"].toInt();
 	if (localId <= 0 || mSubmitting.contains(localId)) {
+		QR_DEBUG(lcTimeTracker, QStringLiteral("Entry %1 is being submitted already").arg(localId),
+			{ { "localId", localId } });
 		return;
 	}
 	mSubmitting.insert(localId);
+	QR_INFO(lcTimeTracker,
+		QStringLiteral("Submitting local time entry %1 (issue %2, %3 h)")
+			.arg(localId)
+			.arg(entry["issue_id"].toInt())
+			.arg(entry["hours"].toDouble()),
+		{ { "localId", localId }, { "issueId", entry["issue_id"].toInt() }, { "hours", entry["hours"].toDouble() },
+			{ "date", entry["spent_on"].toString().left(10) },
+			{ "previousFailures", mBackoff.value(localId).failures } });
+	QR_DEBUG(lcTimeTrackerContent, QStringLiteral("Comment of local time entry %1").arg(localId),
+		{ { "localId", localId }, { "comment", entry["comments"].toString() } });
 	emit submitTimeEntry(localId, entry["issue_id"].toInt(), entry["hours"].toDouble(), entry["comments"].toString(),
 		entry["spent_on"].toString().left(10), entry["activity_id"].toInt(),
 		entry["custom_fields"].toArray().toVariantList());
@@ -360,6 +425,9 @@ void TimeTracker::submissionFailed(int localId, int httpStatus, const QString& e
 	// fixed, server errors) is tried again later.
 	if (httpStatus >= 400 && httpStatus < 500 && httpStatus != 401 && httpStatus != 408 && httpStatus != 429) {
 		mBackoff.remove(localId);
+		QR_WARNING(lcTimeTracker,
+			QStringLiteral("Redmine rejected local time entry %1 (HTTP %2)").arg(localId).arg(httpStatus),
+			{ { "localId", localId }, { "status", httpStatus }, { "error", error } });
 		if (Database::setSyncStatus(localId, Database::Rejected, error)) {
 			loadRecentEntries();
 		}
@@ -373,6 +441,14 @@ void TimeTracker::submissionFailed(int localId, int httpStatus, const QString& e
 	const int wait =
 		std::max(std::min(SUBMISSION_BACKOFF_BASE_SECONDS << exponent, SUBMISSION_BACKOFF_MAX_SECONDS), retryAfter);
 	backoff.nextAttempt = QDateTime::currentDateTime().addSecs(wait);
+	QR_LOG(lcTimeTracker, httpStatus == 0 ? QtInfoMsg : QtWarningMsg,
+		QStringLiteral("Submitting local time entry %1 failed (HTTP %2), next try in %3 s")
+			.arg(localId)
+			.arg(httpStatus)
+			.arg(wait),
+		{ { "localId", localId }, { "status", httpStatus }, { "error", error }, { "failures", backoff.failures },
+			{ "retryAfterSeconds", retryAfter }, { "waitSeconds", wait },
+			{ "nextAttempt", backoff.nextAttempt.toString(Qt::ISODate) } });
 }
 
 bool TimeTracker::deleteRecentEntry(int localId)
@@ -406,6 +482,8 @@ void TimeTracker::removeDeletedTimeEntry(int redmineId)
 
 void TimeTracker::sendToRedmine(int localId)
 {
+	QR_DEBUG(lcTimeTracker, QStringLiteral("Sending local time entry %1 to Redmine on request").arg(localId),
+		{ { "localId", localId } });
 	mBackoff.remove(localId);
 	if (Database::setSyncStatus(localId, Database::Pending)) {
 		loadRecentEntries();
@@ -435,7 +513,7 @@ void TimeTracker::addIssueToDatabase(const QJsonObject& issue)
 	const auto updatedOn = issue["updated_on"].toVariant().toDateTime();
 
 	if (!Database::addIssue(id, subject, project, projectName, status, description, createdOn, updatedOn)) {
-		qWarning() << "Could not add issue  " << issue;
+		QR_WARNING(lcTimeTracker, QStringLiteral("Could not add issue %1 to the cache").arg(id), { { "issueId", id } });
 	} else {
 		emit issueCacheChanged();
 		// Recent entries show their issue's project, which may only now be known or have changed.
@@ -556,7 +634,9 @@ void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
 {
 	QSet<int> taken = Database::linkedRedmineIds();
 	bool linked = false;
-	for (const QVariant& value : linkCandidates()) {
+	int linkedCount = 0;
+	const QVariantList candidates = linkCandidates();
+	for (const QVariant& value : candidates) {
 		const QVariantMap entry = value.toMap();
 		if (mSubmitting.contains(entry["id"].toInt())) {
 			continue; // being sent right now: linked by its own reply
@@ -583,8 +663,17 @@ void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
 		if (Database::updateSyncStatus(entry["id"].toInt(), redmineId)) {
 			taken.insert(redmineId);
 			linked = true;
+			++linkedCount;
 			applyIssueStatus(entry["id"].toInt());
 		}
+	}
+	if (!candidates.isEmpty()) {
+		QR_INFO(lcTimeTracker,
+			QStringLiteral("Linked %1 of %2 local entries to time entries on Redmine")
+				.arg(linkedCount)
+				.arg(candidates.size()),
+			{ { "linked", linkedCount }, { "candidates", static_cast<int>(candidates.size()) },
+				{ "remoteEntries", timeEntries.size() } });
 	}
 	if (linked) {
 		loadRecentEntries();
@@ -724,6 +813,9 @@ bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId
 	if (redmineId < 0 || localId <= 0) {
 		return interactive;
 	}
+	QR_INFO(lcTimeTracker, QStringLiteral("Local time entry %1 created on Redmine as %2").arg(localId).arg(redmineId),
+		{ { "localId", localId }, { "redmineId", redmineId }, { "interactive", interactive },
+			{ "editedWhileSubmitting", mEditedWhileSubmitting.contains(localId) } });
 	if (Database::updateSyncStatus(localId, redmineId)) {
 		loadRecentEntries();
 	}
@@ -752,6 +844,10 @@ void TimeTracker::noticeTick(const QDateTime& now)
 		mInterruptedAt = mLastTick;
 		mResumedAt = now;
 		mInterruptedBySleep = true;
+		QR_INFO(lcTimeTracker,
+			QStringLiteral("The computer seems to have slept for %1 s while tracking").arg(mLastTick.secsTo(now)),
+			{ { "issueId", mCurrentIssueId }, { "gapSeconds", mLastTick.secsTo(now) },
+				{ "lastTick", mLastTick.toString(Qt::ISODate) } });
 		emit interruptedAtChanged();
 	}
 	mLastTick = now;

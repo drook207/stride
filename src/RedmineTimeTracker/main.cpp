@@ -12,6 +12,7 @@
 #include <QSortFilterProxyModel>
 
 #include "languagemanager.h"
+#include "logmanager.h"
 
 // Settings were kept under the placeholder organization "YourOrg" before. Copies them over once, so
 // e.g. the server URL survives the change, and removes the old store.
@@ -41,6 +42,14 @@ int main(int argc, char* argv[])
 	app.setOrganizationDomain(APP_ORGANIZATION_DOMAIN);
 	app.setApplicationName(APP_NAME);
 	app.setApplicationVersion(APP_VERSION);
+
+	// Records everything logged from here on to the log file and the in-app log view. Created before
+	// anything else logs, and declared before the engine so that it outlives it.
+	QRedmineClient::Utils::Logging::LogManager logManager;
+	logManager.logStartup();
+	QObject::connect(
+		&app, &QCoreApplication::aboutToQuit, &logManager, &QRedmineClient::Utils::Logging::LogManager::logShutdown);
+
 	migrateLegacySettings();
 
 	// Window/taskbar icon, embedded via the QML module's RESOURCES. Most Wayland compositors ignore it

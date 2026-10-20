@@ -62,6 +62,7 @@ qt_add_qml_module(
 	qml/Views/AddTimeEntryView.qml
 	qml/Views/AddIssueView.qml
 	qml/Views/SettingsView.qml
+	qml/Views/LogView.qml
 	qml/Components/SubmitDialog.qml
 	qml/Components/MessageDialog.qml
 	qml/Components/Sidebar.qml
@@ -145,7 +146,12 @@ qt_add_qml_module(
 	issueinputvalidator.cpp
 	SOURCES
 	languagemanager.h
-	languagemanager.cpp)
+	languagemanager.cpp
+	SOURCES
+	logmodel.h
+	logmodel.cpp
+	logcontroller.h
+	logcontroller.cpp)
 
 # Translation catalogs (see i18n/README.md). "update_translations" (not built by
 # default) runs lupdate to refresh the .ts files from qsTr() call sites; every

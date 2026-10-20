@@ -1,8 +1,12 @@
 #include "reminders.h"
 #include "database.h"
+#include "logging.h"
 #include "timetracker.h"
 #include <QJsonObject>
+#include <QLoggingCategory>
 #include <QSettings>
+
+Q_LOGGING_CATEGORY(lcReminders, "qredmine.reminders")
 
 namespace QRedmineClient {
 
@@ -68,6 +72,8 @@ void Reminders::setClient(RedmineClient* client)
 				for (const QJsonValue& entry : timeEntries) {
 					hours += entry.toObject()["hours"].toDouble();
 				}
+				QR_DEBUG(lcReminders, QStringLiteral("Redmine has %1 h booked for the day").arg(hours),
+					{ { "hours", hours } });
 				if (hours < 0.01) {
 					remindNothingBooked();
 				}
@@ -86,6 +92,7 @@ void Reminders::setClient(RedmineClient* client)
 
 void Reminders::remindNothingBooked()
 {
+	QR_INFO(lcReminders, QStringLiteral("Reminder shown: nothing booked today"), { { "reminder", "nothingBooked" } });
 	emit reminder(tr("Nothing booked today"), tr("No time has been booked for today yet."));
 }
 
@@ -136,6 +143,11 @@ void Reminders::check(const QDateTime& now)
 		const int stretches = static_cast<int>(mTimeTracker->getElapsedHours() / mLongTrackingHours);
 		if (stretches > mLongTrackingReminded) {
 			mLongTrackingReminded = stretches;
+			QR_INFO(lcReminders,
+				QStringLiteral("Reminder shown: the timer has been running for %1 hours")
+					.arg(stretches * mLongTrackingHours),
+				{ { "reminder", "longTracking" }, { "issueId", mTimeTracker->currentIssueId() },
+					{ "hours", stretches * mLongTrackingHours } });
 			emit reminder(tr("Timer still running"),
 				tr("The timer for #%1 has been running for %2 hours. Still working on it?")
 					.arg(mTimeTracker->currentIssueId())
@@ -152,10 +164,13 @@ void Reminders::check(const QDateTime& now)
 			hours += entry.toObject()["hours"].toDouble();
 		}
 		if (hours >= 0.01) {
+			QR_DEBUG(lcReminders, QStringLiteral("End of day: %1 h booked in the app, no reminder").arg(hours),
+				{ { "hours", hours } });
 			return;
 		}
 		// Nothing booked in the app; maybe elsewhere (Redmine's web UI, another device).
 		if (mClient && !mClient->baseUrl().isEmpty()) {
+			QR_DEBUG(lcReminders, QStringLiteral("End of day: nothing booked in the app, asking Redmine"));
 			mAwaitingDay = today;
 			mClient->getTimeEntryReport(
 				today.toString(Qt::ISODate), today.toString(Qt::ISODate), RedmineClient::ReminderReport);

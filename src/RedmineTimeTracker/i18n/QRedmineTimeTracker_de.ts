@@ -335,7 +335,7 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>IssueSearchInputField</name>
     <message>
-        <location filename="../qml/Components/IssueSearchInputField.qml" line="153"/>
+        <location filename="../qml/Components/IssueSearchInputField.qml" line="154"/>
         <source>No project</source>
         <translation>Kein Projekt</translation>
     </message>
@@ -354,44 +354,105 @@ Beim Speichern wird er erneut gesendet.</translation>
     </message>
 </context>
 <context>
+    <name>LogView</name>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="100"/>
+        <source>Log</source>
+        <translation>Protokoll</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/Views/LogView.qml" line="104"/>
+        <source>%n message(s)</source>
+        <translation>
+            <numerusform>%n Meldung</numerusform>
+            <numerusform>%n Meldungen</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="110"/>
+        <source>Close</source>
+        <translation>Schließen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="130"/>
+        <source>Debug and up</source>
+        <translation>Debug und höher</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="133"/>
+        <source>Info and up</source>
+        <translation>Info und höher</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="136"/>
+        <source>Warnings and up</source>
+        <translation>Warnungen und höher</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="139"/>
+        <source>Errors only</source>
+        <translation>Nur Fehler</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="152"/>
+        <source>All categories</source>
+        <translation>Alle Kategorien</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="162"/>
+        <source>Search</source>
+        <translation>Suche</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="167"/>
+        <source>Follow</source>
+        <translation>Folgen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/LogView.qml" line="251"/>
+        <source>Copy</source>
+        <translation>Kopieren</translation>
+    </message>
+</context>
+<context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="63"/>
+        <location filename="../qml/Main.qml" line="96"/>
         <source>Error: %1</source>
         <translation>Fehler: %1</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="71"/>
+        <location filename="../qml/Main.qml" line="104"/>
         <source>Time entry created successfully</source>
         <translation>Zeiteintrag erfolgreich erstellt</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="336"/>
+        <location filename="../qml/Main.qml" line="436"/>
         <source>Timer still running</source>
         <translation>Timer läuft noch</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="343"/>
+        <location filename="../qml/Main.qml" line="443"/>
         <source>The computer was asleep since %2 while the timer for #%1 was running. Should that time count?</source>
         <translation>Der Computer war seit %2 im Ruhezustand, während der Timer für #%1 lief. Soll diese Zeit zählen?</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="344"/>
+        <location filename="../qml/Main.qml" line="444"/>
         <source>The timer for #%1 was running when the app was last used, on %2. Should the time since then count?</source>
         <translation>Der Timer für #%1 lief, als die App zuletzt verwendet wurde (%2). Soll die Zeit seitdem zählen?</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="351"/>
+        <location filename="../qml/Main.qml" line="451"/>
         <source>Count it</source>
         <translation>Mitzählen</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="352"/>
+        <location filename="../qml/Main.qml" line="452"/>
         <source>Leave it out</source>
         <translation>Weglassen</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="352"/>
+        <location filename="../qml/Main.qml" line="452"/>
         <source>Stop it then</source>
         <translation>Dort anhalten</translation>
     </message>
@@ -440,17 +501,17 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>MobileTrackingBar</name>
     <message>
-        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="189"/>
+        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="190"/>
         <source>Issue</source>
         <translation>Ticket</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="216"/>
+        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="217"/>
         <source>Comment</source>
         <translation>Kommentar</translation>
     </message>
     <message>
-        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="243"/>
+        <location filename="../qml/Mobile/MobileTrackingBar.qml" line="244"/>
         <source>Activity</source>
         <translation>Aktivität</translation>
     </message>
@@ -458,67 +519,67 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>OverviewView</name>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="30"/>
+        <location filename="../qml/Views/OverviewView.qml" line="36"/>
         <source>%1 h</source>
         <translation>%1 h</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="78"/>
+        <location filename="../qml/Views/OverviewView.qml" line="85"/>
         <source>Overview</source>
         <translation>Übersicht</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="103"/>
+        <location filename="../qml/Views/OverviewView.qml" line="110"/>
         <source>Previous week</source>
         <translation>Vorherige Woche</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="106"/>
+        <location filename="../qml/Views/OverviewView.qml" line="113"/>
         <source>Week %1 · %2 – %3</source>
         <translation>KW %1 · %2 – %3</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="119"/>
+        <location filename="../qml/Views/OverviewView.qml" line="126"/>
         <source>Next week</source>
         <translation>Nächste Woche</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="122"/>
+        <location filename="../qml/Views/OverviewView.qml" line="129"/>
         <source>This week</source>
         <translation>Diese Woche</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="130"/>
+        <location filename="../qml/Views/OverviewView.qml" line="137"/>
         <source>Export…</source>
         <translation>Exportieren…</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="135"/>
+        <location filename="../qml/Views/OverviewView.qml" line="142"/>
         <source>%1 of %2</source>
         <translation>%1 von %2</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="211"/>
+        <location filename="../qml/Views/OverviewView.qml" line="218"/>
         <source>%1 still to book on the workdays so far.</source>
         <translation>Für die bisherigen Arbeitstage fehlen noch %1.</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="218"/>
+        <location filename="../qml/Views/OverviewView.qml" line="225"/>
         <source>Only the entries saved in the app are counted, since Redmine couldn&apos;t be asked.</source>
         <translation>Es werden nur die in der App gespeicherten Einträge gezählt, da Redmine nicht abgefragt werden konnte.</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="227"/>
+        <location filename="../qml/Views/OverviewView.qml" line="234"/>
         <source>Target per workday</source>
         <translation>Soll pro Arbeitstag</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="242"/>
+        <location filename="../qml/Views/OverviewView.qml" line="249"/>
         <source>Projects</source>
         <translation>Projekte</translation>
     </message>
     <message>
-        <location filename="../qml/Views/OverviewView.qml" line="257"/>
+        <location filename="../qml/Views/OverviewView.qml" line="264"/>
         <source>No project</source>
         <translation>Kein Projekt</translation>
     </message>
@@ -526,22 +587,22 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>QRedmineClient::Reminders</name>
     <message>
-        <location filename="../reminders.cpp" line="139"/>
+        <location filename="../reminders.cpp" line="151"/>
         <source>Timer still running</source>
         <translation>Timer läuft noch</translation>
     </message>
     <message>
-        <location filename="../reminders.cpp" line="140"/>
+        <location filename="../reminders.cpp" line="152"/>
         <source>The timer for #%1 has been running for %2 hours. Still working on it?</source>
         <translation>Der Timer für #%1 läuft seit %2 Stunden. Arbeiten Sie noch daran?</translation>
     </message>
     <message>
-        <location filename="../reminders.cpp" line="89"/>
+        <location filename="../reminders.cpp" line="96"/>
         <source>Nothing booked today</source>
         <translation>Heute noch nichts gebucht</translation>
     </message>
     <message>
-        <location filename="../reminders.cpp" line="89"/>
+        <location filename="../reminders.cpp" line="96"/>
         <source>No time has been booked for today yet.</source>
         <translation>Für heute wurde noch keine Zeit gebucht.</translation>
     </message>
@@ -641,77 +702,137 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>SettingsView</name>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="30"/>
+        <location filename="../qml/Views/SettingsView.qml" line="40"/>
+        <source>Log files (*.jsonl)</source>
+        <translation>Protokolldateien (*.jsonl)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="43"/>
+        <source>The logs were exported.</source>
+        <translation>Die Protokolle wurden exportiert.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="43"/>
+        <source>The logs couldn&apos;t be exported.</source>
+        <translation>Die Protokolle konnten nicht exportiert werden.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="50"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="34"/>
+        <location filename="../qml/Views/SettingsView.qml" line="54"/>
         <source>Connection Settings</source>
         <translation>Verbindungseinstellungen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="38"/>
+        <location filename="../qml/Views/SettingsView.qml" line="58"/>
         <source>Redmine URL</source>
         <translation>Redmine-URL</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="60"/>
+        <location filename="../qml/Views/SettingsView.qml" line="80"/>
         <source>API Key</source>
         <translation>API-Schlüssel</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="73"/>
+        <location filename="../qml/Views/SettingsView.qml" line="109"/>
         <source>Use SSL</source>
         <translation>SSL verwenden</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="81"/>
+        <location filename="../qml/Views/SettingsView.qml" line="117"/>
         <source>Appearance</source>
         <translation>Darstellung</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="85"/>
+        <location filename="../qml/Views/SettingsView.qml" line="121"/>
         <source>Language</source>
         <translation>Sprache</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="99"/>
+        <location filename="../qml/Views/SettingsView.qml" line="135"/>
         <source>System default</source>
         <translation>Systemstandard</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="111"/>
+        <location filename="../qml/Views/SettingsView.qml" line="147"/>
         <source>Reminders</source>
         <translation>Erinnerungen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="115"/>
+        <location filename="../qml/Views/SettingsView.qml" line="151"/>
         <source>Remind me of unbooked time and long-running timers</source>
         <translation>An nicht gebuchte Zeit und lange laufende Timer erinnern</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="127"/>
+        <location filename="../qml/Views/SettingsView.qml" line="163"/>
         <source>Nothing booked on a workday by (HH:mm)</source>
         <translation>Nichts gebucht an einem Arbeitstag bis (HH:mm)</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="140"/>
+        <location filename="../qml/Views/SettingsView.qml" line="176"/>
         <source>Timer running for (hours, 0 = never)</source>
         <translation>Timer läuft seit (Stunden, 0 = nie)</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="158"/>
+        <location filename="../qml/Views/SettingsView.qml" line="194"/>
         <source>System tray</source>
         <translation>Infobereich</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="162"/>
+        <location filename="../qml/Views/SettingsView.qml" line="198"/>
         <source>Keep running in the tray when the window is closed</source>
         <translation>Beim Schließen des Fensters im Infobereich weiterlaufen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/SettingsView.qml" line="170"/>
+        <location filename="../qml/Views/SettingsView.qml" line="206"/>
+        <source>Logging</source>
+        <translation>Protokollierung</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="210"/>
+        <source>Level</source>
+        <translation>Stufe</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="221"/>
+        <source>Normal</source>
+        <translation>Normal</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="224"/>
+        <source>Detailed</source>
+        <translation>Detailliert</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="227"/>
+        <source>Debug</source>
+        <translation>Debug</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="237"/>
+        <source>Detailed adds every request&apos;s details, Debug everything including time entry comments.</source>
+        <translation>Detailliert fügt die Einzelheiten jeder Anfrage hinzu, Debug alles einschließlich der Kommentare von Zeiteinträgen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="249"/>
+        <source>Show log</source>
+        <translation>Protokoll anzeigen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="255"/>
+        <source>Open log folder</source>
+        <translation>Protokollordner öffnen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="261"/>
+        <source>Export logs…</source>
+        <translation>Protokolle exportieren…</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/SettingsView.qml" line="272"/>
         <source>Version %0</source>
         <translation>Version %0</translation>
     </message>
@@ -827,27 +948,27 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>TrackingBar</name>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="172"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="173"/>
         <source>Time</source>
         <translation>Zeit</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="193"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="194"/>
         <source>Issue</source>
         <translation>Ticket</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="223"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="224"/>
         <source>Comment</source>
         <translation>Kommentar</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="248"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="249"/>
         <source>Activity</source>
         <translation>Aktivität</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TrackingBar.qml" line="268"/>
+        <location filename="../qml/Components/TrackingBar.qml" line="269"/>
         <source>Special</source>
         <translation>Speziell</translation>
     </message>

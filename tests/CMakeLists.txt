@@ -41,6 +41,11 @@ add_executable(
 	mockhttpserver.h
 	mockhttpserver.cpp
 	testutils.h
+	logtest.h
+	logtest.cpp
+	logmanagertest.cpp
+	logmodeltest.cpp
+	logtracingtest.cpp
 	main.cpp)
 
 find_package(Qt6 REQUIRED Core Network Quick Sql)
@@ -60,7 +65,9 @@ target_sources(
 			${APP_SOURCE_DIR}/reminders.h
 			${APP_SOURCE_DIR}/reminders.cpp
 			${APP_SOURCE_DIR}/timeentryexport.h
-			${APP_SOURCE_DIR}/timeentryexport.cpp)
+			${APP_SOURCE_DIR}/timeentryexport.cpp
+			${APP_SOURCE_DIR}/logmodel.h
+			${APP_SOURCE_DIR}/logmodel.cpp)
 target_include_directories(qredminetesting PRIVATE ${APP_SOURCE_DIR})
 
 target_link_libraries(

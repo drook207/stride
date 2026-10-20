@@ -637,6 +637,7 @@ private:
 		int generation = 0; // counts calls, so pages of a superseded call are ignored
 		int pages = 0; // pages requested so far, limited by MAX_PAGES
 		QJsonArray collected; // items received so far
+		bool running = false; // a page is requested and not answered yet
 	};
 
 	//! By fetchKey(): one fetch per tag and purpose at a time.
@@ -676,6 +677,15 @@ private:
 	void handleTimeEntryCustomFieldsReply(QNetworkReply* reply, RequestTag tag);
 	//! Counts getTimeEntryCustomFields() calls, so replies of a superseded call are ignored.
 	int mCustomFieldsGeneration = 0;
+
+	//! Logs the end of a request: method, path, status, duration and so on, see the "qredmine.client.network" category
+	void logFinishedReply(QNetworkReply* reply);
+	//! Logs the error shown to the user, then emits errorOccurred() for a failed reply
+	void reportError(QNetworkReply* reply, const QJsonObject& response);
+	//! The running number createRequest() gave the request of a reply
+	static int requestId(QNetworkReply* reply);
+	//! Number of the latest request made, see createRequest()
+	int mLastRequestId = 0;
 
 	//! Sets the connection state a reply shows: ONLINE on success, OFFLINE on connection loss.
 	void updateConnectionStateFromReply(QNetworkReply* reply);

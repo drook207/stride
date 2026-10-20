@@ -13,10 +13,15 @@
 #include <chrono>
 #include <utility>
 
+#include "logging.h"
 #include "qsettingshelper.h"
 #include "securestorage.h"
 
 Q_LOGGING_CATEGORY(lcRedmineClient, "qredmine.client")
+// Tracing of the single requests; at the "verbose" log level also what is sent and how a paged fetch goes on
+Q_LOGGING_CATEGORY(lcRedmineNetwork, "qredmine.client.network")
+// What the user entered or Redmine answered, only logged at the Debug level
+Q_LOGGING_CATEGORY(lcRedmineContent, "qredmine.content")
 
 namespace QRedmineClient {
 
@@ -47,6 +52,10 @@ static constexpr auto PAGE_OFFSET_ATTRIBUTE = static_cast<QNetworkRequest::Attri
 //! reply belongs to
 static constexpr auto ISSUE_BATCH_GENERATION_ATTRIBUTE =
 	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 9);
+//! Request attribute carrying the running number a request is traced with (see createRequest())
+static constexpr auto REQUEST_ID_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 10);
+//! Request attribute carrying the time a request was made, as milliseconds since the epoch
+static constexpr auto REQUEST_START_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 11);
 //! Dynamic property set on a read request's reply whose request was made with a base URL or API key that
 //! has changed since; such a reply is dropped by handleNetworkReply() (see abortOutstandingRequests())
 static constexpr auto SUPERSEDED_PROPERTY = "superseded";
@@ -70,6 +79,10 @@ static constexpr int ISSUE_BATCH_SIZE = 100;
 static constexpr int MAX_ISSUE_BATCHES_RUNNING = 2;
 //! Longest wait a "Retry-After" header can ask for, in seconds
 static constexpr int MAX_RETRY_AFTER = 86400;
+//! A request taking longer than this (in milliseconds) is marked as slow in the log
+static constexpr qint64 SLOW_REQUEST_MS = 5000;
+//! Longest part of an error response's body written to the log (at the "debug" level only)
+static constexpr int MAX_LOGGED_BODY_SIZE = 2000;
 
 // Service identifier the API key is stored under in the OS-native secure storage (see securestorage.h).
 // Derived from the application name rather than a fixed literal so that, e.g., the test binary
@@ -127,10 +140,6 @@ void QRedmineClient::RedmineClient::setupConnectionCheckTimer()
 	connect(this, &RedmineClient::apiKeyChanged, this, &RedmineClient::abortOutstandingRequests);
 	connect(this, &RedmineClient::baseUrlChanged, this, &RedmineClient::activatePeriodicConnectionCheck);
 	connect(this, &RedmineClient::apiKeyChanged, this, &RedmineClient::activatePeriodicConnectionCheck);
-	connect(this, &RedmineClient::connectionStateChanged, this, [&] {
-		QString state = QMetaEnum::fromType<RedmineClient::ConnectionState>().valueToKey(mConnectionState);
-		qDebug(lcRedmineClient) << QStringLiteral("Connection state changed to: %0").arg(state);
-	});
 	activatePeriodicConnectionCheck();
 }
 
@@ -182,17 +191,26 @@ void RedmineClient::activatePeriodicConnectionCheck()
 	if (mConnectionCheckReply) {
 		QPointer<QNetworkReply> staleReply = mConnectionCheckReply;
 		mConnectionCheckReply = nullptr;
+		// Before abort(): it emits finished() at once
+		staleReply->setProperty(SUPERSEDED_PROPERTY, true);
 		staleReply->abort();
 	}
 	mConnectionCheckFailures = 0;
 	if (mBaseUrl.isEmpty() || mApiKey.isEmpty()) {
 		mConnectionCheckTimer.stop();
+		QR_DEBUG(lcRedmineClient, QStringLiteral("Connection checks stopped: no server URL or API key"),
+			{ { "hasUrl", !mBaseUrl.isEmpty() }, { "hasApiKey", !mApiKey.isEmpty() } });
 		return;
 	}
 	scheduleConnectionCheck(CONNECTION_CHECK_BASE_INTERVAL);
 }
 
-void RedmineClient::scheduleConnectionCheck(int interval) { mConnectionCheckTimer.start(interval); }
+void RedmineClient::scheduleConnectionCheck(int interval)
+{
+	QR_DEBUG(lcRedmineClient, QStringLiteral("Next connection check in %1 ms").arg(interval),
+		{ { "intervalMs", interval }, { "failures", mConnectionCheckFailures } });
+	mConnectionCheckTimer.start(interval);
+}
 
 int RedmineClient::connectionCheckInterval() const { return mConnectionCheckTimer.interval(); }
 
@@ -215,10 +233,6 @@ void RedmineClient::checkConnection()
 
 void RedmineClient::handleConnectionCheckReply(QNetworkReply* reply)
 {
-	// Superseded by activatePeriodicConnectionCheck(), e.g. after the URL changed
-	if (reply != mConnectionCheckReply) {
-		return;
-	}
 	updateApiVersionFromReply(reply);
 	// Still the pending probe here, so updateConnectionStateFromReply() leaves the scheduling to us
 	updateConnectionStateFromReply(reply);
@@ -288,6 +302,7 @@ void RedmineClient::setApiKey(const QString& key)
 void RedmineClient::abortOutstandingRequests()
 {
 	// Nothing of the queued batches was sent yet, or was sent with the old settings
+	const qsizetype droppedBatches = mIssueBatchQueue.size();
 	mIssueBatchQueue.clear();
 	mIssueBatchesRunning = 0;
 	// Replies of running batches that are finished already, but not delivered yet, mustn't count anymore
@@ -295,6 +310,7 @@ void RedmineClient::abortOutstandingRequests()
 	for (PagedFetch& fetch : mPagedFetches) {
 		fetch.collected = QJsonArray();
 	}
+	int aborted = 0;
 	const auto replies = mNetworkManager->findChildren<QNetworkReply*>(Qt::FindDirectChildrenOnly);
 	for (QNetworkReply* reply : replies) {
 		// Writes are left alone: the server may have received them already, and reporting them as failed
@@ -305,8 +321,16 @@ void RedmineClient::abortOutstandingRequests()
 		if (read && !reply->isFinished()) {
 			// Before abort(): it emits finished() at once
 			reply->setProperty(SUPERSEDED_PROPERTY, true);
+			++aborted;
 			reply->abort();
 		}
+	}
+	if (aborted > 0 || droppedBatches > 0) {
+		QR_INFO(lcRedmineClient,
+			QStringLiteral("Server URL or API key changed: aborted %1 requests, dropped %2 queued issue requests")
+				.arg(aborted)
+				.arg(droppedBatches),
+			{ { "aborted", aborted }, { "droppedBatches", static_cast<int>(droppedBatches) } });
 	}
 }
 
@@ -345,6 +369,8 @@ void RedmineClient::updateApiVersionFromReply(QNetworkReply* reply)
 	bool ok = false;
 	int version = reply->rawHeader("X-Redmine-API-Version").toInt(&ok);
 	if (ok && version != mApiVersion) {
+		QR_INFO(lcRedmineClient, QStringLiteral("Redmine API version is %1").arg(version),
+			{ { "apiVersion", version }, { "previous", mApiVersion } });
 		mApiVersion = version;
 		emit apiVersionChanged();
 	}
@@ -364,6 +390,14 @@ QNetworkRequest RedmineClient::createRequest(const QString& endpoint, const QUrl
 	QNetworkRequest request(url);
 	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
 	request.setRawHeader("X-Redmine-API-Key", mApiKey.toUtf8());
+
+	// For the trace in the log, see logFinishedReply(). The API key is a header and never logged.
+	const int requestId = ++mLastRequestId;
+	request.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
+	request.setAttribute(REQUEST_START_ATTRIBUTE, QDateTime::currentMSecsSinceEpoch());
+	QR_DEBUG(lcRedmineNetwork,
+		QStringLiteral("Request #%1 sent: %2").arg(requestId).arg(endpoint + '?' + query.toString()),
+		{ { "id", requestId }, { "path", endpoint }, { "query", query.toString() } });
 	return request;
 }
 
@@ -423,6 +457,11 @@ void RedmineClient::setConnectionState(RedmineClient::ConnectionState newConnect
 	if (mConnectionState == newConnectionState) {
 		return;
 	}
+	const auto states = QMetaEnum::fromType<RedmineClient::ConnectionState>();
+	const QString from = QString::fromLatin1(states.valueToKey(mConnectionState));
+	const QString to = QString::fromLatin1(states.valueToKey(newConnectionState));
+	QR_INFO(lcRedmineClient, QStringLiteral("Connection state changed from %1 to %2").arg(from, to),
+		{ { "from", from }, { "to", to } });
 	mConnectionState = newConnectionState;
 	emit connectionStateChanged();
 }
@@ -580,6 +619,9 @@ void RedmineClient::sendIssueBatches()
 		request.setAttribute(QUIET_ATTRIBUTE, batch.quiet);
 		request.setAttribute(ISSUE_BATCH_GENERATION_ATTRIBUTE, mIssueBatchGeneration);
 		++mIssueBatchesRunning;
+		QR_DEBUG(lcRedmineNetwork, QStringLiteral("Fetching %1 issues in one request").arg(batch.ids.size()),
+			{ { "ids", batch.ids.size() }, { "running", mIssueBatchesRunning },
+				{ "queued", static_cast<int>(mIssueBatchQueue.size()) } });
 		mNetworkManager->get(request);
 	}
 }
@@ -596,7 +638,7 @@ void RedmineClient::handleIssuesBatchReply(QNetworkReply* reply)
 	if (reply->error() != QNetworkReply::NoError) {
 		qCWarning(lcRedmineClient) << "Could not fetch issues:" << reply->errorString();
 		if (!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !mBaseUrl.isEmpty()) {
-			emit errorOccurred(userErrorMessage(reply, response));
+			reportError(reply, response);
 		}
 	} else {
 		for (const QJsonValue& issue : response["issues"].toArray()) {
@@ -754,7 +796,13 @@ void RedmineClient::startPagedFetch(
 {
 	const int fetchKey = RedmineClient::fetchKey(tag, purpose);
 	PagedFetch& fetch = mPagedFetches[fetchKey];
+	if (fetch.running) {
+		QR_DEBUG(lcRedmineNetwork, QStringLiteral("Fetch of %1 superseded by a new one").arg(key),
+			{ { "key", key }, { "pages", fetch.pages } });
+	}
 	fetch = PagedFetch { tag, purpose, resource, query, key, quiet, fetch.generation + 1, 0, {} };
+	QR_DEBUG(lcRedmineNetwork, QStringLiteral("Fetching all %1 page by page").arg(key),
+		{ { "key", key }, { "purpose", purpose }, { "generation", fetch.generation } });
 	requestPage(fetchKey, 0);
 }
 
@@ -763,6 +811,10 @@ void RedmineClient::requestPage(int key, int offset)
 	setLoading(true);
 	PagedFetch& fetch = mPagedFetches[key];
 	++fetch.pages;
+	fetch.running = true;
+
+	QR_DEBUG(lcRedmineNetwork, QStringLiteral("Requesting page %1 of %2").arg(fetch.pages).arg(fetch.key),
+		{ { "key", fetch.key }, { "page", fetch.pages }, { "offset", offset } });
 
 	QUrlQuery query = fetch.query;
 	query.addQueryItem("limit", QString::number(PAGE_SIZE));
@@ -783,11 +835,13 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply)
 	if (reply->request().attribute(GENERATION_ATTRIBUTE).toInt() != fetch.generation) {
 		return;
 	}
+	// Running again if the next page is requested
+	fetch.running = false;
 	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
 	if (reply->error() != QNetworkReply::NoError) {
 		qCWarning(lcRedmineClient) << "Could not fetch" << fetch.key << ":" << reply->errorString();
 		if (!fetch.quiet && reply->error() != QNetworkReply::ContentNotFoundError && !mBaseUrl.isEmpty()) {
-			emit errorOccurred(userErrorMessage(reply, response));
+			reportError(reply, response);
 		}
 		if (fetch.tag == TimeEntryReportTag) {
 			emit timeEntryReportFailed(
@@ -809,7 +863,10 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply)
 			requestPage(key, nextOffset);
 			return;
 		}
-		qCWarning(lcRedmineClient) << "Stopped fetching" << fetch.key << "after" << fetch.pages << "pages";
+		QR_WARNING(lcRedmineClient,
+			QStringLiteral("Stopped fetching %1 after %2 pages").arg(fetch.key).arg(fetch.pages),
+			{ { "key", fetch.key }, { "pages", fetch.pages }, { "items", fetch.collected.size() },
+				{ "total", response["total_count"].toInt() } });
 		if (fetch.tag == OwnTimeEntriesTag) {
 			// Linked against a truncated list, pending entries would be submitted again
 			fetch.collected = QJsonArray();
@@ -824,6 +881,9 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply)
 		}
 	}
 	const QJsonArray items = std::exchange(fetch.collected, QJsonArray());
+	QR_DEBUG(lcRedmineNetwork,
+		QStringLiteral("Fetched %1 %2 in %3 pages").arg(items.size()).arg(fetch.key).arg(fetch.pages),
+		{ { "key", fetch.key }, { "items", items.size() }, { "pages", fetch.pages } });
 	if (fetch.tag == AllProjectsTag) {
 		emit projectsReceived(items);
 	} else if (fetch.tag == OwnTimeEntriesTag) {
@@ -1001,6 +1061,11 @@ static int retryAfterFromReply(QNetworkReply* reply)
 	if (value.isEmpty()) {
 		return 0;
 	}
+	const auto logResult = [&value](int seconds) {
+		QR_INFO(lcRedmineClient, QStringLiteral("Server asks to wait %1 s before trying again").arg(seconds),
+			{ { "retryAfterHeader", QString::fromLatin1(value) }, { "seconds", seconds } });
+		return seconds;
+	};
 	bool isNumber = false;
 	qint64 seconds = value.toLongLong(&isNumber);
 	if (!isNumber) {
@@ -1011,11 +1076,11 @@ static int retryAfterFromReply(QNetworkReply* reply)
 		}
 		const QDateTime date = QDateTime::fromString(text, Qt::RFC2822Date);
 		if (!date.isValid()) {
-			return 0;
+			return logResult(0);
 		}
 		seconds = QDateTime::currentDateTimeUtc().secsTo(date);
 	}
-	return static_cast<int>(std::clamp<qint64>(seconds, 0, MAX_RETRY_AFTER));
+	return logResult(static_cast<int>(std::clamp<qint64>(seconds, 0, MAX_RETRY_AFTER)));
 }
 
 void RedmineClient::updateConnectionStateFromReply(QNetworkReply* reply)
@@ -1054,9 +1119,107 @@ void RedmineClient::updateLoading()
 	}));
 }
 
+int RedmineClient::requestId(QNetworkReply* reply) { return reply->request().attribute(REQUEST_ID_ATTRIBUTE).toInt(); }
+
+void RedmineClient::logFinishedReply(QNetworkReply* reply)
+{
+	const QNetworkRequest request = reply->request();
+	const auto tag = static_cast<RequestTag>(request.attribute(ROUTING_ATTRIBUTE).toInt());
+	const bool superseded = reply->property(SUPERSEDED_PROPERTY).toBool();
+	const QNetworkReply::NetworkError error = reply->error();
+	const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+	const qint64 started = request.attribute(REQUEST_START_ATTRIBUTE).toLongLong();
+	const qint64 durationMs = started > 0 ? QDateTime::currentMSecsSinceEpoch() - started : -1;
+	const bool slow = durationMs > SLOW_REQUEST_MS;
+
+	// A failed connection check is what happens while the server is unreachable, and a missing resource
+	// (404) is often an answer in its own right; neither is worth a warning
+	const bool isProbe = tag == ConnectionCheckTag;
+	const bool failed = error != QNetworkReply::NoError && !superseded;
+	QtMsgType type = QtInfoMsg;
+	if (failed && !isProbe && error != QNetworkReply::ContentNotFoundError) {
+		type = QtWarningMsg;
+	} else if (isProbe && !failed && !slow) {
+		type = QtDebugMsg;
+	}
+	// Most replies are filtered out, so nothing is built for them
+	if (!lcRedmineNetwork().isEnabled(type)) {
+		return;
+	}
+
+	QString method;
+	switch (reply->operation()) {
+		case QNetworkAccessManager::GetOperation:
+			method = QStringLiteral("GET");
+			break;
+		case QNetworkAccessManager::PutOperation:
+			method = QStringLiteral("PUT");
+			break;
+		case QNetworkAccessManager::PostOperation:
+			method = QStringLiteral("POST");
+			break;
+		case QNetworkAccessManager::DeleteOperation:
+			method = QStringLiteral("DELETE");
+			break;
+		case QNetworkAccessManager::HeadOperation:
+			method = QStringLiteral("HEAD");
+			break;
+		default:
+			method = QString::fromLatin1(request.attribute(QNetworkRequest::CustomVerbAttribute).toByteArray());
+			break;
+	}
+	static const QStringList routingNames { QStringLiteral("none"), QStringLiteral("customFields"),
+		QStringLiteral("customFieldsFallback"), QStringLiteral("allProjects"), QStringLiteral("ownTimeEntries"),
+		QStringLiteral("timeEntryReport"), QStringLiteral("permissions"), QStringLiteral("connectionCheck"),
+		QStringLiteral("issuesBatch") };
+	const QString routing = routingNames.value(tag);
+	const QString path = reply->url().path();
+
+	QJsonObject fields { { "id", requestId(reply) }, { "method", method }, { "path", path },
+		{ "query", reply->url().query() }, { "status", status }, { "durationMs", durationMs },
+		{ "bytes", reply->bytesAvailable() } };
+	if (tag != NoTag) {
+		fields["tag"] = routing;
+	}
+	if (error != QNetworkReply::NoError) {
+		fields["error"] = QString::fromLatin1(QMetaEnum::fromType<QNetworkReply::NetworkError>().valueToKey(error));
+		fields["errorString"] = reply->errorString();
+	}
+	if (superseded) {
+		fields["superseded"] = true;
+	} else if (error == QNetworkReply::TimeoutError || error == QNetworkReply::OperationCanceledError) {
+		fields["timeout"] = true;
+	}
+	if (slow) {
+		fields["slow"] = true;
+	}
+
+	QString message = QStringLiteral("%1 %2 -> ").arg(method, path);
+	message += status > 0 ? QString::number(status)
+						  : QString::fromLatin1(QMetaEnum::fromType<QNetworkReply::NetworkError>().valueToKey(error));
+	message += QStringLiteral(" (%1 ms)").arg(durationMs);
+
+	QR_LOG(lcRedmineNetwork, type, message, fields);
+}
+
+void RedmineClient::reportError(QNetworkReply* reply, const QJsonObject& response)
+{
+	const QString message = userErrorMessage(reply, response);
+	// The message may hold what Redmine echoed of the user's input, so it's only logged in the content category
+	QR_DEBUG(
+		lcRedmineContent, QStringLiteral("Showing error to the user: %1").arg(message), { { "id", requestId(reply) } });
+	QR_WARNING(lcRedmineClient, QStringLiteral("Showing an error to the user"),
+		{ { "id", requestId(reply) }, { "path", reply->url().path() },
+			{ "status", reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() },
+			{ "error",
+				QString::fromLatin1(QMetaEnum::fromType<QNetworkReply::NetworkError>().valueToKey(reply->error())) } });
+	emit errorOccurred(message);
+}
+
 void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 {
 	reply->deleteLater();
+	logFinishedReply(reply);
 	// Loading ends once no request is left, checked after this reply was handled: handling it may
 	// start follow-up requests (e.g. the next page), so loading doesn't flicker in between.
 	const auto updateLoadingWhenDone = qScopeGuard([this]() { updateLoading(); });
@@ -1118,7 +1281,7 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		if (reply->error() != QNetworkReply::ContentNotFoundError &&
 			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0) &&
 			!mBaseUrl.isEmpty()) {
-			emit errorOccurred(userErrorMessage(reply, response));
+			reportError(reply, response);
 		}
 		// Only Redmine's own answer (JSON) says the issue is unknown; a 404 page from something else
 		// (a wrong server URL, a proxy) says nothing about the issue.
@@ -1137,8 +1300,10 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 				userErrorMessage(reply, response), retryAfterFromReply(reply));
 		}
 
-		qWarning(lcRedmineClient) << QStringLiteral("[%0] %1: ").arg(reply->error()).arg(reply->errorString())
-								  << QJsonDocument(response).toJson(QJsonDocument::Compact);
+		// What Redmine answered, to find out why it refused; only logged in the content category as it
+		// may hold what the user entered
+		QR_DEBUG(lcRedmineContent, QStringLiteral("Error response of request #%1").arg(requestId(reply)),
+			{ { "id", requestId(reply) }, { "body", QString::fromUtf8(data.left(MAX_LOGGED_BODY_SIZE)) } });
 
 		if (reply->operation() == QNetworkAccessManager::PutOperation &&
 			reply->url().path().contains("/time_entries/")) {

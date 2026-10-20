@@ -5,6 +5,7 @@ import QtQuick.Controls.Material
 import QRedmine.TimeTracker
 import QRedmine.Client
 import QtCore
+import QtQuick.Dialogs
 
 /*!
  * \brief Connection settings: Redmine URL, API key, and SSL toggle.
@@ -23,6 +24,36 @@ Item {
         id: traySettings
         category: "tray"
         property bool closeToTray: false
+    }
+
+    // Created on demand: the view keeps a copy of the log, which is wasted memory while it is closed.
+    Loader {
+        id: logViewLoader
+        active: false
+        sourceComponent: LogView {}
+        onLoaded: (item as LogView).open()
+    }
+
+    Connections {
+        target: logViewLoader.item
+        function onClosed() {
+            Qt.callLater(() => logViewLoader.active = false);
+        }
+    }
+
+    MessageDialog {
+        id: exportResultDialog
+    }
+
+    FileDialog {
+        id: exportLogsDialog
+        fileMode: FileDialog.SaveFile
+        nameFilters: [qsTr("Log files (*.jsonl)")]
+        defaultSuffix: "jsonl"
+        onAccepted: {
+            exportResultDialog.text = LogController.exportLogs(selectedFile) ? qsTr("The logs were exported.") : qsTr("The logs couldn't be exported.");
+            exportResultDialog.open();
+        }
     }
 
     FormPage {
@@ -178,6 +209,86 @@ Item {
                 text: qsTr("Keep running in the tray when the window is closed")
                 checked: traySettings.closeToTray
                 onToggled: traySettings.closeToTray = checked
+            }
+        }
+
+        Card {
+            Layout.fillWidth: true
+            title: qsTr("Logging")
+
+            LabeledField {
+                Layout.fillWidth: true
+                label: qsTr("Level")
+
+                ComboBox {
+                    id: logLevelComboBox
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Metrics.controlHeight
+                    topInset: 0
+                    bottomInset: 0
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [{
+                            "text": qsTr("Normal"),
+                            "value": "normal"
+                        }, {
+                            "text": qsTr("Detailed"),
+                            "value": "verbose"
+                        }, {
+                            "text": qsTr("Debug"),
+                            "value": "debug"
+                        }]
+                    // Set once the model is processed: a binding would evaluate indexOfValue() too early.
+                    Component.onCompleted: currentIndex = indexOfValue(LogController.level)
+                    onActivated: LogController.level = currentValue
+                }
+            }
+
+            Connections {
+                target: LogController
+                function onLevelChanged() {
+                    logLevelComboBox.currentIndex = logLevelComboBox.indexOfValue(LogController.level);
+                }
+            }
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("Detailed adds every request's details, Debug everything including time entry comments.")
+                color: Material.hintTextColor
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+            }
+
+            Flow {
+                Layout.fillWidth: true
+                spacing: 12
+
+                Button {
+                    height: Metrics.controlHeight
+                    text: qsTr("Show log")
+                    onClicked: {
+                        if (logViewLoader.active) {
+                            (logViewLoader.item as LogView).open();
+                        } else {
+                            logViewLoader.active = true;
+                        }
+                    }
+                }
+
+                Button {
+                    height: Metrics.controlHeight
+                    text: qsTr("Open log folder")
+                    onClicked: Qt.openUrlExternally(LogController.logDirectory)
+                }
+
+                Button {
+                    height: Metrics.controlHeight
+                    text: qsTr("Export logs…")
+                    onClicked: {
+                        exportLogsDialog.selectedFile = StandardPaths.writableLocation(StandardPaths.DocumentsLocation) + "/" + LogController.exportFileName();
+                        exportLogsDialog.open();
+                    }
+                }
             }
         }
 

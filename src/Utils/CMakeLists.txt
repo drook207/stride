@@ -18,6 +18,8 @@ qt_add_library(
 	stringhelper.h
 	logging.cpp
 	logging.h
+	logmanager.cpp
+	logmanager.h
 	securestorage.cpp
 	securestorage.h)
 add_library(QRedmine::Utils ALIAS qredmineutils)
