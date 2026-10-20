@@ -146,6 +146,12 @@ public:
 	Q_INVOKABLE bool hasPendingEntries() const;
 
 	/*!
+	 * \brief hasDueEntries Whether a pending entry is due to be sent again by submitPendingEntries():
+	 * one that isn't waiting out the backoff after a failed submission (see submissionFailed())
+	 */
+	Q_INVOKABLE bool hasDueEntries() const;
+
+	/*!
 	 * \brief stageRedmineUpdate Remembers changes sent to Redmine for one of its time entries, to be
 	 * applied locally by applyRedmineUpdate() once Redmine confirms them, so the local data never
 	 * shows changes Redmine rejected
@@ -189,15 +195,34 @@ public slots:
 
 	/*!
 	 * \brief submitPendingEntries Sends the entries not on Redmine yet (Database::Pending) via
-	 * submitTimeEntry(), except those already being sent. Call when Redmine is reachable.
+	 * submitTimeEntry(), except those already being sent and those waiting out the backoff after a
+	 * failed submission (see submissionFailed()). Call when Redmine is reachable.
 	 */
 	void submitPendingEntries();
 
 	/*!
 	 * \brief submissionFailed Handles a failed submission (RedmineClient::timeEntryCreateFailed):
-	 * an entry Redmine refused is marked rejected with the reason, others are sent again later
+	 * an entry Redmine refused is marked rejected with the reason, others are sent again later:
+	 * submitPendingEntries() skips such an entry for 2 minutes, after each further failure twice as
+	 * long, up to an hour; or for \a retryAfter if that's longer. The wait is kept in memory only, and
+	 * ends when the entry is created, changed, deleted or sent by the user (addRecentEntry(),
+	 * sendToRedmine()).
+	 * \param retryAfter Seconds the server asked to wait, 0 if it didn't
 	 */
-	void submissionFailed(int localId, int httpStatus, const QString& error);
+	void submissionFailed(int localId, int httpStatus, const QString& error, int retryAfter = 0);
+
+	/*!
+	 * \brief resetSubmissionBackoff Ends the wait of every entry for a new try, e.g. because the server
+	 * URL or API key changed
+	 */
+	void resetSubmissionBackoff();
+
+	/*!
+	 * \brief connectionRestored Ends the wait of the entries whose last submission didn't reach the
+	 * server (HTTP status 0), as the server can be reached again; entries that failed with an answer
+	 * of the server keep waiting
+	 */
+	Q_INVOKABLE void connectionRestored();
 
 	/*!
 	 * \brief deleteRecentEntry Deletes a local entry that isn't linked to a Redmine time entry (for a
@@ -349,8 +374,21 @@ private:
 	//! Entries linkExistingTimeEntries() tries to link, see unlinkedEntriesRange().
 	QVariantList linkCandidates() const;
 
-	//! Emits submitTimeEntry() for an entry (as from Database::getTimeEntry()) not being sent yet.
+	//! Emits submitTimeEntry() for an entry (as from Database::getTimeEntry()) not being sent yet,
+	//! whether or not it waits out a backoff.
 	void submitEntry(const QJsonObject& entry);
+
+	//! Failed submissions of an entry, and when it may be sent again by submitPendingEntries().
+	struct SubmissionBackoff {
+		int failures = 0;
+		bool notReached = false; // the last failure was no answer of the server (HTTP status 0)
+		QDateTime nextAttempt;
+	};
+
+	//! By local id; in memory only, so a restart sends everything pending once.
+	QHash<int, SubmissionBackoff> mBackoff;
+	//! Whether an entry isn't waiting out a backoff.
+	bool isDue(int localId) const;
 
 	QTimer mTimer;
 	int mCurrentIssueId;

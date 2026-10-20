@@ -9,6 +9,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
+#include <QPointer>
 #include <QString>
 #include <QTimer>
 #include <QUrlQuery>
@@ -46,6 +47,7 @@ class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
 	Q_DISABLE_COPY_MOVE(RedmineClient)
 	Q_PROPERTY(QString baseUrl READ baseUrl WRITE setBaseUrl NOTIFY baseUrlChanged)
 	Q_PROPERTY(QString apiKey READ apiKey WRITE setApiKey NOTIFY apiKeyChanged)
+	Q_PROPERTY(bool apiKeyLoaded READ apiKeyLoaded NOTIFY apiKeyLoadedChanged)
 	Q_PROPERTY(bool loading READ loading NOTIFY loadingChanged)
 	Q_PROPERTY(ConnectionState connectionState READ connectionState NOTIFY connectionStateChanged FINAL)
 	Q_PROPERTY(bool useSSL READ useSSL WRITE useSSL NOTIFY useSSLChanged FINAL)
@@ -97,6 +99,19 @@ public:
 	~RedmineClient();
 
 	/*!
+	 * \brief connectionCheckInterval The delay in milliseconds the next connection check was
+	 * scheduled with (0 before the first one was scheduled)
+	 * \return
+	 */
+	int connectionCheckInterval() const;
+
+	/*!
+	 * \brief connectionCheckRunning Whether a connection check is waiting for its answer
+	 * \return
+	 */
+	bool connectionCheckRunning() const;
+
+	/*!
 	 * \brief baseUrl
 	 * \return
 	 */
@@ -121,7 +136,15 @@ public:
 	void setApiKey(const QString& key);
 
 	/*!
-	 * \brief loading
+	 * \brief apiKeyLoaded Whether the API key is known since startup: true once the keychain read
+	 * has finished (whether it found a key, none, or failed), or at once when a legacy key was
+	 * migrated or a key was set with setApiKey(). Requests made before are sent without a key.
+	 * \return
+	 */
+	bool apiKeyLoaded() const;
+
+	/*!
+	 * \brief loading Whether a request is running; the periodic connection check doesn't count
 	 * \return
 	 */
 	bool loading() const;
@@ -235,6 +258,16 @@ public slots:
 	 * \param offset Skip this many issues (for pagination)
 	 */
 	void getIssues(int projectId = 0, int statusId = 0, int limit = 100, int offset = 0);
+
+	/*!
+	 * \brief getIssuesById Fetches several issues of any status at once (issues.json?issue_id=...), in
+	 * requests of at most 100 ids, at most two running at a time; emits issueReceived() for each
+	 * issue returned. Issues missing from the answer (deleted, or not visible to the user) are not
+	 * reported, as a list can't tell the two apart.
+	 * \param issueIds Ids of the issues, duplicates and ids <= 0 are ignored
+	 * \param quiet Don't report failures via errorOccurred(), for fetches the user didn't ask for
+	 */
+	Q_INVOKABLE void getIssuesById(const QList<int>& issueIds, bool quiet = true);
 
 	/*!
 	 * \brief createIssue
@@ -354,6 +387,11 @@ signals:
 	void apiKeyChanged();
 
 	/*!
+	 * \brief apiKeyLoadedChanged Emitted once the API key is known after startup, see apiKeyLoaded()
+	 */
+	void apiKeyLoadedChanged();
+
+	/*!
 	 * \brief loadingChanged
 	 */
 	void loadingChanged();
@@ -367,13 +405,16 @@ signals:
 
 	/*!
 	 * \brief timeEntryCreateFailed Emitted when a createTimeEntry() request fails. errorOccurred()
-	 * reports it too, unless the server wasn't reached (httpStatus 0)
+	 * reports it too, unless the server wasn't reached (httpStatus 0). Also emitted, with
+	 * httpStatus 0, for a request aborted because the base URL or API key changed.
 	 * \param requestTag As passed to createTimeEntry()
 	 * \param httpStatus Redmine's HTTP status (e.g. 422 when it rejected the entry), 0 if the
 	 * server wasn't reached
 	 * \param error User-facing reason
+	 * \param retryAfter Seconds the server asked to wait before trying again ("Retry-After" header,
+	 * as delta-seconds or HTTP date; at most one day), 0 if it didn't
 	 */
-	void timeEntryCreateFailed(int requestTag, int httpStatus, const QString& error);
+	void timeEntryCreateFailed(int requestTag, int httpStatus, const QString& error, int retryAfter);
 
 	/*!
 	 * \brief issueNotFound Emitted when Redmine says it doesn't know an issue asked for with
@@ -555,9 +596,20 @@ private slots:
 	 */
 	void handleNetworkReply(QNetworkReply* reply);
 
+	//! (Re)starts the connection checks with the first probe soon, e.g. after the URL or API key
+	//! changed. Does nothing as long as the URL or the API key is empty.
 	void activatePeriodicConnectionCheck();
 
+	//! Sends a probe request (issues.json?limit=1) unless one is still running. Its reply only updates
+	//! connectionState() and apiVersion() and schedules the next probe; it neither counts as loading
+	//! nor is reported via errorOccurred().
 	void checkConnection();
+
+	//! Aborts every read request still running: they were made with the previous base URL or API key. Their
+	//! replies are dropped silently (see handleNetworkReply()), except that an aborted time entry report
+	//! still emits timeEntryReportFailed(). Writes are not aborted, the server may have received them
+	//! already; they are handled as usual when they end.
+	void abortOutstandingRequests();
 
 private:
 	//! Marks requests whose replies are handled separately from handleNetworkReply()'s generic
@@ -569,7 +621,9 @@ private:
 		AllProjectsTag,
 		OwnTimeEntriesTag,
 		TimeEntryReportTag,
-		PermissionsTag
+		PermissionsTag,
+		ConnectionCheckTag,
+		IssuesBatchTag
 	};
 
 	//! A list fetched page after page (getAllProjects(), getOwnTimeEntries(), getTimeEntryReport()).
@@ -581,6 +635,7 @@ private:
 		QString key; // the list's key in each page's JSON
 		bool quiet = false; // failures aren't reported via errorOccurred()
 		int generation = 0; // counts calls, so pages of a superseded call are ignored
+		int pages = 0; // pages requested so far, limited by MAX_PAGES
 		QJsonArray collected; // items received so far
 	};
 
@@ -596,6 +651,22 @@ private:
 	void requestPage(int key, int offset);
 	//! Adds a received page, then requests the next one or emits all items.
 	void handlePagedReply(QNetworkReply* reply);
+
+	//! A getIssues(QList<int>) request still to be sent: the ids of one chunk.
+	struct IssueBatch {
+		QList<int> ids;
+		bool quiet = true;
+	};
+
+	//! Chunks waiting for a free slot, and the number of chunk requests running (at most two).
+	QList<IssueBatch> mIssueBatchQueue;
+	int mIssueBatchesRunning = 0;
+	//! Incremented whenever the running chunks are given up (abortOutstandingRequests()), so their
+	//! replies, still to be delivered, can be told from those of current ones.
+	int mIssueBatchGeneration = 0;
+	//! Sends queued chunks as long as fewer than two are running.
+	void sendIssueBatches();
+	void handleIssuesBatchReply(QNetworkReply* reply);
 
 	//! Counts getCurrentUser() calls, so replies for a superseded permission lookup are ignored.
 	int mPermissionsGeneration = 0;
@@ -618,7 +689,16 @@ private:
 	void updateLoading();
 
 	ConnectionState mConnectionState = ConnectionState::OFFLINE;
+	//! Single-shot, re-armed after each probe: every 60 s while the server answers, after a failure
+	//! backing off from 5 s (doubling) up to 5 min. Normal replies showing the server is reachable
+	//! reset the backoff.
 	QTimer mConnectionCheckTimer;
+	//! The probe in flight, if any; there is never more than one.
+	QPointer<QNetworkReply> mConnectionCheckReply;
+	//! Failed probes in a row, determines the backoff
+	int mConnectionCheckFailures = 0;
+	void scheduleConnectionCheck(int interval);
+	void handleConnectionCheckReply(QNetworkReply* reply);
 
 	void setupConnectionCheckTimer();
 	void setConnectionState(RedmineClient::ConnectionState newConnectionState);
@@ -650,6 +730,8 @@ private:
 
 	QString mBaseUrl;
 	QString mApiKey;
+	bool mApiKeyLoaded = false;
+	void setApiKeyLoaded();
 	bool mLoading;
 	QNetworkAccessManager* mNetworkManager;
 	bool mUseSSL { true };

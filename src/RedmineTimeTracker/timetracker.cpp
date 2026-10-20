@@ -302,10 +302,39 @@ int TimeTracker::addRecentEntry(const QVariantMap& entry)
 	return localId;
 }
 
+//! Wait after the first failed submission of an entry; doubled with each further one up to
+//! SUBMISSION_BACKOFF_MAX_SECONDS
+static constexpr int SUBMISSION_BACKOFF_BASE_SECONDS = 2 * 60;
+static constexpr int SUBMISSION_BACKOFF_MAX_SECONDS = 60 * 60;
+
+bool TimeTracker::isDue(int localId) const
+{
+	const auto backoff = mBackoff.constFind(localId);
+	return backoff == mBackoff.constEnd() || backoff->nextAttempt <= QDateTime::currentDateTime();
+}
+
+bool TimeTracker::hasDueEntries() const
+{
+	const QJsonArray pending = Database::getPendingEntries();
+	return std::any_of(pending.cbegin(), pending.cend(),
+		[this](const QJsonValue& entry) { return isDue(entry.toObject()["id"].toInt()); });
+}
+
+void TimeTracker::resetSubmissionBackoff() { mBackoff.clear(); }
+
+void TimeTracker::connectionRestored()
+{
+	for (auto it = mBackoff.begin(); it != mBackoff.end();) {
+		it = it->notReached ? mBackoff.erase(it) : std::next(it);
+	}
+}
+
 void TimeTracker::submitPendingEntries()
 {
 	for (const QJsonValue& entry : Database::getPendingEntries()) {
-		submitEntry(entry.toObject());
+		if (isDue(entry.toObject()["id"].toInt())) {
+			submitEntry(entry.toObject());
+		}
 	}
 }
 
@@ -321,7 +350,7 @@ void TimeTracker::submitEntry(const QJsonObject& entry)
 		entry["custom_fields"].toArray().toVariantList());
 }
 
-void TimeTracker::submissionFailed(int localId, int httpStatus, const QString& error)
+void TimeTracker::submissionFailed(int localId, int httpStatus, const QString& error, int retryAfter)
 {
 	mSubmitting.remove(localId);
 	mEditedWhileSubmitting.remove(localId); // sent again later with the current values anyway
@@ -330,10 +359,20 @@ void TimeTracker::submissionFailed(int localId, int httpStatus, const QString& e
 	// sending it unchanged again won't help. Anything else (not reached, 401 for a key being
 	// fixed, server errors) is tried again later.
 	if (httpStatus >= 400 && httpStatus < 500 && httpStatus != 401 && httpStatus != 408 && httpStatus != 429) {
+		mBackoff.remove(localId);
 		if (Database::setSyncStatus(localId, Database::Rejected, error)) {
 			loadRecentEntries();
 		}
+		return;
 	}
+	// Wait 2 min, 4, 8, ... up to an hour before the next automatic try, or as long as the server asked
+	SubmissionBackoff& backoff = mBackoff[localId];
+	++backoff.failures;
+	backoff.notReached = httpStatus == 0;
+	const int exponent = std::min(backoff.failures - 1, 16); // keeps the shift in range
+	const int wait =
+		std::max(std::min(SUBMISSION_BACKOFF_BASE_SECONDS << exponent, SUBMISSION_BACKOFF_MAX_SECONDS), retryAfter);
+	backoff.nextAttempt = QDateTime::currentDateTime().addSecs(wait);
 }
 
 bool TimeTracker::deleteRecentEntry(int localId)
@@ -343,6 +382,7 @@ bool TimeTracker::deleteRecentEntry(int localId)
 	if (mSubmitting.contains(localId)) {
 		return false;
 	}
+	mBackoff.remove(localId);
 	if (Database::deleteTimeEntry(localId) < 0) {
 		qCWarning(lcTimeTracker) << "Could not delete local time entry" << localId;
 		return false;
@@ -366,6 +406,7 @@ void TimeTracker::removeDeletedTimeEntry(int redmineId)
 
 void TimeTracker::sendToRedmine(int localId)
 {
+	mBackoff.remove(localId);
 	if (Database::setSyncStatus(localId, Database::Pending)) {
 		loadRecentEntries();
 		submitEntry(Database::getTimeEntry(localId));
@@ -469,7 +510,9 @@ static constexpr int LINKING_MAX_AGE_DAYS = 31;
 QVariantList TimeTracker::linkCandidates() const
 {
 	// Recent unlinked entries of the last month, and every entry still to be sent (Redmine may
-	// have it although the app didn't hear back), however old.
+	// have it although the app didn't hear back), however old. Not limited further: whether an entry
+	// reached Redmine isn't recorded (the reply may be lost to a timeout or a crash, and every entry is
+	// sent at once when added), and sending one that is on Redmine already would duplicate it.
 	const QString oldest = QDate::currentDate().addDays(-LINKING_MAX_AGE_DAYS).toString(Qt::ISODate);
 	QVariantList candidates;
 	QSet<int> ids;
@@ -572,6 +615,8 @@ void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)
 		qCWarning(lcTimeTracker) << "Could not update local time entry" << localId;
 		return;
 	}
+	// Changed, so worth another try right away (when next sent)
+	mBackoff.remove(localId);
 	// A rejected entry is sent again once changed (hopefully fixed); an unconfirmed one only when
 	// asked to, since Redmine may have it already.
 	const int status = entry["sync_status"].toInt();
@@ -673,6 +718,7 @@ void TimeTracker::applyIssueStatus(int localId)
 bool TimeTracker::linkCreatedTimeEntry(const QJsonObject& timeEntry, int localId)
 {
 	mSubmitting.remove(localId);
+	mBackoff.remove(localId);
 	const bool interactive = mInteractiveSubmissions.remove(localId);
 	const int redmineId = timeEntry["id"].toInt(-1);
 	if (redmineId < 0 || localId <= 0) {

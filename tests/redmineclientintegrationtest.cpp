@@ -2,10 +2,12 @@
 #include "testutils.h"
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QHostAddress>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
+#include <QNetworkAccessManager>
 #include <QSettings>
 #include <QTcpServer>
 #include <QTranslator>
@@ -681,7 +683,7 @@ TEST_F(RedmineClientIntegrationTest, DetectApiVersionReadsHeaderAndEmitsApiVersi
 	ASSERT_EQ(server->requests().size(), 1);
 	const RecordedHttpRequest& request = server->requests().first();
 	EXPECT_EQ(request.path.toStdString(), "/issues.json");
-	EXPECT_EQ(request.query.queryItemValue("limit").toStdString(), "0");
+	EXPECT_EQ(request.query.queryItemValue("limit").toStdString(), "1");
 }
 
 TEST_F(RedmineClientIntegrationTest, NotFoundResponseDoesNotEmitErrorOccurred)
@@ -869,4 +871,774 @@ TEST_F(RedmineClientIntegrationTest, LoadingIsTrueDuringRequestAndFalseAfterResp
 
 	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueReceived));
 	EXPECT_FALSE(client->loading());
+}
+
+namespace {
+/*! \brief probe Triggers the private checkConnection() slot and waits until the server has seen the
+ * request and the client has handled the reply.
+ * \return Whether both happened in time */
+[[nodiscard]] bool probe(RedmineClient& client, QRedmineTesting::MockHttpServer& server)
+{
+	const auto expected = server.requests().size() + 1;
+	QMetaObject::invokeMethod(&client, "checkConnection");
+	return waitUntil([&]() { return server.requests().size() >= expected; }) &&
+		waitUntil([&]() { return !client.connectionCheckRunning(); });
+}
+
+/*! \brief A TCP server accepting connections but never answering them. */
+class SilentServer {
+public:
+	SilentServer()
+	{
+		mServer.listen(QHostAddress::LocalHost, 0);
+		QObject::connect(&mServer, &QTcpServer::newConnection, [this]() {
+			while (mServer.hasPendingConnections()) {
+				mServer.nextPendingConnection()->setParent(&mServer);
+				++mConnections;
+			}
+		});
+	}
+
+	QString baseUrl() const { return QStringLiteral("http://127.0.0.1:%0/").arg(mServer.serverPort()); }
+
+	int connections() const { return mConnections; }
+
+private:
+	QTcpServer mServer;
+	int mConnections = 0;
+};
+}
+
+TEST_F(RedmineClientIntegrationTest, ConnectionCheckRequestsOneIssueOnly)
+{
+	ASSERT_TRUE(probe(*client, *server));
+
+	ASSERT_EQ(server->requests().size(), 1);
+	const RecordedHttpRequest& request = server->requests().first();
+	EXPECT_EQ(request.path.toStdString(), "/issues.json");
+	EXPECT_EQ(request.query.queryItemValue("limit").toStdString(), "1");
+}
+
+TEST_F(RedmineClientIntegrationTest, SuccessfulConnectionCheckGoesOnlineAndStaysQuiet)
+{
+	int issuesReceived = 0;
+	int errors = 0;
+	std::vector<bool> loadingChanges;
+	QObject::connect(client.get(), &RedmineClient::issuesReceived, [&](const QJsonArray&) { ++issuesReceived; });
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+	QObject::connect(
+		client.get(), &RedmineClient::loadingChanged, [&]() { loadingChanges.push_back(client->loading()); });
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issues":[{"id":1}]})" });
+
+	ASSERT_TRUE(probe(*client, *server));
+
+	EXPECT_EQ(client->connectionState(), RedmineClient::ONLINE);
+	EXPECT_EQ(client->connectionCheckInterval(), 60000);
+	EXPECT_EQ(issuesReceived, 0);
+	EXPECT_EQ(errors, 0);
+	EXPECT_TRUE(loadingChanges.empty());
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, FailingConnectionChecksBackOffUpToTheCap)
+{
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+
+	// A success first, so that the first failure's interval differs from the one before it
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_EQ(client->connectionCheckInterval(), 60000);
+
+	for (int i = 0; i < 9; ++i) {
+		server->enqueueResponse(MockHttpResponse { 503, "Service Unavailable", "" });
+	}
+	for (const int expected : { 5000, 10000, 20000, 40000, 80000, 160000, 300000, 300000, 300000 }) {
+		ASSERT_TRUE(probe(*client, *server));
+		ASSERT_EQ(client->connectionCheckInterval(), expected);
+	}
+	EXPECT_EQ(errors, 0);
+}
+
+TEST_F(RedmineClientIntegrationTest, ConnectionCheckAgainstClosedPortBacksOffWithoutError)
+{
+	QTcpServer closed;
+	closed.listen(QHostAddress::LocalHost, 0);
+	const auto port = closed.serverPort();
+	closed.close();
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+
+	client->setBaseUrl(QStringLiteral("http://127.0.0.1:%0/").arg(port));
+	for (const int expected : { 5000, 10000 }) {
+		QMetaObject::invokeMethod(client.get(), "checkConnection");
+		ASSERT_TRUE(waitUntil([&]() { return !client->connectionCheckRunning(); }));
+		EXPECT_EQ(client->connectionCheckInterval(), expected);
+	}
+	// Refused isn't a lost connection for other requests, but a failed check means one
+	EXPECT_NE(client->connectionState(), RedmineClient::ONLINE);
+	EXPECT_EQ(errors, 0);
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, ConnectionCheckIsNotSentWhileOneIsPending)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	waitUntil([]() { return false; }, 200);
+
+	EXPECT_EQ(silent.connections(), 1);
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, SuccessfulRequestAfterFailedConnectionChecksResetsTheBackoff)
+{
+	for (int i = 0; i < 3; ++i) {
+		server->enqueueResponse(MockHttpResponse { 503, "Service Unavailable", "" });
+	}
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_EQ(client->connectionCheckInterval(), 20000);
+
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issue":{"id":1}})" });
+	client->getIssue(1);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueReceived));
+
+	EXPECT_EQ(client->connectionCheckInterval(), 60000);
+	EXPECT_EQ(client->connectionState(), RedmineClient::ONLINE);
+}
+
+TEST_F(RedmineClientIntegrationTest, ChangingTheUrlResetsTheBackoffAndAbortsThePendingCheck)
+{
+	for (int i = 0; i < 2; ++i) {
+		server->enqueueResponse(MockHttpResponse { 503, "Service Unavailable", "" });
+	}
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_EQ(client->connectionCheckInterval(), 10000);
+
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+	EXPECT_EQ(client->connectionCheckInterval(), 5000);
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+
+	QTcpServer other;
+	other.listen(QHostAddress::LocalHost, 0);
+	client->setBaseUrl(QStringLiteral("http://127.0.0.1:%0/").arg(other.serverPort()));
+	waitUntil([]() { return false; }, 100);
+
+	EXPECT_EQ(client->connectionCheckInterval(), 5000);
+	// The aborted probe is gone, so a new one is sent immediately
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	EXPECT_TRUE(waitUntil([&]() { return other.hasPendingConnections(); }));
+}
+
+TEST_F(RedmineClientIntegrationTest, TransferTimeoutIsThirtySeconds)
+{
+	auto* manager = client->findChild<QNetworkAccessManager*>();
+	ASSERT_NE(manager, nullptr);
+	EXPECT_EQ(manager->transferTimeout(), 30000);
+}
+
+TEST_F(RedmineClientIntegrationTest, RequestToSilentServerIsCanceledByTheTransferTimeout)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+	// Shortened from the test only, the production value is 30 s (see TransferTimeoutIsThirtySeconds)
+	client->findChild<QNetworkAccessManager*>()->setTransferTimeout(std::chrono::milliseconds(300));
+
+	QString message;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString& text) { message = text; });
+
+	client->getIssue(1);
+	EXPECT_TRUE(client->loading());
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	EXPECT_EQ(silent.connections(), 1);
+	EXPECT_EQ(client->connectionState(), RedmineClient::OFFLINE);
+	EXPECT_TRUE(message.contains("didn't answer in time")) << message.toStdString();
+}
+
+TEST_F(RedmineClientIntegrationTest, ClearingTheUrlStopsTheConnectionChecks)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	ASSERT_TRUE(waitUntil([&]() { return client->connectionCheckRunning(); }));
+
+	client->setBaseUrl(QString());
+
+	EXPECT_FALSE(client->connectionCheckRunning());
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	EXPECT_FALSE(client->connectionCheckRunning());
+}
+
+namespace {
+/*! \brief pause Lets the event loop run for ms, to show that something does not happen. */
+void quietFor(int ms = 200)
+{
+	waitUntil([]() { return false; }, ms);
+}
+
+/*! \brief pagedResponse A page of one project, of a list claiming to hold a lot more. */
+MockHttpResponse endlessPage(const char* key)
+{
+	return MockHttpResponse { 200, "OK", QByteArray("{\"") + key + "\":[{\"id\":1}],\"total_count\":100000}" };
+}
+}
+
+TEST_F(RedmineClientIntegrationTest, PagingAdvancesFromTheRequestedOffsetNotTheReportedOne)
+{
+	// The server leaves the offset out, or always reports 0
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"projects":[{"id":1},{"id":2}],"total_count":3})" });
+	server->enqueueResponse(
+		MockHttpResponse { 200, "OK", R"({"projects":[{"id":3}],"total_count":3,"offset":0,"limit":100})" });
+
+	QJsonArray received;
+	QObject::connect(
+		client.get(), &RedmineClient::projectsReceived, [&](const QJsonArray& projects) { received = projects; });
+
+	client->getAllProjects();
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::projectsReceived));
+	quietFor();
+
+	ASSERT_EQ(server->requests().size(), 2);
+	EXPECT_EQ(server->requests().at(0).query.queryItemValue("offset").toStdString(), "0");
+	EXPECT_EQ(server->requests().at(1).query.queryItemValue("offset").toStdString(), "2");
+	EXPECT_EQ(received.size(), 3);
+}
+
+TEST_F(RedmineClientIntegrationTest, PagedFetchStopsAfterTwoHundredPages)
+{
+	for (int i = 0; i < 250; ++i) {
+		server->enqueueResponse(endlessPage("projects"));
+	}
+
+	QJsonArray received;
+	QObject::connect(
+		client.get(), &RedmineClient::projectsReceived, [&](const QJsonArray& projects) { received = projects; });
+
+	client->getAllProjects();
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::projectsReceived, 20000));
+	quietFor();
+
+	EXPECT_EQ(server->requests().size(), 200);
+	EXPECT_EQ(received.size(), 200);
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, OwnTimeEntriesCutOffAtTheLimitAreNotEmitted)
+{
+	for (int i = 0; i < 250; ++i) {
+		server->enqueueResponse(endlessPage("time_entries"));
+	}
+
+	int received = 0;
+	QObject::connect(client.get(), &RedmineClient::ownTimeEntriesReceived, [&](const QJsonArray&) { ++received; });
+
+	client->getOwnTimeEntries("2026-01-01", "2026-12-31");
+	ASSERT_TRUE(waitUntil([&]() { return server->requests().size() == 200 && !client->loading(); }, 20000));
+	quietFor();
+
+	// A truncated list would have pending entries submitted again
+	EXPECT_EQ(server->requests().size(), 200);
+	EXPECT_EQ(received, 0);
+}
+
+TEST_F(RedmineClientIntegrationTest, ReportCutOffAtTheLimitFailsInsteadOfBeingPartial)
+{
+	for (int i = 0; i < 250; ++i) {
+		server->enqueueResponse(endlessPage("time_entries"));
+	}
+
+	bool received = false;
+	QString failedFrom;
+	int failedPurpose = -1;
+	QObject::connect(client.get(), &RedmineClient::timeEntryReportReceived,
+		[&](const QJsonArray&, const QString&, const QString&, int) { received = true; });
+	QObject::connect(
+		client.get(), &RedmineClient::timeEntryReportFailed, [&](const QString& from, const QString&, int purpose) {
+			failedFrom = from;
+			failedPurpose = purpose;
+		});
+
+	client->getTimeEntryReport("2026-01-01", "2026-12-31", RedmineClient::ExportReport);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryReportFailed, 20000));
+	quietFor();
+
+	EXPECT_EQ(server->requests().size(), 200);
+	EXPECT_FALSE(received);
+	EXPECT_EQ(failedFrom.toStdString(), "2026-01-01");
+	EXPECT_EQ(failedPurpose, RedmineClient::ExportReport);
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, ReportOfExactlyTwoHundredPagesIsComplete)
+{
+	for (int i = 0; i < 200; ++i) {
+		server->enqueueResponse(
+			MockHttpResponse { 200, "OK", R"({"time_entries":[{"id":1}],"total_count":200,"offset":0})" });
+	}
+
+	QJsonArray received;
+	bool failed = false;
+	QObject::connect(client.get(), &RedmineClient::timeEntryReportReceived,
+		[&](const QJsonArray& entries, const QString&, const QString&, int) { received = entries; });
+	QObject::connect(client.get(), &RedmineClient::timeEntryReportFailed,
+		[&](const QString&, const QString&, int) { failed = true; });
+
+	client->getTimeEntryReport("2026-01-01", "2026-12-31");
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::timeEntryReportReceived, 20000));
+
+	EXPECT_EQ(received.size(), 200);
+	EXPECT_FALSE(failed);
+	EXPECT_EQ(server->requests().size(), 200);
+}
+
+TEST_F(RedmineClientIntegrationTest, ChangingTheUrlAbortsPendingRequestSilently)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+
+	int errors = 0;
+	int issues = 0;
+	int stateChanges = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+	QObject::connect(client.get(), &RedmineClient::issueReceived, [&](const QJsonObject&) { ++issues; });
+	QObject::connect(client.get(), &RedmineClient::issueNotFound, [&](int) { ++issues; });
+	QObject::connect(client.get(), &RedmineClient::connectionStateChanged, [&]() { ++stateChanges; });
+
+	client->getIssue(1);
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+	ASSERT_TRUE(client->loading());
+
+	client->setBaseUrl(server->baseUrl());
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+	quietFor();
+
+	EXPECT_EQ(errors, 0);
+	EXPECT_EQ(issues, 0);
+	EXPECT_EQ(stateChanges, 0);
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, ChangingTheKeyAbortsPendingRequestSilently)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+
+	int errors = 0;
+	int received = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+	QObject::connect(client.get(), &RedmineClient::projectReceived, [&](const QJsonObject&) { ++received; });
+
+	client->getProject(3);
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+	client->setApiKey("another-key");
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+	quietFor();
+
+	EXPECT_EQ(errors, 0);
+	EXPECT_EQ(received, 0);
+}
+
+TEST_F(RedmineClientIntegrationTest, TimeEntryCreationIsNotAbortedByAChange)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+
+	int failures = 0;
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+	QObject::connect(
+		client.get(), &RedmineClient::timeEntryCreateFailed, [&](int, int, const QString&, int) { ++failures; });
+
+	client->createTimeEntry(42, 1.0, "Pending", "2026-10-15", 4, {}, 7);
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+	client->setApiKey("another-key");
+	quietFor();
+
+	// Still running: the server may have it already, so it must not be reported as failed
+	EXPECT_EQ(failures, 0);
+	EXPECT_EQ(errors, 0);
+	EXPECT_TRUE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, TimeEntryUpdateIsNotAbortedByAChange)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+
+	int failures = 0;
+	QObject::connect(client.get(), &RedmineClient::timeEntryUpdateFailed, [&](int, int) { ++failures; });
+
+	client->updateTimeEntry(9, 2.0, "Changed", "2026-10-15", 4, {}, 5);
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+	client->setBaseUrl(server->baseUrl());
+	quietFor();
+
+	EXPECT_EQ(failures, 0);
+	EXPECT_TRUE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, AbortedReportFetchIsReportedAsFailed)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+
+	int received = 0;
+	QString failedFrom;
+	QString failedTo;
+	int failedPurpose = -1;
+	int failures = 0;
+	QObject::connect(client.get(), &RedmineClient::timeEntryReportReceived,
+		[&](const QJsonArray&, const QString&, const QString&, int) { ++received; });
+	QObject::connect(
+		client.get(), &RedmineClient::timeEntryReportFailed, [&](const QString& from, const QString& to, int purpose) {
+			++failures;
+			failedFrom = from;
+			failedTo = to;
+			failedPurpose = purpose;
+		});
+
+	client->getTimeEntryReport("2026-01-01", "2026-12-31", RedmineClient::ExportReport);
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+	client->setBaseUrl(server->baseUrl());
+	ASSERT_TRUE(waitUntil([&]() { return failures > 0; }));
+	quietFor();
+
+	EXPECT_EQ(failures, 1);
+	EXPECT_EQ(received, 0);
+	EXPECT_EQ(failedFrom.toStdString(), "2026-01-01");
+	EXPECT_EQ(failedTo.toStdString(), "2026-12-31");
+	EXPECT_EQ(failedPurpose, RedmineClient::ExportReport);
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, AbortedPagedFetchStopsPaging)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+
+	int received = 0;
+	QObject::connect(client.get(), &RedmineClient::projectsReceived, [&](const QJsonArray&) { ++received; });
+
+	client->getAllProjects();
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+	client->setBaseUrl(server->baseUrl());
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+	quietFor();
+
+	EXPECT_EQ(received, 0);
+	EXPECT_TRUE(server->requests().isEmpty());
+}
+
+TEST_F(RedmineClientIntegrationTest, RequestsAfterAChangeAreNotAffectedByTheAbort)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+	client->getIssue(1);
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+
+	client->setBaseUrl(server->baseUrl());
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issue":{"id":2}})" });
+	QJsonObject received;
+	QObject::connect(client.get(), &RedmineClient::issueReceived, [&](const QJsonObject& issue) { received = issue; });
+	client->getIssue(2);
+
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueReceived));
+	EXPECT_EQ(received["id"].toInt(), 2);
+	EXPECT_EQ(client->connectionState(), RedmineClient::ONLINE);
+}
+
+TEST_F(RedmineClientIntegrationTest, InvalidEnumerationTypeDoesNotSetLoading)
+{
+	int loadingChanges = 0;
+	QObject::connect(client.get(), &RedmineClient::loadingChanged, [&]() { ++loadingChanges; });
+
+	client->getEnumerations(static_cast<RedmineClient::EnumerationTypes>(99));
+	quietFor(100);
+
+	EXPECT_FALSE(client->loading());
+	EXPECT_EQ(loadingChanges, 0);
+	EXPECT_TRUE(server->requests().isEmpty());
+}
+
+namespace {
+struct CreateFailure {
+	int status = -1;
+	int retryAfter = -1;
+};
+
+/*! \brief failCreateWith Answers a createTimeEntry() request with the given response, returns what
+ * timeEntryCreateFailed() reported. */
+CreateFailure failCreateWith(RedmineClient& client, QRedmineTesting::MockHttpServer& server, MockHttpResponse response)
+{
+	server.enqueueResponse(response);
+	CreateFailure failure;
+	QObject::connect(
+		&client, &RedmineClient::timeEntryCreateFailed, [&](int, int status, const QString&, int retryAfter) {
+			failure = { status, retryAfter };
+		});
+	client.createTimeEntry(42, 1.0, "Retry", "2026-10-15", 4, {}, 1);
+	EXPECT_TRUE(waitForSignal(&client, &RedmineClient::timeEntryCreateFailed));
+	return failure;
+}
+
+MockHttpResponse retryResponse(int status, const QByteArray& retryAfter)
+{
+	MockHttpResponse response { status, "Error", R"({"errors":["later"]})" };
+	if (!retryAfter.isNull()) {
+		response.headers.insert("Retry-After", retryAfter);
+	}
+	return response;
+}
+
+//! A date as in an HTTP header, ending in zone ("GMT" by the standard)
+QByteArray httpDate(qint64 secondsFromNow, const QString& zone = QStringLiteral("GMT"))
+{
+	return (
+		QLocale::c().toString(QDateTime::currentDateTimeUtc().addSecs(secondsFromNow), "ddd, dd MMM yyyy HH:mm:ss ") +
+		zone)
+		.toLatin1();
+}
+}
+
+TEST_F(RedmineClientIntegrationTest, RetryAfterInSecondsIsPassedOn)
+{
+	const auto failure = failCreateWith(*client, *server, retryResponse(503, "120"));
+	EXPECT_EQ(failure.status, 503);
+	EXPECT_EQ(failure.retryAfter, 120);
+}
+
+TEST_F(RedmineClientIntegrationTest, RetryAfterAsHttpDateWithNumericZoneIsConvertedToSeconds)
+{
+	const auto failure = failCreateWith(*client, *server, retryResponse(429, httpDate(300, "+0000")));
+	EXPECT_EQ(failure.status, 429);
+	EXPECT_GE(failure.retryAfter, 290);
+	EXPECT_LE(failure.retryAfter, 300);
+}
+
+// The form servers send: HTTP dates end in "GMT" ("Wed, 21 Oct 2026 07:28:00 GMT"), which
+// Qt::RFC2822Date alone doesn't parse
+TEST_F(RedmineClientIntegrationTest, RetryAfterAsHttpDateIsConvertedToSeconds)
+{
+	const auto failure = failCreateWith(*client, *server, retryResponse(429, httpDate(300)));
+	EXPECT_EQ(failure.status, 429);
+	EXPECT_GE(failure.retryAfter, 290);
+	EXPECT_LE(failure.retryAfter, 300);
+}
+
+TEST_F(RedmineClientIntegrationTest, MissingRetryAfterIsZero)
+{
+	const auto failure = failCreateWith(*client, *server, retryResponse(503, QByteArray()));
+	EXPECT_EQ(failure.status, 503);
+	EXPECT_EQ(failure.retryAfter, 0);
+}
+
+TEST_F(RedmineClientIntegrationTest, RetryAfterIsClampedToOneDay)
+{
+	EXPECT_EQ(failCreateWith(*client, *server, retryResponse(503, "999999")).retryAfter, 86400);
+}
+
+TEST_F(RedmineClientIntegrationTest, RetryAfterInTheNegativeOrPastOrNonsenseIsZero)
+{
+	EXPECT_EQ(failCreateWith(*client, *server, retryResponse(503, "-5")).retryAfter, 0);
+	EXPECT_EQ(failCreateWith(*client, *server, retryResponse(503, httpDate(-600, "+0000"))).retryAfter, 0);
+	EXPECT_EQ(failCreateWith(*client, *server, retryResponse(503, "soon")).retryAfter, 0);
+}
+
+TEST_F(RedmineClientIntegrationTest, GetIssuesByIdSplitsIdsIntoChunksOfOneHundred)
+{
+	QList<int> ids;
+	for (int i = 1; i <= 150; ++i) {
+		ids.append(i);
+	}
+
+	client->getIssuesById(ids);
+	ASSERT_TRUE(waitUntil([&]() { return server->requests().size() == 2 && !client->loading(); }));
+
+	QList<qsizetype> sizes;
+	QList<int> requested;
+	for (const RecordedHttpRequest& request : server->requests()) {
+		EXPECT_EQ(request.method.toStdString(), "GET");
+		EXPECT_EQ(request.path.toStdString(), "/issues.json");
+		EXPECT_EQ(request.query.queryItemValue("status_id").toStdString(), "*");
+		EXPECT_EQ(request.query.queryItemValue("limit").toStdString(), "100");
+		const QStringList chunk = request.query.queryItemValue("issue_id").split(',');
+		sizes.append(chunk.size());
+		for (const QString& id : chunk) {
+			requested.append(id.toInt());
+		}
+	}
+	std::sort(sizes.begin(), sizes.end());
+	std::sort(requested.begin(), requested.end());
+	EXPECT_EQ(sizes, (QList<qsizetype> { 50, 100 }));
+	EXPECT_EQ(requested, ids);
+}
+
+TEST_F(RedmineClientIntegrationTest, GetIssuesByIdIgnoresDuplicatesAndInvalidIds)
+{
+	client->getIssuesById({ 3, 3, 0, -1, 5, 3, 5 });
+	ASSERT_TRUE(waitUntil([&]() { return server->requests().size() == 1 && !client->loading(); }));
+	quietFor(100);
+
+	ASSERT_EQ(server->requests().size(), 1);
+	EXPECT_EQ(server->requests().first().query.queryItemValue("issue_id").toStdString(), "3,5");
+}
+
+TEST_F(RedmineClientIntegrationTest, GetIssuesByIdWithoutValidIdsSendsNothing)
+{
+	client->getIssuesById({});
+	client->getIssuesById({ 0, -4 });
+	quietFor(100);
+
+	EXPECT_TRUE(server->requests().isEmpty());
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, GetIssuesByIdEmitsIssueReceivedForEachIssueReturned)
+{
+	QList<int> ids;
+	for (int i = 1; i <= 120; ++i) {
+		ids.append(i);
+	}
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issues":[{"id":1},{"id":2}]})" });
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issues":[{"id":101}]})" });
+
+	QList<int> received;
+	int lists = 0;
+	int notFound = 0;
+	QObject::connect(client.get(), &RedmineClient::issueReceived,
+		[&](const QJsonObject& issue) { received.append(issue["id"].toInt()); });
+	QObject::connect(client.get(), &RedmineClient::issuesReceived, [&](const QJsonArray&) { ++lists; });
+	QObject::connect(client.get(), &RedmineClient::issueNotFound, [&](int) { ++notFound; });
+
+	client->getIssuesById(ids);
+	ASSERT_TRUE(waitUntil([&]() { return received.size() == 3; }));
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+	quietFor(100);
+
+	std::sort(received.begin(), received.end());
+	EXPECT_EQ(received, (QList<int> { 1, 2, 101 }));
+	EXPECT_EQ(lists, 0);
+	EXPECT_EQ(notFound, 0);
+}
+
+TEST_F(RedmineClientIntegrationTest, GetIssuesByIdHasAtMostTwoRequestsRunning)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+	QList<int> ids;
+	for (int i = 1; i <= 350; ++i) {
+		ids.append(i);
+	}
+
+	client->getIssuesById(ids);
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 2; }));
+	quietFor();
+
+	EXPECT_EQ(silent.connections(), 2);
+}
+
+TEST_F(RedmineClientIntegrationTest, GetIssuesByIdSendsTheNextChunkWhenOneIsDone)
+{
+	QList<int> ids;
+	for (int i = 1; i <= 350; ++i) {
+		ids.append(i);
+	}
+	int received = 0;
+	QObject::connect(client.get(), &RedmineClient::issueReceived, [&](const QJsonObject&) { ++received; });
+	for (int i = 0; i < 4; ++i) {
+		server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issues":[{"id":1}]})" });
+	}
+
+	client->getIssuesById(ids);
+
+	ASSERT_TRUE(waitUntil([&]() { return received == 4; }));
+	EXPECT_EQ(server->requests().size(), 4);
+}
+
+TEST_F(RedmineClientIntegrationTest, GetIssuesByIdIsQuietByDefaultAndReportsErrorsOnRequest)
+{
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+	server->enqueueResponse(MockHttpResponse { 500, "Internal Server Error", "" });
+	server->enqueueResponse(MockHttpResponse { 500, "Internal Server Error", "" });
+
+	client->getIssuesById({ 1 });
+	ASSERT_TRUE(waitUntil([&]() { return server->requests().size() == 1 && !client->loading(); }));
+	quietFor(100);
+	EXPECT_EQ(errors, 0);
+
+	client->getIssuesById({ 1 }, false);
+	ASSERT_TRUE(waitUntil([&]() { return errors == 1; }));
+}
+
+TEST_F(RedmineClientIntegrationTest, ChangingTheUrlDropsQueuedIssueChunksAndLetsNewOnesThrough)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+	QList<int> ids;
+	for (int i = 1; i <= 500; ++i) {
+		ids.append(i);
+	}
+	client->getIssuesById(ids);
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 2; }));
+
+	client->setBaseUrl(server->baseUrl());
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+	quietFor();
+	EXPECT_TRUE(server->requests().isEmpty());
+
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issues":[{"id":9}]})" });
+	client->getIssuesById({ 9 });
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueReceived));
+	EXPECT_EQ(server->requests().size(), 1);
+}
+
+TEST_F(RedmineClientIntegrationTest, ApiKeyIsLoadedAfterSettingIt)
+{
+	RedmineClient fresh;
+	// The keychain read hasn't been delivered before the constructor returns
+	EXPECT_FALSE(fresh.apiKeyLoaded());
+
+	int changes = 0;
+	QObject::connect(&fresh, &RedmineClient::apiKeyLoadedChanged, [&]() { ++changes; });
+	fresh.setApiKey("my-key");
+	EXPECT_TRUE(fresh.apiKeyLoaded());
+	EXPECT_EQ(changes, 1);
+
+	fresh.setApiKey("other-key");
+	quietFor(100);
+	EXPECT_EQ(changes, 1);
+	EXPECT_EQ(fresh.apiKey().toStdString(), "other-key"); // not replaced by what the keychain delivers
+}
+
+TEST_F(RedmineClientIntegrationTest, ApiKeyIsLoadedOnceTheKeychainReadIsFinished)
+{
+	RedmineClient fresh;
+	int changes = 0;
+	QObject::connect(&fresh, &RedmineClient::apiKeyLoadedChanged, [&]() { ++changes; });
+
+	// Whether it finds a key, none or fails (no secret service here)
+	ASSERT_TRUE(waitUntil([&]() { return fresh.apiKeyLoaded(); }, 10000));
+	quietFor(100);
+	EXPECT_EQ(changes, 1);
+}
+
+TEST_F(RedmineClientIntegrationTest, MigratingALegacyKeyMarksItLoadedAtOnce)
+{
+	QSettings().setValue("client/apiKey", "legacy-key");
+
+	RedmineClient fresh;
+
+	EXPECT_TRUE(fresh.apiKeyLoaded());
+	EXPECT_EQ(fresh.apiKey().toStdString(), "legacy-key");
 }

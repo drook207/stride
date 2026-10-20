@@ -52,6 +52,39 @@ ApplicationWindow {
         }
     }
 
+    //! Starts a sync, but at most one per minute: a flapping connection or several triggers at once
+    //! would otherwise ask Redmine again and again. A sync that comes during the cooldown is held
+    //! back and runs once when it ends. force syncs now regardless and restarts the cooldown.
+    function requestSync(force) {
+        if (syncCooldown.running && !force) {
+            window.syncWanted = true;
+            return;
+        }
+        window.syncWanted = false;
+        syncCooldown.restart();
+        window.syncWithRedmine();
+    }
+    //! Whether a sync was requested during the cooldown, see requestSync().
+    property bool syncWanted: false
+    Timer {
+        id: syncCooldown
+        interval: 60 * 1000
+        onTriggered: {
+            if (window.syncWanted) {
+                window.requestSync(false);
+            }
+        }
+    }
+
+    //! Requests that depend on the server and API key: at startup (once the key is known) and
+    //! again after either changed.
+    function fetchServerData(force) {
+        redmineClient.getAllProjects();
+        projectAccess.refresh();
+        redmineClient.getTimeEntryCustomFields();
+        window.requestSync(force);
+    }
+
     //! The time entry custom field named "Special" (see RedmineClient::getTimeEntryCustomFields),
     //! or null if the server has none; drives the Special combo boxes.
     property var specialField: null
@@ -72,30 +105,38 @@ ApplicationWindow {
                 messageDialog.open();
             }
         }
-        onTimeEntryCreateFailed: function (requestTag, httpStatus, error) {
-            timeTrackerInstance.submissionFailed(requestTag, httpStatus, error);
+        onTimeEntryCreateFailed: function (requestTag, httpStatus, error, retryAfter) {
+            timeTrackerInstance.submissionFailed(requestTag, httpStatus, error, retryAfter);
         }
     }
 
-    Component.onCompleted: {
+    //! Startup requests, sent once the API key is known (the keychain delivers it a moment after
+    //! launch): earlier they'd go out without it and again when it arrives.
+    function startUp() {
         redmineClient.detectApiVersion();
         redmineClient.getEnumerations(0);
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
-        if (!isNaN(timeTrackerInstance.interruptedAt.getTime())) {
-            interruptionDialog.open();
-        }
-        redmineClient.getAllProjects();
-        projectAccess.refresh();
-        redmineClient.getTimeEntryCustomFields();
-        window.syncWithRedmine();
+        window.fetchServerData(false);
         // Recent entries show their issue's project, which needs the issue cached locally. Quietly:
         // the user didn't ask for these, and one they can't fetch (e.g. no access any more) would
         // otherwise report an error on every launch.
-        for (const issueId of timeTrackerInstance.issueIdsWithoutProject()) {
-            redmineClient.getIssue(issueId, true);
+        redmineClient.getIssuesById(timeTrackerInstance.issueIdsWithoutProject(), true);
+    }
+
+    Component.onCompleted: {
+        if (!isNaN(timeTrackerInstance.interruptedAt.getTime())) {
+            interruptionDialog.open();
+        }
+        if (redmineClient.apiKeyLoaded) {
+            window.startedUp = true;
+            window.startUp();
         }
     }
+
+    //! Whether startUp() ran. The key loaded at startup doesn't count as a change (see
+    //! onApiKeyChanged).
+    property bool startedUp: false
 
     // Projects, the user's permissions, the time entry custom fields and the user's own time entries
     // depend on the server and API key (the keychain may also deliver the key only after startup's
@@ -105,10 +146,7 @@ ApplicationWindow {
         interval: 1000
         onTriggered: {
             window.caughtUp = false;
-            redmineClient.getAllProjects();
-            projectAccess.refresh();
-            redmineClient.getTimeEntryCustomFields();
-            window.syncWithRedmine();
+            window.fetchServerData(true);
         }
     }
     // Fetching fails quietly while offline: when the connection comes back, catch up once on what's
@@ -131,14 +169,32 @@ ApplicationWindow {
     }
     Connections {
         target: redmineClient
+        function onApiKeyLoadedChanged() {
+            if (redmineClient.apiKeyLoaded && !window.startedUp) {
+                window.startedUp = true;
+                window.startUp();
+            }
+        }
         function onApiKeyChanged() {
-            apiKeyRefetchTimer.restart();
+            // The cached overview belongs to the previous user.
+            OverviewCache.clear();
+            // Before startUp() this is the initial load, which startUp() covers.
+            if (window.startedUp) {
+                timeTrackerInstance.resetSubmissionBackoff();
+                apiKeyRefetchTimer.restart();
+            }
         }
         function onBaseUrlChanged() {
-            apiKeyRefetchTimer.restart();
+            // The cached overview belongs to the previous server.
+            OverviewCache.clear();
+            timeTrackerInstance.resetSubmissionBackoff();
+            if (window.startedUp) {
+                apiKeyRefetchTimer.restart();
+            }
         }
         function onConnectionStateChanged() {
             if (redmineClient.connectionState === RedmineClient.ONLINE) {
+                timeTrackerInstance.connectionRestored();
                 reconnectRefetchTimer.restart();
                 syncTimer.restart();
             }
@@ -148,7 +204,7 @@ ApplicationWindow {
     Timer {
         id: syncTimer
         interval: 1000
-        onTriggered: window.syncWithRedmine()
+        onTriggered: window.requestSync(false)
     }
     // Entries can also fail while the connection stays up (e.g. a server error): try again now and
     // then.
@@ -157,8 +213,8 @@ ApplicationWindow {
         repeat: true
         running: redmineClient.connectionState === RedmineClient.ONLINE
         onTriggered: {
-            if (timeTrackerInstance.hasPendingEntries()) {
-                window.syncWithRedmine();
+            if (timeTrackerInstance.hasDueEntries()) {
+                window.requestSync(false);
             }
         }
     }
@@ -227,12 +283,28 @@ ApplicationWindow {
         }
     }
 
+    // Tells whether an issue is cached locally, see onTimeEntriesReceived.
+    IssueModel {
+        id: issueCache
+    }
+    Connections {
+        target: timeTrackerInstance
+        function onIssueCacheChanged() {
+            issueCache.updateIssueList();
+        }
+        // Overview reports fetched before don't include the change (see OverviewCache).
+        function onRecentEntriesChanged() {
+            OverviewCache.clear();
+        }
+    }
+
     Connections {
         target: redmineClient
         function onTimeEntriesReceived(entries) {
             timeTrackerInstance.addEntriesFromId(entries);
-            if (entries.length > 0) {
-                redmineClient.getIssue(entries[0].issue.id);
+            // Quietly, and only if the issue isn't cached yet.
+            if (entries.length > 0 && !issueCache.hasIssue(entries[0].issue.id)) {
+                redmineClient.getIssue(entries[0].issue.id, true);
             }
         }
     }
