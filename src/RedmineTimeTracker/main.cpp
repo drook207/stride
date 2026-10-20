@@ -3,13 +3,22 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
-#include <QGuiApplication>
 #include <QIcon>
 #include <QLocale>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QSettings>
 #include <QSortFilterProxyModel>
+
+#ifdef STRIDE_WIDGETS_APPLICATION
+// The tray icon's menu (Qt.labs.platform) needs a QApplication wherever it falls back to a Qt Widgets
+// menu, i.e. where the platform has no native one; see CMakeLists.txt.
+#include <QApplication>
+using Application = QApplication;
+#else
+#include <QGuiApplication>
+using Application = QGuiApplication;
+#endif
 
 #include "languagemanager.h"
 #include "logmanager.h"
@@ -35,7 +44,7 @@ static void migrateLegacySettings()
 
 int main(int argc, char* argv[])
 {
-	QGuiApplication app(argc, argv);
+	Application app(argc, argv);
 
 	// Application identity for QSettings and the data directory, see CMakeLists.txt.
 	app.setOrganizationName(APP_ORGANIZATION_NAME);
