@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
+#include <QNetworkAccessManager>
 #include <QSettings>
 #include <QTcpServer>
 #include <QTranslator>
@@ -681,7 +682,7 @@ TEST_F(RedmineClientIntegrationTest, DetectApiVersionReadsHeaderAndEmitsApiVersi
 	ASSERT_EQ(server->requests().size(), 1);
 	const RecordedHttpRequest& request = server->requests().first();
 	EXPECT_EQ(request.path.toStdString(), "/issues.json");
-	EXPECT_EQ(request.query.queryItemValue("limit").toStdString(), "0");
+	EXPECT_EQ(request.query.queryItemValue("limit").toStdString(), "1");
 }
 
 TEST_F(RedmineClientIntegrationTest, NotFoundResponseDoesNotEmitErrorOccurred)
@@ -869,4 +870,210 @@ TEST_F(RedmineClientIntegrationTest, LoadingIsTrueDuringRequestAndFalseAfterResp
 
 	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueReceived));
 	EXPECT_FALSE(client->loading());
+}
+
+namespace {
+/*! \brief probe Triggers the private checkConnection() slot and waits until the server has seen the
+ * request and the client has handled the reply.
+ * \return Whether both happened in time */
+[[nodiscard]] bool probe(RedmineClient& client, QRedmineTesting::MockHttpServer& server)
+{
+	const auto expected = server.requests().size() + 1;
+	QMetaObject::invokeMethod(&client, "checkConnection");
+	return waitUntil([&]() { return server.requests().size() >= expected; }) &&
+		waitUntil([&]() { return !client.connectionCheckRunning(); });
+}
+
+/*! \brief A TCP server accepting connections but never answering them. */
+class SilentServer {
+public:
+	SilentServer()
+	{
+		mServer.listen(QHostAddress::LocalHost, 0);
+		QObject::connect(&mServer, &QTcpServer::newConnection, [this]() {
+			while (mServer.hasPendingConnections()) {
+				mServer.nextPendingConnection()->setParent(&mServer);
+				++mConnections;
+			}
+		});
+	}
+
+	QString baseUrl() const { return QStringLiteral("http://127.0.0.1:%0/").arg(mServer.serverPort()); }
+
+	int connections() const { return mConnections; }
+
+private:
+	QTcpServer mServer;
+	int mConnections = 0;
+};
+}
+
+TEST_F(RedmineClientIntegrationTest, ConnectionCheckRequestsOneIssueOnly)
+{
+	ASSERT_TRUE(probe(*client, *server));
+
+	ASSERT_EQ(server->requests().size(), 1);
+	const RecordedHttpRequest& request = server->requests().first();
+	EXPECT_EQ(request.path.toStdString(), "/issues.json");
+	EXPECT_EQ(request.query.queryItemValue("limit").toStdString(), "1");
+}
+
+TEST_F(RedmineClientIntegrationTest, SuccessfulConnectionCheckGoesOnlineAndStaysQuiet)
+{
+	int issuesReceived = 0;
+	int errors = 0;
+	std::vector<bool> loadingChanges;
+	QObject::connect(client.get(), &RedmineClient::issuesReceived, [&](const QJsonArray&) { ++issuesReceived; });
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+	QObject::connect(
+		client.get(), &RedmineClient::loadingChanged, [&]() { loadingChanges.push_back(client->loading()); });
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issues":[{"id":1}]})" });
+
+	ASSERT_TRUE(probe(*client, *server));
+
+	EXPECT_EQ(client->connectionState(), RedmineClient::ONLINE);
+	EXPECT_EQ(client->connectionCheckInterval(), 60000);
+	EXPECT_EQ(issuesReceived, 0);
+	EXPECT_EQ(errors, 0);
+	EXPECT_TRUE(loadingChanges.empty());
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, FailingConnectionChecksBackOffUpToTheCap)
+{
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+
+	// A success first, so that the first failure's interval differs from the one before it
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_EQ(client->connectionCheckInterval(), 60000);
+
+	for (int i = 0; i < 9; ++i) {
+		server->enqueueResponse(MockHttpResponse { 503, "Service Unavailable", "" });
+	}
+	for (const int expected : { 5000, 10000, 20000, 40000, 80000, 160000, 300000, 300000, 300000 }) {
+		ASSERT_TRUE(probe(*client, *server));
+		ASSERT_EQ(client->connectionCheckInterval(), expected);
+	}
+	EXPECT_EQ(errors, 0);
+}
+
+TEST_F(RedmineClientIntegrationTest, ConnectionCheckAgainstClosedPortBacksOffWithoutError)
+{
+	QTcpServer closed;
+	closed.listen(QHostAddress::LocalHost, 0);
+	const auto port = closed.serverPort();
+	closed.close();
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+
+	client->setBaseUrl(QStringLiteral("http://127.0.0.1:%0/").arg(port));
+	for (const int expected : { 5000, 10000 }) {
+		QMetaObject::invokeMethod(client.get(), "checkConnection");
+		ASSERT_TRUE(waitUntil([&]() { return !client->connectionCheckRunning(); }));
+		EXPECT_EQ(client->connectionCheckInterval(), expected);
+	}
+	// Refused isn't a lost connection for other requests, but a failed check means one
+	EXPECT_NE(client->connectionState(), RedmineClient::ONLINE);
+	EXPECT_EQ(errors, 0);
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, ConnectionCheckIsNotSentWhileOneIsPending)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	waitUntil([]() { return false; }, 200);
+
+	EXPECT_EQ(silent.connections(), 1);
+	EXPECT_FALSE(client->loading());
+}
+
+TEST_F(RedmineClientIntegrationTest, SuccessfulRequestAfterFailedConnectionChecksResetsTheBackoff)
+{
+	for (int i = 0; i < 3; ++i) {
+		server->enqueueResponse(MockHttpResponse { 503, "Service Unavailable", "" });
+	}
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_EQ(client->connectionCheckInterval(), 20000);
+
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issue":{"id":1}})" });
+	client->getIssue(1);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueReceived));
+
+	EXPECT_EQ(client->connectionCheckInterval(), 60000);
+	EXPECT_EQ(client->connectionState(), RedmineClient::ONLINE);
+}
+
+TEST_F(RedmineClientIntegrationTest, ChangingTheUrlResetsTheBackoffAndAbortsThePendingCheck)
+{
+	for (int i = 0; i < 2; ++i) {
+		server->enqueueResponse(MockHttpResponse { 503, "Service Unavailable", "" });
+	}
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_TRUE(probe(*client, *server));
+	ASSERT_EQ(client->connectionCheckInterval(), 10000);
+
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+	EXPECT_EQ(client->connectionCheckInterval(), 5000);
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	ASSERT_TRUE(waitUntil([&]() { return silent.connections() == 1; }));
+
+	QTcpServer other;
+	other.listen(QHostAddress::LocalHost, 0);
+	client->setBaseUrl(QStringLiteral("http://127.0.0.1:%0/").arg(other.serverPort()));
+	waitUntil([]() { return false; }, 100);
+
+	EXPECT_EQ(client->connectionCheckInterval(), 5000);
+	// The aborted probe is gone, so a new one is sent immediately
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	EXPECT_TRUE(waitUntil([&]() { return other.hasPendingConnections(); }));
+}
+
+TEST_F(RedmineClientIntegrationTest, TransferTimeoutIsThirtySeconds)
+{
+	auto* manager = client->findChild<QNetworkAccessManager*>();
+	ASSERT_NE(manager, nullptr);
+	EXPECT_EQ(manager->transferTimeout(), 30000);
+}
+
+TEST_F(RedmineClientIntegrationTest, RequestToSilentServerIsCanceledByTheTransferTimeout)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+	// Shortened from the test only, the production value is 30 s (see TransferTimeoutIsThirtySeconds)
+	client->findChild<QNetworkAccessManager*>()->setTransferTimeout(std::chrono::milliseconds(300));
+
+	QString message;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString& text) { message = text; });
+
+	client->getIssue(1);
+	EXPECT_TRUE(client->loading());
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	EXPECT_EQ(silent.connections(), 1);
+	EXPECT_EQ(client->connectionState(), RedmineClient::OFFLINE);
+	EXPECT_TRUE(message.contains("didn't answer in time")) << message.toStdString();
+}
+
+TEST_F(RedmineClientIntegrationTest, ClearingTheUrlStopsTheConnectionChecks)
+{
+	SilentServer silent;
+	client->setBaseUrl(silent.baseUrl());
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	ASSERT_TRUE(waitUntil([&]() { return client->connectionCheckRunning(); }));
+
+	client->setBaseUrl(QString());
+
+	EXPECT_FALSE(client->connectionCheckRunning());
+	QMetaObject::invokeMethod(client.get(), "checkConnection");
+	EXPECT_FALSE(client->connectionCheckRunning());
 }

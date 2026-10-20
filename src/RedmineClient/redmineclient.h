@@ -9,6 +9,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
+#include <QPointer>
 #include <QString>
 #include <QTimer>
 #include <QUrlQuery>
@@ -97,6 +98,19 @@ public:
 	~RedmineClient();
 
 	/*!
+	 * \brief connectionCheckInterval The delay in milliseconds the next connection check was
+	 * scheduled with (0 before the first one was scheduled)
+	 * \return
+	 */
+	int connectionCheckInterval() const;
+
+	/*!
+	 * \brief connectionCheckRunning Whether a connection check is waiting for its answer
+	 * \return
+	 */
+	bool connectionCheckRunning() const;
+
+	/*!
 	 * \brief baseUrl
 	 * \return
 	 */
@@ -121,7 +135,7 @@ public:
 	void setApiKey(const QString& key);
 
 	/*!
-	 * \brief loading
+	 * \brief loading Whether a request is running; the periodic connection check doesn't count
 	 * \return
 	 */
 	bool loading() const;
@@ -555,8 +569,13 @@ private slots:
 	 */
 	void handleNetworkReply(QNetworkReply* reply);
 
+	//! (Re)starts the connection checks with the first probe soon, e.g. after the URL or API key
+	//! changed. Does nothing as long as the URL or the API key is empty.
 	void activatePeriodicConnectionCheck();
 
+	//! Sends a probe request (issues.json?limit=1) unless one is still running. Its reply only updates
+	//! connectionState() and apiVersion() and schedules the next probe; it neither counts as loading
+	//! nor is reported via errorOccurred().
 	void checkConnection();
 
 private:
@@ -569,7 +588,8 @@ private:
 		AllProjectsTag,
 		OwnTimeEntriesTag,
 		TimeEntryReportTag,
-		PermissionsTag
+		PermissionsTag,
+		ConnectionCheckTag
 	};
 
 	//! A list fetched page after page (getAllProjects(), getOwnTimeEntries(), getTimeEntryReport()).
@@ -618,7 +638,16 @@ private:
 	void updateLoading();
 
 	ConnectionState mConnectionState = ConnectionState::OFFLINE;
+	//! Single-shot, re-armed after each probe: every 60 s while the server answers, after a failure
+	//! backing off from 5 s (doubling) up to 5 min. Normal replies showing the server is reachable
+	//! reset the backoff.
 	QTimer mConnectionCheckTimer;
+	//! The probe in flight, if any; there is never more than one.
+	QPointer<QNetworkReply> mConnectionCheckReply;
+	//! Failed probes in a row, determines the backoff
+	int mConnectionCheckFailures = 0;
+	void scheduleConnectionCheck(int interval);
+	void handleConnectionCheckReply(QNetworkReply* reply);
 
 	void setupConnectionCheckTimer();
 	void setConnectionState(RedmineClient::ConnectionState newConnectionState);
