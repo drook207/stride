@@ -63,7 +63,23 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: Metrics.controlHeight
                     text: docroot.client.apiKey
-                    onTextChanged: docroot.client.apiKey = text
+                    // Not on every keystroke: setting the key stores it and refetches everything.
+                    // Applied once typing pauses, or at once when confirmed.
+                    onTextChanged: apiKeyTimer.restart()
+                    onEditingFinished: {
+                        apiKeyTimer.stop();
+                        apiKeyTimer.apply();
+                    }
+                    Timer {
+                        id: apiKeyTimer
+                        interval: 1500
+                        function apply() {
+                            if (parent.text !== docroot.client.apiKey) {
+                                docroot.client.apiKey = parent.text;
+                            }
+                        }
+                        onTriggered: apply()
+                    }
                     echoMode: TextInput.Password
                 }
             }

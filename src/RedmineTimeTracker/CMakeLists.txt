@@ -36,6 +36,10 @@ qt_add_executable(QRedmineTimeTracker main.cpp ${APP_ICON_RESOURCE_WINDOWS})
 # Shared layout sizes, used as a QML singleton (see qml/Components/Metrics.qml).
 set_source_files_properties(qml/Components/Metrics.qml
 							PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+# Last fetched overview reports, a QML singleton too (see
+# qml/Components/OverviewCache.qml).
+set_source_files_properties(qml/Components/OverviewCache.qml
+							PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 # Hours parsing/formatting for the time fields, a QML singleton too (see
 # qml/Components/HoursFormat.qml).
 set_source_files_properties(qml/Components/HoursFormat.qml
@@ -68,6 +72,7 @@ qt_add_qml_module(
 	qml/Components/ClearButton.qml
 	qml/Components/Metrics.qml
 	qml/Components/HoursFormat.qml
+	qml/Components/OverviewCache.qml
 	qml/Components/Card.qml
 	qml/Components/PageTitle.qml
 	qml/Components/FormPage.qml

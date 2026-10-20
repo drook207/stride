@@ -20,8 +20,14 @@ Item {
 	required property RedmineClient client
 
 	//! Asks Redmine for the shown week's entries; the answer arrives via timeEntryReportReceived.
-	function fetch() {
+	//! Reuses a report fetched a moment ago (see OverviewCache) unless force is set.
+	function fetch(force) {
 		const week = overview.range()
+		const cached = force ? null : OverviewCache.lookup(week.from, week.to)
+		if (cached) {
+			overview.setRemoteEntries(cached, week.from, week.to)
+			return
+		}
 		docroot.client.getTimeEntryReport(week.from, week.to, RedmineClient.OverviewReport)
 	}
 
@@ -44,6 +50,7 @@ Item {
 		target: docroot.client
 		function onTimeEntryReportReceived(timeEntries, from, to, purpose) {
 			if (purpose === RedmineClient.OverviewReport) {
+				OverviewCache.store(from, to, timeEntries)
 				overview.setRemoteEntries(timeEntries, from, to)
 			}
 		}
@@ -61,7 +68,7 @@ Item {
 	Timer {
 		id: refetchTimer
 		interval: 3000
-		onTriggered: docroot.fetch()
+		onTriggered: docroot.fetch(true)
 	}
 
 	Component.onCompleted: docroot.fetch()

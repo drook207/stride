@@ -142,9 +142,13 @@ TEST_F(TimeTrackerTest, NewEntriesAreSentOnceAndStayPendingUntilRedmineIsReached
 	tracker->submitPendingEntries();
 	EXPECT_EQ(sent.size(), 1u);
 
-	// Not reached: stays pending and is sent again later.
+	// Not reached: stays pending, and is sent again later - once its wait is over (see
+	// RetryableFailuresWaitBeforeTheNextAutomaticTry), here ended by hand.
 	tracker->submissionFailed(local, 0, "offline");
 	EXPECT_EQ(tracker->recentEntries().first().toMap()["sync_status"].toInt(), Database::Pending);
+	tracker->submitPendingEntries();
+	EXPECT_EQ(sent.size(), 1u);
+	tracker->resetSubmissionBackoff();
 	tracker->submitPendingEntries();
 	EXPECT_EQ(sent.size(), 2u);
 
@@ -152,6 +156,143 @@ TEST_F(TimeTrackerTest, NewEntriesAreSentOnceAndStayPendingUntilRedmineIsReached
 	EXPECT_EQ(redmineIdOf(local), 900);
 	tracker->submitPendingEntries();
 	EXPECT_EQ(sent.size(), 2u);
+}
+
+TEST_F(TimeTrackerTest, RetryableFailuresWaitBeforeTheNextAutomaticTry)
+{
+	std::vector<int> sent;
+	QObject::connect(tracker.get(), &TimeTracker::submitTimeEntry,
+		[&](int localId, int, double, const QString&, const QString&, int, const QVariantList&) {
+			sent.push_back(localId);
+		});
+
+	// Not reached, key being fixed, timeout, rate limit, server errors
+	for (const int status : { 0, 401, 408, 429, 500, 503 }) {
+		const int local = addEntry(10, 1.0, QString("Status %0").arg(status));
+		sent.clear();
+		tracker->submissionFailed(local, status, "failed", 0);
+
+		EXPECT_EQ(redmineIdOf(local), 0);
+		EXPECT_FALSE(tracker->hasDueEntries()) << status;
+		tracker->submitPendingEntries();
+		EXPECT_TRUE(sent.empty()) << status;
+
+		tracker->resetSubmissionBackoff();
+		EXPECT_TRUE(tracker->hasDueEntries()) << status;
+		tracker->submitPendingEntries();
+		EXPECT_EQ(sent, std::vector<int> { local }) << status;
+		tracker->submissionFailed(local, 422, "done with this one"); // out of the way
+	}
+}
+
+TEST_F(TimeTrackerTest, RetryAfterAndRepeatedFailuresKeepAnEntryWaiting)
+{
+	int sent = 0;
+	QObject::connect(tracker.get(), &TimeTracker::submitTimeEntry, [&]() { ++sent; });
+
+	const int local = addEntry(10, 1.0, "Busy server");
+	sent = 0;
+	tracker->submissionFailed(local, 429, "Too many requests", 3600);
+	tracker->submissionFailed(local, 503, "Unavailable", 0);
+	tracker->submissionFailed(local, 0, "offline", 86400);
+
+	EXPECT_FALSE(tracker->hasDueEntries());
+	tracker->submitPendingEntries();
+	EXPECT_EQ(sent, 0);
+}
+
+TEST_F(TimeTrackerTest, ConnectionRestoredEndsTheWaitOfEntriesThatDidNotReachTheServerOnly)
+{
+	std::vector<int> sent;
+	QObject::connect(tracker.get(), &TimeTracker::submitTimeEntry,
+		[&](int localId, int, double, const QString&, const QString&, int, const QVariantList&) {
+			sent.push_back(localId);
+		});
+
+	const int offline = addEntry(10, 1.0, "Offline");
+	const int broken = addEntry(10, 1.0, "Server error");
+	tracker->submissionFailed(offline, 0, "offline");
+	tracker->submissionFailed(broken, 503, "Unavailable");
+	sent.clear();
+
+	tracker->connectionRestored();
+	tracker->submitPendingEntries();
+	EXPECT_EQ(sent, std::vector<int> { offline });
+
+	// A later server error takes the entry out of it again
+	sent.clear();
+	tracker->submissionFailed(offline, 0, "offline");
+	tracker->submissionFailed(offline, 500, "Server error");
+	tracker->connectionRestored();
+	tracker->submitPendingEntries();
+	EXPECT_TRUE(sent.empty());
+}
+
+TEST_F(TimeTrackerTest, HasDueEntriesIsFalseWithoutPendingEntries)
+{
+	EXPECT_FALSE(tracker->hasDueEntries());
+
+	const int local = addEntry(10, 1.0, "Pending");
+	EXPECT_TRUE(tracker->hasDueEntries()); // not waiting yet
+	tracker->submissionFailed(local, 422, "Rejected");
+	EXPECT_FALSE(tracker->hasDueEntries());
+}
+
+TEST_F(TimeTrackerTest, ChangingAnEntryEndsOnlyItsOwnWait)
+{
+	std::vector<int> sent;
+	QObject::connect(tracker.get(), &TimeTracker::submitTimeEntry,
+		[&](int localId, int, double, const QString&, const QString&, int, const QVariantList&) {
+			sent.push_back(localId);
+		});
+
+	const int waiting = addOfflineEntry(10, 1.0, "Still waiting");
+	const int changed = addOfflineEntry(11, 1.0, "Changed");
+	sent.clear();
+	ASSERT_FALSE(tracker->hasDueEntries());
+
+	tracker->updateRecentEntry(changed, { { "hours", 2.0 }, { "comments", "Changed" }, { "spent_on", day(1) } });
+	EXPECT_TRUE(tracker->hasDueEntries());
+	tracker->submitPendingEntries();
+
+	EXPECT_EQ(sent, std::vector<int> { changed });
+	EXPECT_NE(waiting, changed);
+}
+
+TEST_F(TimeTrackerTest, SendingByHandIgnoresTheWait)
+{
+	std::vector<int> sent;
+	QObject::connect(tracker.get(), &TimeTracker::submitTimeEntry,
+		[&](int localId, int, double, const QString&, const QString&, int, const QVariantList&) {
+			sent.push_back(localId);
+		});
+
+	const int local = addOfflineEntry(10, 1.0, "Offline");
+	sent.clear();
+
+	tracker->sendToRedmine(local);
+
+	EXPECT_EQ(sent, std::vector<int> { local });
+	// And the wait is over for the automatic sending as well, once that try fails again it starts anew
+	tracker->submissionFailed(local, 0, "offline");
+	EXPECT_FALSE(tracker->hasDueEntries());
+}
+
+TEST_F(TimeTrackerTest, WaitsAreNotKeptAcrossARestart)
+{
+	const int local = addOfflineEntry(10, 1.0, "Offline");
+	ASSERT_FALSE(tracker->hasDueEntries());
+
+	TimeTracker restarted;
+	std::vector<int> sent;
+	QObject::connect(&restarted, &TimeTracker::submitTimeEntry,
+		[&](int localId, int, double, const QString&, const QString&, int, const QVariantList&) {
+			sent.push_back(localId);
+		});
+
+	EXPECT_TRUE(restarted.hasDueEntries());
+	restarted.submitPendingEntries();
+	EXPECT_EQ(sent, std::vector<int> { local });
 }
 
 TEST_F(TimeTrackerTest, RejectedEntriesWaitUntilChanged)

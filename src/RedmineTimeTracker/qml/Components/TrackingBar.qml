@@ -104,7 +104,7 @@ Rectangle {
 
 	Timer {
 		id: inputValidatorTimer
-		interval: 500
+		interval: 800
 		onTriggered: {
 			if (issueField.acceptableInput) {
 				docroot.client.getIssue(issueField.value)
@@ -146,7 +146,8 @@ Rectangle {
 				} else if (docroot.timeTracker.isPaused) {
 					docroot.timeTracker.resumeTracking()
 				}
-				docroot.client.getIssue(issueField.value)
+				// Refresh the tracked issue, quietly: the user didn't ask for it.
+				docroot.client.getIssue(issueField.value, true)
 			}
 		}
 
