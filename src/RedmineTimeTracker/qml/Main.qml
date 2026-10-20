@@ -110,8 +110,18 @@ ApplicationWindow {
         }
     }
 
-    //! Startup requests, sent once the API key is known (the keychain delivers it a moment after
-    //! launch): earlier they'd go out without it and again when it arrives.
+    //! Runs startUp() once the API key is known (the keychain delivers it a moment after launch) and
+    //! a server is set (not on a first launch): earlier its requests would go out without them, fail,
+    //! and be sent again once they're there.
+    function startUpWhenReady() {
+        if (window.startedUp || !redmineClient.apiKeyLoaded || redmineClient.baseUrl === "") {
+            return;
+        }
+        window.startedUp = true;
+        window.startUp();
+    }
+
+    //! Startup requests, see startUpWhenReady().
     function startUp() {
         redmineClient.detectApiVersion();
         redmineClient.getEnumerations(0);
@@ -128,10 +138,7 @@ ApplicationWindow {
         if (!isNaN(timeTrackerInstance.interruptedAt.getTime())) {
             interruptionDialog.open();
         }
-        if (redmineClient.apiKeyLoaded) {
-            window.startedUp = true;
-            window.startUp();
-        }
+        window.startUpWhenReady();
     }
 
     //! Whether startUp() ran. The key loaded at startup doesn't count as a change (see
@@ -170,10 +177,7 @@ ApplicationWindow {
     Connections {
         target: redmineClient
         function onApiKeyLoadedChanged() {
-            if (redmineClient.apiKeyLoaded && !window.startedUp) {
-                window.startedUp = true;
-                window.startUp();
-            }
+            window.startUpWhenReady();
         }
         function onApiKeyChanged() {
             // The cached overview belongs to the previous user.
@@ -190,6 +194,9 @@ ApplicationWindow {
             timeTrackerInstance.resetSubmissionBackoff();
             if (window.startedUp) {
                 apiKeyRefetchTimer.restart();
+            } else {
+                // The first server set, e.g. on the first launch
+                window.startUpWhenReady();
             }
         }
         function onConnectionStateChanged() {
