@@ -8,9 +8,9 @@
 #include "logging.h"
 #include "logmodel.h"
 
-using QRedmineClient::LogModel;
 using QRedmineClient::Utils::Logging::LogManager;
 using QRedmineTesting::waitUntil;
+using Stride::LogModel;
 
 namespace {
 Q_LOGGING_CATEGORY(lcA, "qredmine.a")

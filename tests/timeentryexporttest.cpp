@@ -5,8 +5,8 @@
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
 
-using QRedmineClient::Database;
-using QRedmineClient::TimeEntryExport;
+using Stride::Database;
+using Stride::TimeEntryExport;
 
 class TimeEntryExportTest : public ::testing::Test {
 protected:

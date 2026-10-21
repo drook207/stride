@@ -6,7 +6,7 @@
 #include <QTemporaryDir>
 #include <gtest/gtest.h>
 
-using QRedmineClient::Database;
+using Stride::Database;
 
 class DatabaseTest : public ::testing::Test {
 protected:

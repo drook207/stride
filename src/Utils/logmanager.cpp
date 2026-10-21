@@ -9,11 +9,11 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QSaveFile>
-#include <QStandardPaths>
 #include <QSysInfo>
 #include <QThread>
 #include <cstdio>
 
+#include "appdatapath.h"
 #include "qsettingshelper.h"
 
 Q_LOGGING_CATEGORY(lcApp, "qredmine.app")
@@ -41,9 +41,7 @@ namespace {
 
 LogManager::LogManager(const QString& directory, QObject* parent)
 	: QObject(parent)
-	, mDirectory(directory.isEmpty()
-			  ? QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + QStringLiteral("/logs")
-			  : directory)
+	, mDirectory(directory.isEmpty() ? appDataPath() + QStringLiteral("/logs") : directory)
 {
 	Q_ASSERT(!sInstance);
 	qRegisterMetaType<LogEntry>();

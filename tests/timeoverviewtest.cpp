@@ -4,8 +4,8 @@
 #include <QSettings>
 #include <gtest/gtest.h>
 
-using QRedmineClient::Database;
-using QRedmineClient::TimeOverview;
+using Stride::Database;
+using Stride::TimeOverview;
 
 class TimeOverviewTest : public ::testing::Test {
 protected:

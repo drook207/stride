@@ -14,6 +14,7 @@ qt_add_library(
 	qredmineutils
 	SHARED
 	Utils_global.h
+	appdatapath.h
 	qsettingshelper.h
 	stringhelper.h
 	logging.cpp

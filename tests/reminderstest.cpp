@@ -7,9 +7,9 @@
 #include <QSettings>
 #include <gtest/gtest.h>
 
-using QRedmineClient::Database;
-using QRedmineClient::Reminders;
-using QRedmineClient::TimeTracker;
+using Stride::Database;
+using Stride::Reminders;
+using Stride::TimeTracker;
 
 class RemindersTest : public ::testing::Test {
 protected:

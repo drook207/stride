@@ -91,7 +91,7 @@ static constexpr int MAX_LOGGED_BODY_SIZE = 2000;
 static QString keychainService()
 {
 	const QString appName = QCoreApplication::applicationName();
-	return appName.isEmpty() ? QStringLiteral("QRedmineTimeTracker") : appName;
+	return appName.isEmpty() ? QStringLiteral("QRedmineClient") : appName;
 }
 
 // Id of the resource a request was for, from the end of its path ("…/time_entries/42.json" -> 42),

@@ -4,8 +4,8 @@
 #include <QSqlQuery>
 #include <gtest/gtest.h>
 
-using QRedmineClient::Database;
-using QRedmineClient::TimeTracker;
+using Stride::Database;
+using Stride::TimeTracker;
 
 //! Counts how often a signal was emitted (QtTest's SignalCounter isn't linked).
 class SignalCounter {

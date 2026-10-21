@@ -18,9 +18,9 @@ set(gtest_force_shared_crt
 	ON
 	CACHE BOOL "" FORCE)
 # Don't add GoogleTest/GoogleMock's own install() rules to the build - CPack
-# packages every install() rule in the whole project, not just
-# QRedmineTimeTracker's, so leaving this on bundles GTest's development
-# headers/libraries into the shipped app package.
+# packages every install() rule in the whole project, not just Stride's, so
+# leaving this on bundles GTest's development headers/libraries into the shipped
+# app package.
 set(INSTALL_GTEST
 	OFF
 	CACHE BOOL "" FORCE)
@@ -34,6 +34,7 @@ add_executable(
 	redmineclientintegrationtest.cpp
 	projectaccesstest.cpp
 	databasetest.cpp
+	datamigrationtest.cpp
 	timetrackertest.cpp
 	timeoverviewtest.cpp
 	reminderstest.cpp
@@ -53,7 +54,7 @@ find_package(Qt6 REQUIRED Core Network Quick Sql)
 # The app's storage and tracking logic, tested directly: its sources are built
 # into the test binary (they belong to the app's QML module, which a test can't
 # link).
-set(APP_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src/RedmineTimeTracker)
+set(APP_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src/Stride)
 target_sources(
 	qredminetesting
 	PRIVATE ${APP_SOURCE_DIR}/database.h
@@ -66,6 +67,8 @@ target_sources(
 			${APP_SOURCE_DIR}/reminders.cpp
 			${APP_SOURCE_DIR}/timeentryexport.h
 			${APP_SOURCE_DIR}/timeentryexport.cpp
+			${APP_SOURCE_DIR}/datamigration.h
+			${APP_SOURCE_DIR}/datamigration.cpp
 			${APP_SOURCE_DIR}/logmodel.h
 			${APP_SOURCE_DIR}/logmodel.cpp)
 target_include_directories(qredminetesting PRIVATE ${APP_SOURCE_DIR})

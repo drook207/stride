@@ -5,7 +5,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 project(
-	QRedmine
+	Stride
 	LANGUAGES CXX
 	VERSION 0.1.0)
 
@@ -14,7 +14,7 @@ find_package(Qt6 REQUIRED Core)
 qt_standard_project_setup()
 
 # All QML modules go below one directory, so tools like qmllint and qmlls find
-# each module's imports (e.g. QRedmine.TimeTracker using QRedmine.Client) there.
+# each module's imports (e.g. Stride using QRedmine.Client) there.
 set(QT_QML_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/qt/qml)
 
 if(${CMAKE_SOURCE_DIR} EQUAL ${CMAKE_BINARY_DIR})
@@ -48,9 +48,9 @@ FetchContent_Declare(
 # Unlike FetchContent_MakeAvailable(), add the subdirectory with
 # EXCLUDE_FROM_ALL so QtKeychain's own install() rules (its dev headers, CMake
 # package config, translations) never register - CPack packages every install()
-# rule in the whole build, and an end user of QRedmineTimeTracker has no use for
-# QtKeychain's SDK files, only the shared library
-# qt_generate_deploy_qml_app_script() already copies in as a runtime dependency.
+# rule in the whole build, and an end user of Stride has no use for QtKeychain's
+# SDK files, only the shared library qt_generate_deploy_qml_app_script() already
+# copies in as a runtime dependency.
 FetchContent_GetProperties(qtkeychain)
 if(NOT qtkeychain_POPULATED)
 	FetchContent_Populate(qtkeychain)
@@ -60,10 +60,9 @@ endif()
 
 # Install everything into a single named component instead of CMake's
 # "Unspecified" default, so the Qt Installer Framework package can attach its
-# component script to it (see the CPack section of
-# src/RedmineTimeTracker/CMakeLists.txt). Set after QtKeychain, whose install
-# rules are excluded.
-set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "QRedmineTimeTracker")
+# component script to it (see the CPack section of src/Stride/CMakeLists.txt).
+# Set after QtKeychain, whose install rules are excluded.
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME "Stride")
 
 add_subdirectory(src)
 add_subdirectory(tests)
