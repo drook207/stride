@@ -105,6 +105,19 @@ TEST_F(DataMigrationTest, ExistingDatabaseIsNeverOverwrittenNorGivenAnotherLog)
 	migrateDirectory(oldDir(), newDir(), report);
 	EXPECT_EQ(readFile(inNew(QStringLiteral("timeentries.db"))).toStdString(), "new");
 	EXPECT_FALSE(QFile::exists(inNew(QStringLiteral("timeentries.db-wal"))));
+	ASSERT_EQ(report.warnings.size(), 1);
+	EXPECT_TRUE(report.warnings.first().contains(inNew(QStringLiteral("timeentries.db"))));
+	EXPECT_TRUE(report.warnings.first().contains(inOld(QStringLiteral("timeentries.db"))));
+	EXPECT_TRUE(QFile::exists(inOld(MARKER_FILE_NAME)));
+}
+
+TEST_F(DataMigrationTest, LegacySettingsOrganizationDependsOnThePlatform)
+{
+#if defined(Q_OS_MACOS) || defined(Q_OS_IOS)
+	EXPECT_EQ(legacySettingsOrganization().toStdString(), "drook207.gitlab.io");
+#else
+	EXPECT_EQ(legacySettingsOrganization().toStdString(), "QRedmine");
+#endif
 }
 
 TEST_F(DataMigrationTest, ExistingFilesInSubdirectoriesAreKeptAndMissingOnesAdded)

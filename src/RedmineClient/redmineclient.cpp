@@ -91,7 +91,9 @@ static constexpr int MAX_LOGGED_BODY_SIZE = 2000;
 static QString keychainService()
 {
 	const QString appName = QCoreApplication::applicationName();
-	return appName.isEmpty() ? QStringLiteral("QRedmineClient") : appName;
+	// The fallback keeps its name from before the rename to Stride: keys stored by callers without an
+	// application name are filed under it, and a new name would make them unreadable.
+	return appName.isEmpty() ? QStringLiteral("QRedmineTimeTracker") : appName;
 }
 
 // Id of the resource a request was for, from the end of its path ("…/time_entries/42.json" -> 42),

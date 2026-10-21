@@ -34,13 +34,9 @@ static void migrateLegacySettings()
 {
 	QSettings legacy(QStringLiteral("YourOrg"), QCoreApplication::applicationName());
 	QSettings current;
-	if (legacy.allKeys().isEmpty() || !current.allKeys().isEmpty()) {
+	if (!Stride::DataMigration::migrateSettings(legacy, current)) {
 		return;
 	}
-	for (const QString& key : legacy.allKeys()) {
-		current.setValue(key, legacy.value(key));
-	}
-	current.sync();
 	legacy.clear();
 	legacy.sync();
 	QFile::remove(legacy.fileName());

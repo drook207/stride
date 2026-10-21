@@ -13,6 +13,8 @@ namespace DataMigration {
 	const QString MARKER_FILE_NAME = QStringLiteral("migrated-to-stride.txt");
 
 	static const QString LEGACY_ORGANIZATION = QStringLiteral("QRedmine");
+	// The organization domain of the build before the rename (see APP_ORGANIZATION_DOMAIN in CMakeLists.txt then)
+	static const QString LEGACY_APPLE_ORGANIZATION = QStringLiteral("drook207.gitlab.io");
 	static const QString APPLICATION_NAME = QStringLiteral("Stride");
 	static const QString DATABASE_FILE_NAME = QStringLiteral("timeentries.db");
 	static const QStringList DATABASE_SUFFIXES { QString(), QStringLiteral("-wal"), QStringLiteral("-shm") };
@@ -27,6 +29,15 @@ namespace DataMigration {
 			return {};
 		}
 		return QDir(info.absolutePath()).absoluteFilePath(LEGACY_ORGANIZATION + QLatin1Char('/') + info.fileName());
+	}
+
+	QString legacySettingsOrganization()
+	{
+#if defined(Q_OS_MACOS) || defined(Q_OS_IOS)
+		return LEGACY_APPLE_ORGANIZATION;
+#else
+		return LEGACY_ORGANIZATION;
+#endif
 	}
 
 	bool migrateSettings(const QSettings& from, QSettings& to)
@@ -126,9 +137,13 @@ namespace DataMigration {
 		}
 		// The database as a whole, and only if there is none yet: a leftover -wal file of the old database
 		// must never end up next to another one
-		if (!QFileInfo::exists(QDir(to).absoluteFilePath(DATABASE_FILE_NAME)) &&
-			QFileInfo::exists(QDir(from).absoluteFilePath(DATABASE_FILE_NAME))) {
-			if (copyDatabase(from, to, report)) {
+		const QString legacyDatabase = QDir(from).absoluteFilePath(DATABASE_FILE_NAME);
+		const QString currentDatabase = QDir(to).absoluteFilePath(DATABASE_FILE_NAME);
+		if (QFileInfo::exists(legacyDatabase)) {
+			if (QFileInfo::exists(currentDatabase)) {
+				report.warnings << QStringLiteral("Kept the existing database at %1; the previous one is still at %2")
+									   .arg(currentDatabase, legacyDatabase);
+			} else if (copyDatabase(from, to, report)) {
 				copiedAnything = true;
 			} else {
 				ok = false;
@@ -156,7 +171,7 @@ namespace DataMigration {
 	{
 		Report report;
 
-		QSettings legacy(LEGACY_ORGANIZATION, APPLICATION_NAME);
+		QSettings legacy(legacySettingsOrganization(), APPLICATION_NAME);
 		QSettings current;
 		if (migrateSettings(legacy, current)) {
 			report.info

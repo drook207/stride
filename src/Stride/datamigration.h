@@ -41,6 +41,14 @@ namespace DataMigration {
 	QString legacyDirectory(const QString& directory);
 
 	/*!
+	 * \brief legacySettingsOrganization The organization name the settings were stored under before the rename.
+	 * "QRedmine" on Linux and Windows. On macOS and iOS, QSettings names the plist after the organization
+	 * domain (a name with a dot is used as an Internet domain, reversed), and the old build had set the domain
+	 * drook207.gitlab.io, so its settings are in io.gitlab.drook207.Stride.plist; this returns that domain there.
+	 */
+	QString legacySettingsOrganization();
+
+	/*!
 	 * \brief migrateSettings Copies all keys of from to to, unless to already has settings. from is not
 	 * changed.
 	 * \return Whether keys were copied
@@ -49,7 +57,8 @@ namespace DataMigration {
 
 	/*!
 	 * \brief migrateDirectory Copies the files and subdirectories of from that don't exist in to into to.
-	 * The database (with its write-ahead log files) is copied only as a whole and only if to has none.
+	 * The database (with its write-ahead log files) is copied only as a whole and only if to has none; if to
+	 * has one, a warning names both files and the old database stays where it is (the marker is still written).
 	 * Every file is copied under a temporary name and renamed once complete, so an aborted copy never
 	 * leaves a partial file behind that a later start would take for a finished one. Does nothing if from
 	 * carries the marker file; writes it after a copy without problems.
@@ -60,9 +69,8 @@ namespace DataMigration {
 
 	/*!
 	 * \brief migrateLegacyApplicationData Runs the whole migration for the current application identity
-	 * (QCoreApplication's organization and application name): the settings of "QRedmine"/"Stride" and the
-	 * data directories (database, logs). Call before anything reads the settings or opens the log or the
-	 * database.
+	 * (QCoreApplication's organization and application name): the settings of legacySettingsOrganization()/"Stride" and
+	 * the data directories (database, logs). Call before anything reads the settings or opens the log or the database.
 	 */
 	Report migrateLegacyApplicationData();
 
