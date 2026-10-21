@@ -4,10 +4,14 @@
 
 cmake_minimum_required(VERSION 3.16)
 
+# STRIDE_VERSION_NUMBER, STRIDE_VERSION_SUFFIX and STRIDE_VERSION (e.g.
+# 0.2.0-beta.1, the version the app shows and the release tag must match).
+include(cmake/version.cmake)
+
 project(
 	Stride
 	LANGUAGES CXX
-	VERSION 0.1.0)
+	VERSION ${STRIDE_VERSION_NUMBER})
 
 find_package(Qt6 REQUIRED Core)
 

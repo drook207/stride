@@ -1,14 +1,16 @@
-# A version tag (v1.2.3) builds the Windows and Linux installers and creates the GitHub release
-# with them attached and notes generated from the commit messages. Started by hand (Actions ->
-# Release -> Run workflow) on any branch, it only builds the installers, to try packaging changes;
-# they're kept as artifacts of the run for a week.
+# A version tag (v1.2.3, or v1.2.3-beta.1 for a pre-release) builds the Windows and Linux
+# installers and creates the GitHub release with them attached and notes generated from the commit
+# messages; first it checks that the tag matches the version in cmake/version.cmake. Started by
+# hand (Actions -> Release -> Run workflow) on any branch, it only builds the installers, to try
+# packaging changes; they're kept as artifacts of the run for a week.
 # Qt Installer Framework installers, see src/Stride/packaging/ifw/README.md.
 
 name: Release
 
 on:
   push:
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    # Filter patterns, not regular expressions: "+" repeats the preceding character class.
+    tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-*"]
   workflow_dispatch:
 
 # Releasing is never canceled by a newer push.
@@ -20,7 +22,52 @@ permissions:
   contents: read
 
 jobs:
+  # Before anything is built: the tag must match the version CMake builds into the app
+  # (cmake/version.cmake), v<STRIDE_VERSION_NUMBER> for a final release and
+  # v<STRIDE_VERSION_NUMBER>-<STRIDE_VERSION_SUFFIX> for a pre-release. Started by hand, there's no
+  # tag to check: the job does nothing, so the installer jobs that need it run all the same.
+  check-version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      suffix: ${{ steps.check.outputs.suffix }}
+      title: ${{ steps.check.outputs.title }}
+    steps:
+      - uses: actions/checkout@v4
+        if: startsWith(github.ref, 'refs/tags/v')
+      - id: check
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          NUMBER="${VERSION%%-*}"
+          SUFFIX=""
+          if [[ "$VERSION" == *-* ]]; then SUFFIX="${VERSION#*-}"; fi
+          # Exactly what CMake uses: NUMBER=, SUFFIX= and VERSION= lines.
+          CMAKE_OUTPUT="$(cmake -P cmake/print-version.cmake)"
+          CMAKE_NUMBER="$(sed -n 's/^NUMBER=//p' <<< "$CMAKE_OUTPUT")"
+          CMAKE_SUFFIX="$(sed -n 's/^SUFFIX=//p' <<< "$CMAKE_OUTPUT")"
+          CMAKE_VERSION="$(sed -n 's/^VERSION=//p' <<< "$CMAKE_OUTPUT")"
+          if [[ -z "$CMAKE_NUMBER" || "$NUMBER" != "$CMAKE_NUMBER" || "$SUFFIX" != "$CMAKE_SUFFIX" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the version in cmake/version.cmake ($CMAKE_VERSION): set STRIDE_VERSION_NUMBER and STRIDE_VERSION_SUFFIX to match, or tag v$CMAKE_VERSION"
+            exit 1
+          fi
+          # "Stride 1.2.3", "Stride 1.2.3 Beta 1" for -beta.1, "Stride 1.2.3 <suffix>" otherwise.
+          TITLE="Stride $NUMBER"
+          if [[ "$SUFFIX" =~ ^beta\.([0-9]+)$ ]]; then
+            TITLE="$TITLE Beta ${BASH_REMATCH[1]}"
+          elif [[ -n "$SUFFIX" ]]; then
+            TITLE="$TITLE $SUFFIX"
+          fi
+          echo "$TITLE"
+          {
+            echo "version=$VERSION"
+            echo "suffix=$SUFFIX"
+            echo "title=$TITLE"
+          } >> "$GITHUB_OUTPUT"
+
+  # The installers are built only after a successful version check.
   installer-linux:
+    needs: check-version
     runs-on: ubuntu-24.04
     env:
       QT_VERSION: "6.11.2"
@@ -60,8 +107,16 @@ jobs:
         run: |
           (cd build/linux-release && cpack) || { cat build/linux-release/_CPack_Packages/Linux/IFW/IFWOutput.log; exit 1; }
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="$(git rev-parse --short HEAD)"; fi
+          # Exactly the installer cpack made (CPACK_PACKAGE_FILE_NAME, e.g. Stride-1.2.3-Linux.run).
+          PACKAGE="$(sed -n 's/^set(CPACK_PACKAGE_FILE_NAME "\(.*\)")$/\1/p' build/linux-release/CPackConfig.cmake)"
+          INSTALLER="build/linux-release/$PACKAGE.run"
+          if [[ -z "$PACKAGE" || ! -f "$INSTALLER" ]]; then
+            echo "::error::cpack made no installer $INSTALLER"
+            ls -l build/linux-release
+            exit 1
+          fi
           mkdir -p installers
-          mv build/linux-release/Stride-*.run "installers/Stride-$VERSION-linux-x64.run"
+          mv "$INSTALLER" "installers/Stride-$VERSION-linux-x64.run"
       - uses: actions/upload-artifact@v4
         with:
           name: installer-linux
@@ -73,6 +128,7 @@ jobs:
   # can't read the per-compiler Windows repositories Qt uses from 6.11 on, so Windows stays on
   # Qt 6.10 until it can.
   installer-windows:
+    needs: check-version
     runs-on: windows-2022
     defaults:
       run:
@@ -117,9 +173,19 @@ jobs:
         working-directory: build/windows-mingw-release
       - name: Name the installer
         run: |
-          $version = if ($env:GITHUB_REF -like "refs/tags/v*") { $env:GITHUB_REF_NAME.TrimStart("v") } else { git rev-parse --short HEAD }
+          $version = if ($env:GITHUB_REF -like "refs/tags/v*") { $env:GITHUB_REF_NAME.Substring(1) } else { git rev-parse --short HEAD }
+          # Exactly the installer cpack made (CPACK_PACKAGE_FILE_NAME, e.g. Stride-1.2.3-win64.exe),
+          # not whatever else matches Stride-*.exe in the build directory.
+          $build = "build\windows-mingw-release"
+          $config = Get-Content "$build\CPackConfig.cmake" -Raw
+          if ($config -notmatch '(?m)^set\(CPACK_PACKAGE_FILE_NAME "([^"]+)"\)') { throw "No CPACK_PACKAGE_FILE_NAME in CPackConfig.cmake" }
+          $installer = Join-Path $build "$($Matches[1]).exe"
+          if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
+            Get-ChildItem $build -File | Format-Table -AutoSize Name, Length, LastWriteTime | Out-String | Write-Host
+            throw "cpack made no installer $installer"
+          }
           New-Item -ItemType Directory -Force installers | Out-Null
-          Move-Item build\windows-mingw-release\Stride-*.exe "installers\Stride-$version-windows-x64.exe"
+          Move-Item -LiteralPath $installer -Destination "installers\Stride-$version-windows-x64.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: installer-windows
@@ -127,8 +193,11 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # Release notes from the Conventional Commits messages since the previous tag (cliff.toml).
+  # Release notes from the Conventional Commits messages (cliff.toml): for a pre-release since the
+  # previous tag, for a final release since the previous final release, so v1.2.0 lists everything
+  # its betas brought as well.
   release-notes:
+    needs: check-version
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     steps:
@@ -140,9 +209,15 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install --quiet git-cliff==2.14.2
-      - run: |
+      - env:
+          SUFFIX: ${{ needs.check-version.outputs.suffix }}
+        run: |
+          # Only final tags count as releases for a final release. git-cliff's ignore_tags would
+          # not do: --latest still starts at the previous tag of any kind.
+          if [[ -z "$SUFFIX" ]]; then export GIT_CLIFF__GIT__TAG_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+$'; fi
           git cliff --latest --strip all --output release-notes.md
-          test -s release-notes.md || { echo "No feat or fix commits since the previous tag"; exit 1; }
+          # Without any entry git-cliff still writes the version heading.
+          grep -q '^- ' release-notes.md || { echo "::error::No breaking, feat, fix or perf commits for the notes"; exit 1; }
           cat release-notes.md
       - uses: actions/upload-artifact@v4
         with:
@@ -152,7 +227,7 @@ jobs:
 
   # The GitHub release for a version tag, with the notes and the installers from above.
   release:
-    needs: [installer-linux, installer-windows, release-notes]
+    needs: [check-version, installer-linux, installer-windows, release-notes]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     permissions:
@@ -166,12 +241,18 @@ jobs:
       - name: Create the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.check-version.outputs.version }}
+          SUFFIX: ${{ needs.check-version.outputs.suffix }}
+          TITLE: ${{ needs.check-version.outputs.title }}
+          # Repository variable; unset means "true".
+          PRERELEASES_AS_LATEST: ${{ vars.PRERELEASES_AS_LATEST }}
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          # The tag must match the version CMake builds into the app and the installers.
-          grep -Eq "^[[:space:]]VERSION $VERSION\)" CMakeLists.txt || { echo "CMakeLists.txt is not at version $VERSION"; exit 1; }
-          gh release create "$GITHUB_REF_NAME" --verify-tag \
-            --title "Stride $VERSION" \
+          # A beta is a normal release by default, the one the download links (releases/latest)
+          # point to; with PRERELEASES_AS_LATEST=false it's marked as a pre-release instead.
+          PRERELEASE=()
+          if [[ -n "$SUFFIX" && "$PRERELEASES_AS_LATEST" == "false" ]]; then PRERELEASE=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" --verify-tag "${PRERELEASE[@]}" \
+            --title "$TITLE" \
             --notes-file dist/release-notes.md \
             "dist/Stride-$VERSION-windows-x64.exe#Windows installer (x64)" \
             "dist/Stride-$VERSION-linux-x64.run#Linux installer (x64)"
