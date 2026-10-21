@@ -54,6 +54,29 @@ static constexpr auto ISSUE_BATCH_GENERATION_ATTRIBUTE =
 	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 9);
 //! Request attribute carrying the running number a request is traced with (see createRequest())
 static constexpr auto REQUEST_ID_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 10);
+//! Request attribute marking a request the app sends on its own (not for something the user did): not
+//! reaching the server then is no error worth a dialog, the connection state already shows it
+static constexpr auto BACKGROUND_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 12);
+
+//! Whether a request failed without reaching the server, e.g. it refused the connection, couldn't be
+//! found or didn't answer - as opposed to an answer from it, or a setup problem such as a bad URL or
+//! certificate, which the user needs to know about.
+static bool serverUnreachable(QNetworkReply* reply)
+{
+	if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 0) {
+		return false;
+	}
+	switch (reply->error()) {
+		case QNetworkReply::SslHandshakeFailedError:
+		case QNetworkReply::TooManyRedirectsError:
+		case QNetworkReply::InsecureRedirectError:
+			return false;
+		default:
+			// Network layer errors (below 100) and proxy errors (100-199)
+			return reply->error() > QNetworkReply::NoError && reply->error() < QNetworkReply::ContentAccessDenied;
+	}
+}
+
 //! Request attribute carrying the time a request was made, as milliseconds since the epoch
 static constexpr auto REQUEST_START_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 11);
 //! Dynamic property set on a read request's reply whose request was made with a base URL or API key that
@@ -357,7 +380,9 @@ void RedmineClient::detectApiVersion()
 	setLoading(true);
 	QUrlQuery query;
 	query.addQueryItem("limit", "1");
-	mNetworkManager->get(createRequest(ApiResources::ISSUES, query));
+	QNetworkRequest request = createRequest(ApiResources::ISSUES, query);
+	request.setAttribute(BACKGROUND_ATTRIBUTE, true);
+	mNetworkManager->get(request);
 }
 
 void RedmineClient::updateApiVersionFromReply(QNetworkReply* reply)
@@ -788,11 +813,11 @@ void RedmineClient::getAllProjects()
 	QUrlQuery query;
 	// As in getProjects(): the activities each project allows and its modules.
 	query.addQueryItem("include", "time_entry_activities,enabled_modules");
-	startPagedFetch(AllProjectsTag, ApiResources::PROJECTS, query, QStringLiteral("projects"), false);
+	startPagedFetch(AllProjectsTag, ApiResources::PROJECTS, query, QStringLiteral("projects"), false, 0, true);
 }
 
-void RedmineClient::startPagedFetch(
-	RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key, bool quiet, int purpose)
+void RedmineClient::startPagedFetch(RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key,
+	bool quiet, int purpose, bool background)
 {
 	const int fetchKey = RedmineClient::fetchKey(tag, purpose);
 	PagedFetch& fetch = mPagedFetches[fetchKey];
@@ -801,6 +826,7 @@ void RedmineClient::startPagedFetch(
 			{ { "key", key }, { "pages", fetch.pages } });
 	}
 	fetch = PagedFetch { tag, purpose, resource, query, key, quiet, fetch.generation + 1, 0, {} };
+	fetch.background = background;
 	QR_DEBUG(lcRedmineNetwork, QStringLiteral("Fetching all %1 page by page").arg(key),
 		{ { "key", key }, { "purpose", purpose }, { "generation", fetch.generation } });
 	requestPage(fetchKey, 0);
@@ -840,7 +866,8 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply)
 	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
 	if (reply->error() != QNetworkReply::NoError) {
 		qCWarning(lcRedmineClient) << "Could not fetch" << fetch.key << ":" << reply->errorString();
-		if (!fetch.quiet && reply->error() != QNetworkReply::ContentNotFoundError && !mBaseUrl.isEmpty()) {
+		if (!fetch.quiet && !(fetch.background && serverUnreachable(reply)) &&
+			reply->error() != QNetworkReply::ContentNotFoundError && !mBaseUrl.isEmpty()) {
 			reportError(reply, response);
 		}
 		if (fetch.tag == TimeEntryReportTag) {
@@ -958,7 +985,9 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 	}
 
 	setLoading(true);
-	mNetworkManager->get(createRequest(endpoint));
+	QNetworkRequest request = createRequest(endpoint);
+	request.setAttribute(BACKGROUND_ATTRIBUTE, true);
+	mNetworkManager->get(request);
 }
 
 void RedmineClient::getTimeEntryCustomFields()
@@ -1278,9 +1307,11 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		const bool createdTimeEntry = reply->operation() == QNetworkAccessManager::PostOperation &&
 			reply->url().path().endsWith(ApiResources::TIME_ENTRIES);
 		// Without a server set up (e.g. on first start) every request fails; that's no news.
+		const bool backgroundUnreachable =
+			reply->request().attribute(BACKGROUND_ATTRIBUTE).toBool() && serverUnreachable(reply);
 		if (reply->error() != QNetworkReply::ContentNotFoundError &&
 			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0) &&
-			!mBaseUrl.isEmpty()) {
+			!backgroundUnreachable && !mBaseUrl.isEmpty()) {
 			reportError(reply, response);
 		}
 		// Only Redmine's own answer (JSON) says the issue is unknown; a 404 page from something else

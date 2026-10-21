@@ -1645,3 +1645,59 @@ TEST_F(RedmineClientIntegrationTest, MigratingALegacyKeyMarksItLoadedAtOnce)
 	EXPECT_TRUE(fresh.apiKeyLoaded());
 	EXPECT_EQ(fresh.apiKey().toStdString(), "legacy-key");
 }
+
+namespace {
+//! A URL nothing listens on: requests to it are refused at once.
+QString unreachableBaseUrl()
+{
+	QTcpServer closed;
+	closed.listen(QHostAddress::LocalHost, 0);
+	const auto port = closed.serverPort();
+	closed.close();
+	return QStringLiteral("http://127.0.0.1:%0/").arg(port);
+}
+}
+
+TEST_F(RedmineClientIntegrationTest, StartupRequestsDontReportAnUnreachableServer)
+{
+	client->setBaseUrl(unreachableBaseUrl());
+	QObject context;
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, &context, [&](const QString&) { ++errors; });
+
+	client->detectApiVersion();
+	client->getEnumerations(RedmineClient::TIME_ENTRY_ACTIVITIES);
+	client->getAllProjects();
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	// The connection state shows it instead
+	EXPECT_EQ(errors, 0);
+	EXPECT_NE(client->connectionState(), RedmineClient::ONLINE);
+}
+
+TEST_F(RedmineClientIntegrationTest, AUserActionReportsAnUnreachableServer)
+{
+	client->setBaseUrl(unreachableBaseUrl());
+	QObject context;
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, &context, [&](const QString&) { ++errors; });
+
+	client->getTimeEntries(1);
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	EXPECT_EQ(errors, 1);
+}
+
+TEST_F(RedmineClientIntegrationTest, StartupRequestsStillReportServerErrors)
+{
+	QObject context;
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, &context, [&](const QString&) { ++errors; });
+	server->enqueueResponse(MockHttpResponse { 401, "Unauthorized", "" });
+
+	client->detectApiVersion();
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	// A wrong API key is something the user can and needs to fix
+	EXPECT_EQ(errors, 1);
+}

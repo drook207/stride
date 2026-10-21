@@ -638,6 +638,7 @@ private:
 		int pages = 0; // pages requested so far, limited by MAX_PAGES
 		QJsonArray collected; // items received so far
 		bool running = false; // a page is requested and not answered yet
+		bool background = false; // not reaching the server isn't reported, see startPagedFetch()
 	};
 
 	//! By fetchKey(): one fetch per tag and purpose at a time.
@@ -646,8 +647,10 @@ private:
 	static int fetchKey(RequestTag tag, int purpose) { return tag * 100 + purpose; }
 
 	//! Starts fetching a list, superseding a fetch with the same tag and purpose still in progress.
+	//! background: sent by the app on its own, so not reaching the server isn't reported (only other
+	//! failures, unless quiet)
 	void startPagedFetch(RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key,
-		bool quiet, int purpose = 0);
+		bool quiet, int purpose = 0, bool background = false);
 	//! Requests the page starting at offset.
 	void requestPage(int key, int offset);
 	//! Adds a received page, then requests the next one or emits all items.
