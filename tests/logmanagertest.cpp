@@ -162,7 +162,9 @@ TEST_F(LogTest, BufferKeepsOnlyTheLatestEntries)
 	}
 
 	const QList<LogEntry> buffered = manager->bufferedEntries();
-	ASSERT_EQ(buffered.size(), LogManager::MAX_BUFFERED_ENTRIES);
+	// By value (+): the macros take references, and MinGW then imports the constant from the DLL, which
+	// never exports it
+	ASSERT_EQ(buffered.size(), +LogManager::MAX_BUFFERED_ENTRIES);
 	EXPECT_EQ(buffered.first().message.toStdString(), "100");
 	EXPECT_EQ(buffered.last().message.toStdString(), QByteArray::number(total - 1).toStdString());
 	for (qsizetype i = 1; i < buffered.size(); ++i) {
@@ -218,10 +220,10 @@ TEST_F(LogTest, RotatesAtTheSizeLimitAndKeepsTheNewestInTheCurrentFile)
 
 	EXPECT_TRUE(QFileInfo::exists(path(QStringLiteral("stride.1.log"))));
 	const QStringList files = manager->logFiles();
-	EXPECT_EQ(files.size(), LogManager::MAX_FILES);
+	EXPECT_EQ(files.size(), +LogManager::MAX_FILES);
 	EXPECT_FALSE(QFileInfo::exists(path(QStringLiteral("stride.5.log"))));
 	for (const QString& file : files) {
-		EXPECT_LE(QFileInfo(file).size(), LogManager::MAX_FILE_SIZE) << file.toStdString();
+		EXPECT_LE(QFileInfo(file).size(), +LogManager::MAX_FILE_SIZE) << file.toStdString();
 	}
 	// Oldest first, the last one is stride.log; it has the newest message
 	EXPECT_EQ(files.last(), path(QStringLiteral("stride.log")));

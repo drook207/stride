@@ -1382,8 +1382,11 @@ CreateFailure failCreateWith(RedmineClient& client, QRedmineTesting::MockHttpSer
 {
 	server.enqueueResponse(response);
 	CreateFailure failure;
+	// Disconnected on return (context): the lambda writes into this call's stack, which a later call's
+	// signal would otherwise still reach.
+	QObject context;
 	QObject::connect(
-		&client, &RedmineClient::timeEntryCreateFailed, [&](int, int status, const QString&, int retryAfter) {
+		&client, &RedmineClient::timeEntryCreateFailed, &context, [&](int, int status, const QString&, int retryAfter) {
 			failure = { status, retryAfter };
 		});
 	client.createTimeEntry(42, 1.0, "Retry", "2026-10-15", 4, {}, 1);

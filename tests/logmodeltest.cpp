@@ -195,5 +195,6 @@ TEST_F(LogModelTest, KeepsTheLatestEntriesOnly)
 	ASSERT_TRUE(waitUntil(
 		[&] { return messageAt(model->rowCount() - 1) == QString::number(LogManager::MAX_BUFFERED_ENTRIES + 599); }));
 	EXPECT_LE(model->rowCount(), LogManager::MAX_BUFFERED_ENTRIES + LogManager::MAX_BUFFERED_ENTRIES / 10);
-	EXPECT_GE(model->rowCount(), LogManager::MAX_BUFFERED_ENTRIES);
+	// By value (+), see LogManagerTest
+	EXPECT_GE(model->rowCount(), +LogManager::MAX_BUFFERED_ENTRIES);
 }
