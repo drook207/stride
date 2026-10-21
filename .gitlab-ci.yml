@@ -2,7 +2,10 @@
 # and the documentation website, which main also publishes on GitLab Pages.
 # A version tag (v1.2.3) also builds the Windows and Linux installers, uploads them to the
 # package registry and creates the GitLab release with notes generated from the commit
-# messages; on merge requests the installers can be built by hand.
+# messages; on merge requests the Linux installer can be built by hand.
+# CI minutes are limited (Windows runners count extra): merge requests only build and test when
+# code changed and only build the docs when they changed, and a new push cancels the pipeline of
+# the previous one.
 
 stages:
   - lint
@@ -23,6 +26,20 @@ workflow:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+  auto_cancel:
+    on_new_commit: interruptible
+
+# Superseded by a newer push to the same branch: canceled (see workflow). Releasing isn't.
+default:
+  interruptible: true
+
+# What the app is built from; a merge request changing none of it skips building and testing.
+.code-changes: &code-changes
+  - src/**/*
+  - tests/**/*
+  - CMakeLists.txt
+  - CMakePresets.json
+  - .gitlab-ci.yml
 
 pre-commit:
   stage: lint
@@ -62,6 +79,10 @@ pre-commit:
 build-and-test:
   extends: .linux-qt
   stage: build
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes: *code-changes
+    - if: $CI_PIPELINE_SOURCE != "merge_request_event"
   script:
     - cmake --preset linux-debug
     - cmake --build --preset linux-debug
@@ -80,7 +101,8 @@ build-and-test:
     expire_in: 1 week
 
 # Qt Installer Framework installers (see src/RedmineTimeTracker/packaging/ifw/README.md).
-# Built for every version tag, and on demand on merge requests to try packaging changes.
+# Built for every version tag; the Linux one also on demand on merge requests to try packaging
+# changes.
 .installer:
   stage: package
   needs: []
@@ -137,8 +159,12 @@ installer-linux:
 # GitLab's Windows runner, with MinGW, CMake, Ninja, Qt and the Installer Framework all from
 # aqtinstall. aqtinstall 3.3.0 can't read the per-compiler Windows repositories Qt uses from
 # 6.11 on, so Windows stays on Qt 6.10 until it can.
+# Only for version tags: a Windows runner costs several times the minutes of a Linux one, and a
+# run takes about 25 minutes.
 installer-windows:
   extends: .installer
+  rules:
+    - if: $CI_COMMIT_TAG
   tags:
     - saas-windows-medium-amd64
   variables:
@@ -208,6 +234,7 @@ release:
     - installer-linux
     - installer-windows
     - release-notes
+  interruptible: false
   rules:
     - if: $CI_COMMIT_TAG
   script:
@@ -250,6 +277,10 @@ docs:
   stage: build
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - docs/**/*
+        - mkdocs.yml
+        - .gitlab-ci.yml
 
 pages:
   extends: .docs
