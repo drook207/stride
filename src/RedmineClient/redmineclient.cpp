@@ -31,8 +31,8 @@ static const QString API_KEY_KEYCHAIN_KEY = QStringLiteral("apiKey");
 static const QString LEGACY_API_KEY_SETTING = QStringLiteral("client/apiKey");
 //! Request attribute carrying the requestTag of createTimeEntry()/updateTimeEntry() to the reply
 static constexpr auto REQUEST_TAG_ATTRIBUTE = QNetworkRequest::User;
-//! Request attribute marking a request whose failure isn't reported via errorOccurred()
-static constexpr auto QUIET_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1);
+//! Request attribute carrying how a failure of the request is reported (a RedmineClient::Reporting)
+static constexpr auto REPORTING_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 1);
 //! Request attribute carrying the generation of the paged fetch (PagedFetch) or permission lookup
 //! (mPermissionsGeneration) a reply belongs to, so replies of a superseded call are ignored
 static constexpr auto GENERATION_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 2);
@@ -54,29 +54,6 @@ static constexpr auto ISSUE_BATCH_GENERATION_ATTRIBUTE =
 	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 9);
 //! Request attribute carrying the running number a request is traced with (see createRequest())
 static constexpr auto REQUEST_ID_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 10);
-//! Request attribute marking a request the app sends on its own (not for something the user did): not
-//! reaching the server then is no error worth a dialog, the connection state already shows it
-static constexpr auto BACKGROUND_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 12);
-
-//! Whether a request failed without reaching the server, e.g. it refused the connection, couldn't be
-//! found or didn't answer - as opposed to an answer from it, or a setup problem such as a bad URL or
-//! certificate, which the user needs to know about.
-static bool serverUnreachable(QNetworkReply* reply)
-{
-	if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 0) {
-		return false;
-	}
-	switch (reply->error()) {
-		case QNetworkReply::SslHandshakeFailedError:
-		case QNetworkReply::TooManyRedirectsError:
-		case QNetworkReply::InsecureRedirectError:
-			return false;
-		default:
-			// Network layer errors (below 100) and proxy errors (100-199)
-			return reply->error() > QNetworkReply::NoError && reply->error() < QNetworkReply::ContentAccessDenied;
-	}
-}
-
 //! Request attribute carrying the time a request was made, as milliseconds since the epoch
 static constexpr auto REQUEST_START_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 11);
 //! Dynamic property set on a read request's reply whose request was made with a base URL or API key that
@@ -126,11 +103,32 @@ static int resourceIdFromPath(const QString& path)
 	return match.hasMatch() ? match.captured(1).toInt() : -1;
 }
 
-const QList<QNetworkReply::NetworkError> RedmineClient::REASONS_FOR_CONNECTION_LOSS = {
-	QNetworkReply::HostNotFoundError, QNetworkReply::TimeoutError, QNetworkReply::OperationCanceledError,
-	QNetworkReply::TemporaryNetworkFailureError, QNetworkReply::AuthenticationRequiredError,
-	QNetworkReply::UnknownServerError
-};
+bool RedmineClient::serverNotReached(QNetworkReply::NetworkError error)
+{
+	switch (error) {
+		case QNetworkReply::ConnectionRefusedError:
+		case QNetworkReply::RemoteHostClosedError:
+		case QNetworkReply::HostNotFoundError:
+		case QNetworkReply::TimeoutError:
+		case QNetworkReply::OperationCanceledError:
+		case QNetworkReply::TemporaryNetworkFailureError:
+		case QNetworkReply::NetworkSessionFailedError:
+		case QNetworkReply::UnknownNetworkError:
+		case QNetworkReply::ProxyConnectionClosedError:
+		case QNetworkReply::ProxyTimeoutError:
+		// Gateway errors (502, 504) and 503 while Redmine restarts or is overloaded
+		case QNetworkReply::UnknownServerError:
+		case QNetworkReply::ServiceUnavailableError:
+			return true;
+		default:
+			return false;
+	}
+}
+
+bool RedmineClient::isConnectionLoss(QNetworkReply::NetworkError error)
+{
+	return serverNotReached(error) || error == QNetworkReply::AuthenticationRequiredError;
+}
 
 bool RedmineClient::installTranslations(const QLocale& locale)
 {
@@ -261,8 +259,8 @@ void RedmineClient::handleConnectionCheckReply(QNetworkReply* reply)
 	updateConnectionStateFromReply(reply);
 	mConnectionCheckReply = nullptr;
 	// Any failed probe means the server can't be used right now, also for errors that don't count
-	// as a lost connection for other requests (e.g. refused, 503)
-	if (reply->error() != QNetworkReply::NoError && !REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {
+	// as a lost connection for other requests (e.g. 500)
+	if (reply->error() != QNetworkReply::NoError && !isConnectionLoss(reply->error())) {
 		toggleConnectionState(ConnectionState::OFFLINE);
 	}
 
@@ -381,7 +379,7 @@ void RedmineClient::detectApiVersion()
 	QUrlQuery query;
 	query.addQueryItem("limit", "1");
 	QNetworkRequest request = createRequest(ApiResources::ISSUES, query);
-	request.setAttribute(BACKGROUND_ATTRIBUTE, true);
+	setReporting(request, Reporting::UnlessNotReached);
 	mNetworkManager->get(request);
 }
 
@@ -536,6 +534,7 @@ void RedmineClient::createTimeEntry(int issueId, double hours, const QString& co
 
 	QNetworkRequest request = createRequest(ApiResources::TIME_ENTRIES);
 	request.setAttribute(REQUEST_TAG_ATTRIBUTE, requestTag);
+	setReporting(request, Reporting::UnlessUnanswered);
 	mNetworkManager->post(request, data);
 }
 
@@ -589,7 +588,7 @@ void RedmineClient::getIssue(int issueId, bool quiet, bool withAllowedStatuses)
 		query.addQueryItem("include", "allowed_statuses");
 	}
 	QNetworkRequest request = createRequest(ApiResources::ISSUE.arg(QString::number(issueId)), query);
-	request.setAttribute(QUIET_ATTRIBUTE, quiet);
+	setReporting(request, reportingForQuiet(quiet));
 	request.setAttribute(ISSUE_ID_ATTRIBUTE, issueId);
 	mNetworkManager->get(request);
 }
@@ -620,7 +619,7 @@ void RedmineClient::getIssuesById(const QList<int>& issueIds, bool quiet)
 		}
 	}
 	for (qsizetype i = 0; i < ids.size(); i += ISSUE_BATCH_SIZE) {
-		mIssueBatchQueue.append({ ids.mid(i, ISSUE_BATCH_SIZE), quiet });
+		mIssueBatchQueue.append({ ids.mid(i, ISSUE_BATCH_SIZE), reportingForQuiet(quiet) });
 	}
 	sendIssueBatches();
 }
@@ -641,7 +640,7 @@ void RedmineClient::sendIssueBatches()
 		setLoading(true);
 		QNetworkRequest request = createRequest(ApiResources::ISSUES, query);
 		request.setAttribute(ROUTING_ATTRIBUTE, IssuesBatchTag);
-		request.setAttribute(QUIET_ATTRIBUTE, batch.quiet);
+		setReporting(request, batch.reporting);
 		request.setAttribute(ISSUE_BATCH_GENERATION_ATTRIBUTE, mIssueBatchGeneration);
 		++mIssueBatchesRunning;
 		QR_DEBUG(lcRedmineNetwork, QStringLiteral("Fetching %1 issues in one request").arg(batch.ids.size()),
@@ -662,7 +661,7 @@ void RedmineClient::handleIssuesBatchReply(QNetworkReply* reply)
 	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
 	if (reply->error() != QNetworkReply::NoError) {
 		qCWarning(lcRedmineClient) << "Could not fetch issues:" << reply->errorString();
-		if (!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !mBaseUrl.isEmpty()) {
+		if (shouldReport(reply, reportingOf(reply))) {
 			reportError(reply, response);
 		}
 	} else {
@@ -795,7 +794,8 @@ void RedmineClient::getOwnTimeEntries(const QString& from, const QString& to)
 	query.addQueryItem("user_id", "me");
 	query.addQueryItem("from", from);
 	query.addQueryItem("to", to);
-	startPagedFetch(OwnTimeEntriesTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"), true);
+	startPagedFetch(
+		OwnTimeEntriesTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"), Reporting::Never);
 }
 
 void RedmineClient::getTimeEntryReport(const QString& from, const QString& to, int purpose)
@@ -804,20 +804,21 @@ void RedmineClient::getTimeEntryReport(const QString& from, const QString& to, i
 	query.addQueryItem("user_id", "me");
 	query.addQueryItem("from", from);
 	query.addQueryItem("to", to);
-	startPagedFetch(
-		TimeEntryReportTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"), true, purpose);
+	startPagedFetch(TimeEntryReportTag, ApiResources::TIME_ENTRIES, query, QStringLiteral("time_entries"),
+		Reporting::Never, purpose);
 }
 
-void RedmineClient::getAllProjects()
+void RedmineClient::getAllProjects(bool userRequested)
 {
 	QUrlQuery query;
 	// As in getProjects(): the activities each project allows and its modules.
 	query.addQueryItem("include", "time_entry_activities,enabled_modules");
-	startPagedFetch(AllProjectsTag, ApiResources::PROJECTS, query, QStringLiteral("projects"), false, 0, true);
+	startPagedFetch(AllProjectsTag, ApiResources::PROJECTS, query, QStringLiteral("projects"),
+		userRequested ? Reporting::Always : Reporting::UnlessNotReached);
 }
 
 void RedmineClient::startPagedFetch(RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key,
-	bool quiet, int purpose, bool background)
+	Reporting reporting, int purpose)
 {
 	const int fetchKey = RedmineClient::fetchKey(tag, purpose);
 	PagedFetch& fetch = mPagedFetches[fetchKey];
@@ -825,8 +826,7 @@ void RedmineClient::startPagedFetch(RequestTag tag, const QString& resource, con
 		QR_DEBUG(lcRedmineNetwork, QStringLiteral("Fetch of %1 superseded by a new one").arg(key),
 			{ { "key", key }, { "pages", fetch.pages } });
 	}
-	fetch = PagedFetch { tag, purpose, resource, query, key, quiet, fetch.generation + 1, 0, {} };
-	fetch.background = background;
+	fetch = PagedFetch { tag, purpose, resource, query, key, reporting, fetch.generation + 1, 0, {} };
 	QR_DEBUG(lcRedmineNetwork, QStringLiteral("Fetching all %1 page by page").arg(key),
 		{ { "key", key }, { "purpose", purpose }, { "generation", fetch.generation } });
 	requestPage(fetchKey, 0);
@@ -866,8 +866,7 @@ void RedmineClient::handlePagedReply(QNetworkReply* reply)
 	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
 	if (reply->error() != QNetworkReply::NoError) {
 		qCWarning(lcRedmineClient) << "Could not fetch" << fetch.key << ":" << reply->errorString();
-		if (!fetch.quiet && !(fetch.background && serverUnreachable(reply)) &&
-			reply->error() != QNetworkReply::ContentNotFoundError && !mBaseUrl.isEmpty()) {
+		if (shouldReport(reply, fetch.reporting)) {
 			reportError(reply, response);
 		}
 		if (fetch.tag == TimeEntryReportTag) {
@@ -986,7 +985,7 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 
 	setLoading(true);
 	QNetworkRequest request = createRequest(endpoint);
-	request.setAttribute(BACKGROUND_ATTRIBUTE, true);
+	setReporting(request, Reporting::UnlessNotReached);
 	mNetworkManager->get(request);
 }
 
@@ -1129,7 +1128,7 @@ void RedmineClient::updateConnectionStateFromReply(QNetworkReply* reply)
 		}
 		return;
 	}
-	if (REASONS_FOR_CONNECTION_LOSS.contains(reply->error())) {
+	if (isConnectionLoss(reply->error())) {
 		toggleConnectionState(ConnectionState::OFFLINE);
 		// Other losses (no host, no network, timeout) pass by themselves, so the check keeps going with
 		// backoff; a rejected API key doesn't, it needs the user to enter a new one.
@@ -1231,6 +1230,46 @@ void RedmineClient::logFinishedReply(QNetworkReply* reply)
 	QR_LOG(lcRedmineNetwork, type, message, fields);
 }
 
+RedmineClient::Reporting RedmineClient::reportingOf(QNetworkReply* reply)
+{
+	return static_cast<Reporting>(
+		reply->request().attribute(REPORTING_ATTRIBUTE, static_cast<int>(Reporting::Always)).toInt());
+}
+
+void RedmineClient::setReporting(QNetworkRequest& request, Reporting reporting)
+{
+	request.setAttribute(REPORTING_ATTRIBUTE, static_cast<int>(reporting));
+}
+
+bool RedmineClient::shouldReport(QNetworkReply* reply, Reporting reporting) const
+{
+	// Without a server set up (e.g. on first start) every request fails; that's no news.
+	if (reporting == Reporting::Never || mBaseUrl.isEmpty()) {
+		return false;
+	}
+	// Not finding something is up to the caller to tell (e.g. issueNotFound())
+	if (reply->error() == QNetworkReply::ContentNotFoundError) {
+		return false;
+	}
+	switch (reporting) {
+		case Reporting::UnlessUnanswered:
+			// E.g. a time entry that got no answer (or only a gateway's 502/503/504) stays queued in the app
+			// and is sent again later; one Redmine refused is reported.
+			return reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt() != 0 &&
+				!serverNotReached(reply->error());
+		case Reporting::UnlessNotReached:
+			// The connection state already shows that the server isn't usable
+			return !serverNotReached(reply->error());
+		default:
+			return true;
+	}
+}
+
+RedmineClient::Reporting RedmineClient::reportingForQuiet(bool quiet)
+{
+	return quiet ? Reporting::Never : Reporting::Always;
+}
+
 void RedmineClient::reportError(QNetworkReply* reply, const QJsonObject& response)
 {
 	const QString message = userErrorMessage(reply, response);
@@ -1301,19 +1340,10 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 		QJsonDocument doc = QJsonDocument::fromJson(data);
 		QJsonObject response = doc.object();
 
-		// A time entry that didn't reach the server stays queued in the app and is sent again later,
-		// so that's no error worth a dialog; one Redmine refused is.
-		const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-		const bool createdTimeEntry = reply->operation() == QNetworkAccessManager::PostOperation &&
-			reply->url().path().endsWith(ApiResources::TIME_ENTRIES);
-		// Without a server set up (e.g. on first start) every request fails; that's no news.
-		const bool backgroundUnreachable =
-			reply->request().attribute(BACKGROUND_ATTRIBUTE).toBool() && serverUnreachable(reply);
-		if (reply->error() != QNetworkReply::ContentNotFoundError &&
-			!reply->request().attribute(QUIET_ATTRIBUTE).toBool() && !(createdTimeEntry && httpStatus == 0) &&
-			!backgroundUnreachable && !mBaseUrl.isEmpty()) {
+		if (shouldReport(reply, reportingOf(reply))) {
 			reportError(reply, response);
 		}
+		const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 		// Only Redmine's own answer (JSON) says the issue is unknown; a 404 page from something else
 		// (a wrong server URL, a proxy) says nothing about the issue.
 		const QVariant issueId = reply->request().attribute(ISSUE_ID_ATTRIBUTE);
@@ -1326,7 +1356,8 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 			reply->url().path().contains("/time_entries/")) {
 			emit timeEntryDeleted(resourceIdFromPath(reply->url().path()));
 		}
-		if (createdTimeEntry) {
+		if (reply->operation() == QNetworkAccessManager::PostOperation &&
+			reply->url().path().endsWith(ApiResources::TIME_ENTRIES)) {
 			emit timeEntryCreateFailed(reply->request().attribute(REQUEST_TAG_ATTRIBUTE).toInt(), httpStatus,
 				userErrorMessage(reply, response), retryAfterFromReply(reply));
 		}

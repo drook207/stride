@@ -10,6 +10,7 @@
 #include <QNetworkAccessManager>
 #include <QSettings>
 #include <QTcpServer>
+#include <QTcpSocket>
 #include <QTranslator>
 #include <gtest/gtest.h>
 
@@ -40,6 +41,18 @@ void RedmineClientIntegrationTest::TearDown()
 
 namespace {
 QJsonObject bodyAsObject(const RecordedHttpRequest& request) { return QJsonDocument::fromJson(request.body).object(); }
+
+//! A port connections are refused on for as long as the object lives: it is bound, so no one else gets it,
+//! but not listening.
+class RefusedPort {
+public:
+	RefusedPort() { EXPECT_TRUE(mSocket.bind(QHostAddress::LocalHost, 0)); }
+
+	QString baseUrl() const { return QStringLiteral("http://127.0.0.1:%0/").arg(mSocket.localPort()); }
+
+private:
+	QTcpSocket mSocket;
+};
 }
 
 TEST_F(RedmineClientIntegrationTest, GetIssueSendsCorrectRequestAndEmitsIssueReceived)
@@ -841,14 +854,8 @@ TEST_F(RedmineClientIntegrationTest, ConnectionStateBecomesTemporaryOfflineAfter
 
 TEST_F(RedmineClientIntegrationTest, ConnectionRefusedToClosedPortTriggersErrorOccurredAndStaysOffline)
 {
-	// Grab an ephemeral port and immediately release it again, so we get a port that (very likely)
-	// has nothing listening on it, without hardcoding a port number that might already be in use.
-	QTcpServer probe;
-	probe.listen(QHostAddress::LocalHost, 0);
-	quint16 closedPort = probe.serverPort();
-	probe.close();
-
-	client->setBaseUrl(QStringLiteral("http://127.0.0.1:%0/").arg(closedPort));
+	const RefusedPort refused;
+	client->setBaseUrl(refused.baseUrl());
 
 	bool errorFired = false;
 	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { errorFired = true; });
@@ -961,14 +968,11 @@ TEST_F(RedmineClientIntegrationTest, FailingConnectionChecksBackOffUpToTheCap)
 
 TEST_F(RedmineClientIntegrationTest, ConnectionCheckAgainstClosedPortBacksOffWithoutError)
 {
-	QTcpServer closed;
-	closed.listen(QHostAddress::LocalHost, 0);
-	const auto port = closed.serverPort();
-	closed.close();
+	const RefusedPort refused;
 	int errors = 0;
 	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
 
-	client->setBaseUrl(QStringLiteral("http://127.0.0.1:%0/").arg(port));
+	client->setBaseUrl(refused.baseUrl());
 	for (const int expected : { 5000, 10000 }) {
 		QMetaObject::invokeMethod(client.get(), "checkConnection");
 		ASSERT_TRUE(waitUntil([&]() { return !client->connectionCheckRunning(); }));
@@ -1420,6 +1424,18 @@ TEST_F(RedmineClientIntegrationTest, RetryAfterInSecondsIsPassedOn)
 	EXPECT_EQ(failure.retryAfter, 120);
 }
 
+TEST_F(RedmineClientIntegrationTest, TimeEntryCreationAnsweredByAGatewayErrorIsNotReported)
+{
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, [&](const QString&) { ++errors; });
+
+	const auto failure = failCreateWith(*client, *server, retryResponse(502, QByteArray()));
+	quietFor();
+
+	EXPECT_EQ(failure.status, 502);
+	EXPECT_EQ(errors, 0);
+}
+
 TEST_F(RedmineClientIntegrationTest, RetryAfterAsHttpDateWithNumericZoneIsConvertedToSeconds)
 {
 	const auto failure = failCreateWith(*client, *server, retryResponse(429, httpDate(300, "+0000")));
@@ -1647,20 +1663,23 @@ TEST_F(RedmineClientIntegrationTest, MigratingALegacyKeyMarksItLoadedAtOnce)
 }
 
 namespace {
-//! A URL nothing listens on: requests to it are refused at once.
-QString unreachableBaseUrl()
+//! Makes the client ONLINE with a successful request, then points it to a URL connections are refused on.
+void goOnlineThenUnreachable(QRedmineTesting::MockHttpServer& server, RedmineClient& client, const RefusedPort& refused)
 {
-	QTcpServer closed;
-	closed.listen(QHostAddress::LocalHost, 0);
-	const auto port = closed.serverPort();
-	closed.close();
-	return QStringLiteral("http://127.0.0.1:%0/").arg(port);
+	server.enqueueResponse(MockHttpResponse { 200, "OK", R"({"issue":{"id":1}})" });
+	client.getIssue(1);
+	ASSERT_TRUE(waitForSignal(&client, &RedmineClient::issueReceived));
+	ASSERT_EQ(client.connectionState(), RedmineClient::ONLINE);
+	client.setBaseUrl(refused.baseUrl());
+	ASSERT_EQ(client.connectionState(), RedmineClient::ONLINE);
 }
 }
 
 TEST_F(RedmineClientIntegrationTest, StartupRequestsDontReportAnUnreachableServer)
 {
-	client->setBaseUrl(unreachableBaseUrl());
+	const RefusedPort refused;
+	goOnlineThenUnreachable(*server, *client, refused);
+	ASSERT_FALSE(HasFatalFailure());
 	QObject context;
 	int errors = 0;
 	QObject::connect(client.get(), &RedmineClient::errorOccurred, &context, [&](const QString&) { ++errors; });
@@ -1672,12 +1691,27 @@ TEST_F(RedmineClientIntegrationTest, StartupRequestsDontReportAnUnreachableServe
 
 	// The connection state shows it instead
 	EXPECT_EQ(errors, 0);
-	EXPECT_NE(client->connectionState(), RedmineClient::ONLINE);
+	EXPECT_EQ(client->connectionState(), RedmineClient::TEMPORARY_OFFLINE);
+}
+
+TEST_F(RedmineClientIntegrationTest, AUserRequestedProjectFetchReportsAnUnreachableServer)
+{
+	const RefusedPort refused;
+	client->setBaseUrl(refused.baseUrl());
+	QObject context;
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, &context, [&](const QString&) { ++errors; });
+
+	client->getAllProjects(true);
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	EXPECT_EQ(errors, 1);
 }
 
 TEST_F(RedmineClientIntegrationTest, AUserActionReportsAnUnreachableServer)
 {
-	client->setBaseUrl(unreachableBaseUrl());
+	const RefusedPort refused;
+	client->setBaseUrl(refused.baseUrl());
 	QObject context;
 	int errors = 0;
 	QObject::connect(client.get(), &RedmineClient::errorOccurred, &context, [&](const QString&) { ++errors; });
@@ -1700,4 +1734,58 @@ TEST_F(RedmineClientIntegrationTest, StartupRequestsStillReportServerErrors)
 
 	// A wrong API key is something the user can and needs to fix
 	EXPECT_EQ(errors, 1);
+}
+
+TEST_F(RedmineClientIntegrationTest, AGatewayErrorOnAStartupRequestIsntReportedAndMarksTheClientOffline)
+{
+	// Online first, as a client that never was online stays OFFLINE
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"issue":{"id":1}})" });
+	client->getIssue(1);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueReceived));
+	ASSERT_EQ(client->connectionState(), RedmineClient::ONLINE);
+	QObject context;
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, &context, [&](const QString&) { ++errors; });
+	server->enqueueResponse(MockHttpResponse { 502, "Bad Gateway", "" });
+
+	client->detectApiVersion();
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	EXPECT_EQ(errors, 0);
+	EXPECT_EQ(client->connectionState(), RedmineClient::TEMPORARY_OFFLINE);
+}
+
+TEST_F(RedmineClientIntegrationTest, AnInternalServerErrorOnAStartupRequestIsReported)
+{
+	QObject context;
+	int errors = 0;
+	QObject::connect(client.get(), &RedmineClient::errorOccurred, &context, [&](const QString&) { ++errors; });
+	server->enqueueResponse(MockHttpResponse { 500, "Internal Server Error", "" });
+
+	client->detectApiVersion();
+	ASSERT_TRUE(waitUntil([&]() { return !client->loading(); }));
+
+	EXPECT_EQ(errors, 1);
+}
+
+TEST_F(RedmineClientIntegrationTest, ServerNotReachedClassifiesNetworkErrors)
+{
+	using Error = QNetworkReply::NetworkError;
+	for (const Error error : { Error::ConnectionRefusedError, Error::RemoteHostClosedError, Error::HostNotFoundError,
+			 Error::TimeoutError, Error::OperationCanceledError, Error::TemporaryNetworkFailureError,
+			 Error::NetworkSessionFailedError, Error::UnknownNetworkError, Error::UnknownServerError,
+			 Error::ServiceUnavailableError, Error::ProxyConnectionClosedError, Error::ProxyTimeoutError }) {
+		EXPECT_TRUE(RedmineClient::serverNotReached(error)) << error;
+		EXPECT_TRUE(RedmineClient::isConnectionLoss(error)) << error;
+	}
+	// Setup problems the user has to fix, and answers of the server
+	for (const Error error : { Error::NoError, Error::SslHandshakeFailedError, Error::TooManyRedirectsError,
+			 Error::InsecureRedirectError, Error::ProxyConnectionRefusedError, Error::ProxyNotFoundError,
+			 Error::ProxyAuthenticationRequiredError, Error::ContentNotFoundError, Error::ContentAccessDenied,
+			 Error::InternalServerError, Error::ProtocolFailure }) {
+		EXPECT_FALSE(RedmineClient::serverNotReached(error)) << error;
+		EXPECT_FALSE(RedmineClient::isConnectionLoss(error)) << error;
+	}
+	EXPECT_FALSE(RedmineClient::serverNotReached(Error::AuthenticationRequiredError));
+	EXPECT_TRUE(RedmineClient::isConnectionLoss(Error::AuthenticationRequiredError));
 }
