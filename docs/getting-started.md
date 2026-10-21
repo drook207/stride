@@ -1,5 +1,8 @@
 # Getting started
 
+Stride is in beta: expect rough edges and changes between releases. Please
+report problems as [GitHub issues](https://github.com/drook207/stride/issues).
+
 ## Install
 
 Download the installer for your system from the

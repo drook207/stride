@@ -1,5 +1,8 @@
 # Stride
 
+Stride is in beta: expect rough edges and changes between releases. Please
+report problems as [GitHub issues](https://github.com/drook207/stride/issues).
+
 A desktop application built with Qt 6 for tracking time spent on Redmine issues, for Linux and Windows, with a dedicated portrait UI for Android and iOS. Features automatic time tracking, offline support, and seamless integration with Redmine's REST API.
 
 📖 **Documentation:** <https://drook207.github.io/stride/> - getting started, a full

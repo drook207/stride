@@ -215,12 +215,13 @@ if(IOS)
 endif()
 target_include_directories(Stride INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 # Application identity, used for QSettings and the data directory (see
-# main.cpp). The version is the top-level project's.
+# main.cpp). The version is the full one including a pre-release suffix
+# (STRIDE_VERSION, see the root CMakeLists.txt).
 target_compile_definitions(
 	Stride
 	PRIVATE APP_ORGANIZATION_NAME="Stride"
 			APP_ORGANIZATION_DOMAIN="drook207.github.io" APP_NAME="Stride"
-			APP_VERSION="${CMAKE_PROJECT_VERSION}")
+			APP_VERSION="${STRIDE_VERSION}")
 
 target_link_libraries(
 	Stride
@@ -323,7 +324,10 @@ if(NOT CPACK_IFW_ROOT
 	endif()
 endif()
 
-set(CPACK_IFW_PACKAGE_TITLE "${CPACK_PACKAGE_NAME}")
+# The Installer Framework only accepts numeric versions (digits separated by "."
+# or "-"), so the package and component versions stay at the project's numeric
+# version (CPACK_PACKAGE_VERSION); the title shows the full version instead.
+set(CPACK_IFW_PACKAGE_TITLE "${CPACK_PACKAGE_NAME} ${STRIDE_VERSION}")
 set(CPACK_IFW_PACKAGE_PUBLISHER "${CPACK_PACKAGE_VENDOR}")
 set(CPACK_IFW_PRODUCT_URL "https://github.com/drook207/stride")
 set(CPACK_IFW_PACKAGE_START_MENU_DIRECTORY "${CPACK_PACKAGE_NAME}")

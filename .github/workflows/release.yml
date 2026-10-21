@@ -1,4 +1,4 @@
-# A version tag (v1.2.3) builds the Windows and Linux installers and creates the GitHub release
+# A version tag (v1.2.3, or v1.2.3-beta.1 for a pre-release) builds the Windows and Linux installers and creates the GitHub release
 # with them attached and notes generated from the commit messages. Started by hand (Actions ->
 # Release -> Run workflow) on any branch, it only builds the installers, to try packaging changes;
 # they're kept as artifacts of the run for a week.
@@ -8,7 +8,8 @@ name: Release
 
 on:
   push:
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    # Filter patterns, not regular expressions: "+" repeats the preceding character class.
+    tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-*"]
   workflow_dispatch:
 
 # Releasing is never canceled by a newer push.
@@ -60,8 +61,13 @@ jobs:
         run: |
           (cd build/linux-release && cpack) || { cat build/linux-release/_CPack_Packages/Linux/IFW/IFWOutput.log; exit 1; }
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="$(git rev-parse --short HEAD)"; fi
+          # Exactly the installer cpack made (CPACK_PACKAGE_FILE_NAME, e.g. Stride-1.2.3-Linux.run).
+          ls -l build/linux-release
+          PACKAGE="$(sed -n 's/^set(CPACK_PACKAGE_FILE_NAME "\(.*\)")$/\1/p' build/linux-release/CPackConfig.cmake)"
+          INSTALLER="build/linux-release/$PACKAGE.run"
+          [[ -n "$PACKAGE" && -f "$INSTALLER" ]] || { echo "::error::cpack made no installer $INSTALLER"; exit 1; }
           mkdir -p installers
-          mv build/linux-release/Stride-*.run "installers/Stride-$VERSION-linux-x64.run"
+          mv "$INSTALLER" "installers/Stride-$VERSION-linux-x64.run"
       - uses: actions/upload-artifact@v4
         with:
           name: installer-linux
@@ -117,9 +123,17 @@ jobs:
         working-directory: build/windows-mingw-release
       - name: Name the installer
         run: |
-          $version = if ($env:GITHUB_REF -like "refs/tags/v*") { $env:GITHUB_REF_NAME.TrimStart("v") } else { git rev-parse --short HEAD }
+          $version = if ($env:GITHUB_REF -like "refs/tags/v*") { $env:GITHUB_REF_NAME.Substring(1) } else { git rev-parse --short HEAD }
+          # Exactly the installer cpack made (CPACK_PACKAGE_FILE_NAME, e.g. Stride-1.2.3-win64.exe),
+          # not whatever else matches Stride-*.exe in the build directory.
+          $build = "build\windows-mingw-release"
+          Get-ChildItem $build -File | Format-Table -AutoSize Name, Length, LastWriteTime
+          $config = Get-Content "$build\CPackConfig.cmake" -Raw
+          if ($config -notmatch '(?m)^set\(CPACK_PACKAGE_FILE_NAME "([^"]+)"\)') { throw "No CPACK_PACKAGE_FILE_NAME in CPackConfig.cmake" }
+          $installer = Join-Path $build "$($Matches[1]).exe"
+          if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) { throw "cpack made no installer $installer" }
           New-Item -ItemType Directory -Force installers | Out-Null
-          Move-Item build\windows-mingw-release\Stride-*.exe "installers\Stride-$version-windows-x64.exe"
+          Move-Item -LiteralPath $installer -Destination "installers\Stride-$version-windows-x64.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: installer-windows
@@ -168,10 +182,28 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          # The tag must match the version CMake builds into the app and the installers.
-          grep -Eq "^[[:space:]]VERSION $VERSION\)" CMakeLists.txt || { echo "CMakeLists.txt is not at version $VERSION"; exit 1; }
+          # The tag must match the version CMake builds into the app: v<project VERSION> for a
+          # final release, v<project VERSION>-<STRIDE_VERSION_SUFFIX> for a pre-release.
+          NUMBER="${VERSION%%-*}"
+          SUFFIX=""
+          if [[ "$VERSION" == *-* ]]; then SUFFIX="${VERSION#*-}"; fi
+          CMAKE_NUMBER="$(sed -nE 's/^[[:space:]]+VERSION ([0-9.]+)\)$/\1/p' CMakeLists.txt)"
+          CMAKE_SUFFIX="$(sed -nE 's/^set\(STRIDE_VERSION_SUFFIX "(.*)"\)$/\1/p' CMakeLists.txt)"
+          CMAKE_VERSION="$CMAKE_NUMBER${CMAKE_SUFFIX:+-$CMAKE_SUFFIX}"
+          if [[ -z "$CMAKE_NUMBER" || "$NUMBER" != "$CMAKE_NUMBER" || "$SUFFIX" != "$CMAKE_SUFFIX" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match the version in CMakeLists.txt ($CMAKE_VERSION): set project(VERSION) and STRIDE_VERSION_SUFFIX to match, or tag v$CMAKE_VERSION"
+            exit 1
+          fi
+          # "Stride 1.2.3", "Stride 1.2.3 Beta 1" for -beta.1, "Stride 1.2.3 <suffix>" otherwise.
+          TITLE="Stride $NUMBER"
+          if [[ "$SUFFIX" =~ ^beta\.([0-9]+)$ ]]; then
+            TITLE="$TITLE Beta ${BASH_REMATCH[1]}"
+          elif [[ -n "$SUFFIX" ]]; then
+            TITLE="$TITLE $SUFFIX"
+          fi
+          # A normal release, also for a beta: it's the one the download links (releases/latest) point to.
           gh release create "$GITHUB_REF_NAME" --verify-tag \
-            --title "Stride $VERSION" \
+            --title "$TITLE" \
             --notes-file dist/release-notes.md \
             "dist/Stride-$VERSION-windows-x64.exe#Windows installer (x64)" \
             "dist/Stride-$VERSION-linux-x64.run#Linux installer (x64)"

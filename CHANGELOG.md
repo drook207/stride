@@ -4,7 +4,7 @@ All notable changes to Stride. Generated from the commit messages by
 [git-cliff](https://git-cliff.org); the project uses
 [Semantic Versioning](https://semver.org/).
 
-## Unreleased
+## [0.2.0-beta.1](https://github.com/drook207/stride/releases/tag/v0.2.0-beta.1) - 2026-10-21
 
 ### Features
 
@@ -22,6 +22,11 @@ All notable changes to Stride. Generated from the commit messages by
 - **ui:** Open the time picker above the field near the window's bottom ([786115f](https://github.com/drook207/stride/commit/786115f206be0eebb0e70d7ee72554b10bb3b812))
 - **ui:** Show the issue in the issue field when it's set from outside ([d4e9a9e](https://github.com/drook207/stride/commit/d4e9a9e5b15962ec1b596f69592a8f6e69a73cff))
 - **client:** No error dialog at startup when the server can't be reached ([a7cd7f1](https://github.com/drook207/stride/commit/a7cd7f1e09b4b3fc638c7d5237dbb8bf4d2d5afb))
+- **migration:** Take over macOS settings, say when a database is kept ([7fb4627](https://github.com/drook207/stride/commit/7fb4627d48f31ecaba8b1fef96c7b71b75d544b3))
+
+### Ci
+
+- Move to GitHub ([a2ba25b](https://github.com/drook207/stride/commit/a2ba25b0c91ba9489f722ec548d94c66aeb1b92a))
 
 ### Refactor
 
