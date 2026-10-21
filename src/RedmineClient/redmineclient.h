@@ -76,7 +76,20 @@ public:
 	enum ReportPurpose { OverviewReport, ExportReport, ReminderReport };
 	Q_ENUM(ReportPurpose)
 
-	static const QList<QNetworkReply::NetworkError> REASONS_FOR_CONNECTION_LOSS;
+	/*!
+	 * \brief serverNotReached Whether a request that failed with \a error didn't reach the server, or the
+	 * server isn't able to answer: refused, closed, not found, timed out, no network, a proxy that closed
+	 * the connection or timed out, or a gateway error / unavailable (502, 503, 504). Not another answer of
+	 * the server (e.g. 500), nor a problem the user has to fix (bad certificate, too many redirects,
+	 * unknown, refusing or unauthorized proxy).
+	 */
+	static bool serverNotReached(QNetworkReply::NetworkError error);
+
+	/*!
+	 * \brief isConnectionLoss Whether a failure with \a error moves connectionState() to (temporary)
+	 * offline: serverNotReached(), or the server rejecting the API key.
+	 */
+	static bool isConnectionLoss(QNetworkReply::NetworkError error);
 
 	/*!
 	 * \brief installTranslations Loads this library's translation catalog (embedded under
@@ -174,6 +187,7 @@ public slots:
 	/*!
 	 * \brief detectApiVersion Issues a lightweight request so the server's API version can be
 	 * read from the response headers. apiVersionChanged is emitted once it becomes known.
+	 * Sent by the app on its own: not reaching the server isn't reported, connectionState() shows it.
 	 */
 	void detectApiVersion();
 
@@ -226,6 +240,7 @@ public slots:
 
 	/*!
 	 * \brief getEnumerations
+	 * Sent by the app on its own: not reaching the server isn't reported, connectionState() shows it.
 	 */
 	void getEnumerations(EnumerationTypes enumerationType);
 
@@ -312,8 +327,11 @@ public slots:
 	/*!
 	 * \brief getAllProjects Lists all projects, requesting page after page; emits projectsReceived()
 	 * once with all of them. A new call supersedes one still in progress.
+	 * \param userRequested Whether the user caused the call (e.g. by changing the server URL or API key),
+	 * so that not reaching the server is reported via errorOccurred(); otherwise only the connection
+	 * state shows it
 	 */
-	void getAllProjects();
+	void getAllProjects(bool userRequested = false);
 
 	/*!
 	 * \brief getCurrentUser Fetches the user the API key belongs to, with their project memberships
@@ -626,6 +644,16 @@ private:
 		IssuesBatchTag
 	};
 
+	//! How the failure of a request is reported via errorOccurred(), see shouldReport()
+	enum class Reporting {
+		Always, // as soon as it fails (the default: the user asked for it)
+		UnlessNotReached, // except for not reaching the server (see serverNotReached()), for requests the app
+						  // sends on its own: connectionState() shows that already
+		UnlessUnanswered, // except for no HTTP answer at all (status 0) or not reaching the server (see
+						  // serverNotReached(), e.g. a gateway's 502), for requests the app repeats on its own
+		Never // not at all, for fetches the user didn't ask for
+	};
+
 	//! A list fetched page after page (getAllProjects(), getOwnTimeEntries(), getTimeEntryReport()).
 	struct PagedFetch {
 		RequestTag tag = NoTag;
@@ -633,7 +661,7 @@ private:
 		QString resource;
 		QUrlQuery query; // without limit/offset
 		QString key; // the list's key in each page's JSON
-		bool quiet = false; // failures aren't reported via errorOccurred()
+		Reporting reporting = Reporting::Always; // which failures are reported via errorOccurred()
 		int generation = 0; // counts calls, so pages of a superseded call are ignored
 		int pages = 0; // pages requested so far, limited by MAX_PAGES
 		QJsonArray collected; // items received so far
@@ -647,7 +675,7 @@ private:
 
 	//! Starts fetching a list, superseding a fetch with the same tag and purpose still in progress.
 	void startPagedFetch(RequestTag tag, const QString& resource, const QUrlQuery& query, const QString& key,
-		bool quiet, int purpose = 0);
+		Reporting reporting, int purpose = 0);
 	//! Requests the page starting at offset.
 	void requestPage(int key, int offset);
 	//! Adds a received page, then requests the next one or emits all items.
@@ -656,7 +684,7 @@ private:
 	//! A getIssues(QList<int>) request still to be sent: the ids of one chunk.
 	struct IssueBatch {
 		QList<int> ids;
-		bool quiet = true;
+		Reporting reporting = Reporting::Never;
 	};
 
 	//! Chunks waiting for a free slot, and the number of chunk requests running (at most two).
@@ -682,6 +710,15 @@ private:
 	void logFinishedReply(QNetworkReply* reply);
 	//! Logs the error shown to the user, then emits errorOccurred() for a failed reply
 	void reportError(QNetworkReply* reply, const QJsonObject& response);
+	//! Whether a failed reply is to be reported via errorOccurred(): not if \a reporting says so, without a
+	//! base URL and for "not found"
+	bool shouldReport(QNetworkReply* reply, Reporting reporting) const;
+	//! The Reporting a reply's request was made with, Always if none was set
+	static Reporting reportingOf(QNetworkReply* reply);
+	//! Marks \a request to be reported as \a reporting on failure, see reportingOf()
+	static void setReporting(QNetworkRequest& request, Reporting reporting);
+	//! Never for a quiet request, otherwise Always
+	static Reporting reportingForQuiet(bool quiet);
 	//! The running number createRequest() gave the request of a reply
 	static int requestId(QNetworkReply* reply);
 	//! Number of the latest request made, see createRequest()

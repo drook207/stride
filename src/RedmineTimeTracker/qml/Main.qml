@@ -77,12 +77,14 @@ ApplicationWindow {
     }
 
     //! Requests that depend on the server and API key: at startup (once the key is known) and
-    //! again after either changed.
-    function fetchServerData(force) {
-        redmineClient.getAllProjects();
+    //! again after either changed. userChanged: the user just set the server or key, so the data is
+    //! fetched at once (not held back by the sync's cooldown) and a server that can't be reached
+    //! (e.g. a mistyped host) is reported; otherwise the connection indicator shows it.
+    function fetchServerData(userChanged) {
+        redmineClient.getAllProjects(userChanged);
         projectAccess.refresh();
         redmineClient.getTimeEntryCustomFields();
-        window.requestSync(force);
+        window.requestSync(userChanged);
     }
 
     //! The time entry custom field named "Special" (see RedmineClient::getTimeEntryCustomFields),
@@ -112,22 +114,29 @@ ApplicationWindow {
 
     //! Runs startUp() once the API key is known (the keychain delivers it a moment after launch) and
     //! a server is set (not on a first launch): earlier its requests would go out without them, fail,
-    //! and be sent again once they're there.
-    function startUpWhenReady() {
+    //! and be sent again once they're there. userRequested: the user just entered the first server,
+    //! so a server that can't be reached (e.g. a mistyped host) is reported.
+    function startUpWhenReady(userRequested) {
+        // Kept until startUp() runs: the keychain may still be loading when the user sets the server
+        if (userRequested === true) {
+            window.startUpUserRequested = true;
+        }
         if (window.startedUp || !redmineClient.apiKeyLoaded || redmineClient.baseUrl === "") {
             return;
         }
         window.startedUp = true;
-        window.startUp();
+        window.startUp(window.startUpUserRequested);
     }
+    //! Whether the user set the first server, see startUpWhenReady().
+    property bool startUpUserRequested: false
 
     //! Startup requests, see startUpWhenReady().
-    function startUp() {
+    function startUp(userRequested) {
         redmineClient.detectApiVersion();
         redmineClient.getEnumerations(0);
         redmineClient.getEnumerations(1);
         redmineClient.getEnumerations(2);
-        window.fetchServerData(false);
+        window.fetchServerData(userRequested);
         // Recent entries show their issue's project, which needs the issue cached locally. Quietly:
         // the user didn't ask for these, and one they can't fetch (e.g. no access any more) would
         // otherwise report an error on every launch.
@@ -196,7 +205,7 @@ ApplicationWindow {
                 apiKeyRefetchTimer.restart();
             } else {
                 // The first server set, e.g. on the first launch
-                window.startUpWhenReady();
+                window.startUpWhenReady(true);
             }
         }
         function onConnectionStateChanged() {
