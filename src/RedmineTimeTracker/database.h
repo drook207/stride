@@ -76,11 +76,15 @@ namespace SqlQueries {
 		"activity_id INTEGER, "
 		"last_seen DATETIME NOT NULL)"); // when the app last ran with this state
 	STATIC_CONST_QSTRING(SAVE_TRACKING_STATE,
-		"REPLACE INTO tracking_state (id, issue_id, started_at, elapsed_seconds, comment, activity_id, last_seen) "
-		"VALUES (1, ?, ?, ?, ?, ?, ?)");
+		"REPLACE INTO tracking_state (id, issue_id, started_at, elapsed_seconds, comment, activity_id, last_seen, "
+		"tracking_started_at) VALUES (1, ?, ?, ?, ?, ?, ?, ?)");
 	STATIC_CONST_QSTRING(GET_TRACKING_STATE, "SELECT * FROM tracking_state WHERE id = 1");
 	STATIC_CONST_QSTRING(CLEAR_TRACKING_STATE, "DELETE FROM tracking_state");
 	STATIC_CONST_QSTRING(TOUCH_TRACKING_STATE, "UPDATE tracking_state SET last_seen = ?");
+
+	// Schema version 6: when the tracking began (TimeTracker::startedAt()); NULL for a tracker saved before.
+	STATIC_CONST_QSTRING(
+		ADD_TRACKING_STARTED_AT_COLUMN, "ALTER TABLE tracking_state ADD COLUMN tracking_started_at DATETIME");
 
 	// Schema version 4: issues the user pinned for quick access.
 	STATIC_CONST_QSTRING(CREATE_FAVORITE_ISSUES_TABLE,
@@ -244,7 +248,8 @@ public:
 
 	/*!
 	 * \brief saveTrackingState Remembers the tracker: "issue_id", "started_at" (QDateTime, invalid
-	 * while paused), "elapsed_seconds", "comment", "activity_id"; last_seen is set to now
+	 * while paused), "elapsed_seconds", "comment", "activity_id", "tracking_started_at" (QDateTime, when
+	 * the tracking began; may be invalid); last_seen is set to now
 	 */
 	static bool saveTrackingState(const QVariantMap& state);
 	//! The remembered tracker (fields as for saveTrackingState(), plus "last_seen"); empty if none.
@@ -292,6 +297,7 @@ private:
 	static bool migrateToVersion3();
 	static bool migrateToVersion4();
 	static bool migrateToVersion5();
+	static bool migrateToVersion6();
 	//! An entry row as a JSON object (see getRecentEntries()).
 	static QJsonObject entryFromQuery(const QSqlQuery& query);
 	static bool execute(const QString& sql);

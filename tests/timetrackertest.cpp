@@ -7,6 +7,20 @@
 using QRedmineClient::Database;
 using QRedmineClient::TimeTracker;
 
+//! Counts how often a signal was emitted (QtTest's SignalCounter isn't linked).
+class SignalCounter {
+public:
+	template <typename Sender, typename Signal> SignalCounter(Sender* sender, Signal signal)
+	{
+		QObject::connect(sender, signal, sender, [this] { ++mCount; });
+	}
+
+	int count() const { return mCount; }
+
+private:
+	int mCount = 0;
+};
+
 class TimeTrackerTest : public ::testing::Test {
 protected:
 	void SetUp() override
@@ -541,4 +555,172 @@ TEST_F(TimeTrackerTest, ForgottenIssueIsUnpinnedButNotWhileTracked)
 	QSqlQuery query("SELECT COUNT(*) FROM issues WHERE id = 16");
 	ASSERT_TRUE(query.next());
 	EXPECT_EQ(query.value(0).toInt(), 1);
+}
+
+TEST_F(TimeTrackerTest, StartingSetsTheStartTime)
+{
+	EXPECT_FALSE(tracker->startedAt().isValid());
+	SignalCounter spy(tracker.get(), &TimeTracker::startedAtChanged);
+	tracker->startTracking(5);
+	EXPECT_EQ(spy.count(), 1);
+	EXPECT_LE(qAbs(tracker->startedAt().secsTo(QDateTime::currentDateTime())), 1);
+}
+
+TEST_F(TimeTrackerTest, ChangingTheStartShiftsTheTimeWhileRunningAndPaused)
+{
+	tracker->startTracking(5);
+	SignalCounter startSpy(tracker.get(), &TimeTracker::startedAtChanged);
+	SignalCounter elapsedSpy(tracker.get(), &TimeTracker::elapsedTimeChanged);
+	const QDateTime now = QDateTime::currentDateTime();
+
+	EXPECT_TRUE(tracker->setStartedAt(now.addSecs(-3600)));
+	EXPECT_EQ(tracker->startedAt(), now.addSecs(-3600));
+	EXPECT_EQ(startSpy.count(), 1);
+	EXPECT_EQ(elapsedSpy.count(), 1);
+	EXPECT_NEAR(tracker->getElapsedHours(), 1.0, 0.01);
+
+	EXPECT_TRUE(tracker->setStartedAt(now.addSecs(-1800)));
+	EXPECT_NEAR(tracker->getElapsedHours(), 0.5, 0.01);
+
+	tracker->pauseTracking();
+	EXPECT_TRUE(tracker->setStartedAt(now.addSecs(-5400)));
+	EXPECT_TRUE(tracker->isPaused());
+	EXPECT_NEAR(tracker->getElapsedHours(), 1.5, 0.01);
+
+	TimeTracker restored;
+	EXPECT_EQ(restored.startedAt(), now.addSecs(-5400));
+	EXPECT_TRUE(restored.isPaused());
+	EXPECT_NEAR(restored.getElapsedHours(), 1.5, 0.01);
+}
+
+TEST_F(TimeTrackerTest, UnacceptableStartsAreRejected)
+{
+	const QDateTime now = QDateTime::currentDateTime();
+	EXPECT_FALSE(tracker->setStartedAt(now.addSecs(-60))); // not tracking
+	EXPECT_FALSE(tracker->startedAt().isValid());
+
+	tracker->startTracking(5);
+	const QDateTime started = tracker->startedAt();
+	SignalCounter spy(tracker.get(), &TimeTracker::startedAtChanged);
+	EXPECT_FALSE(tracker->setStartedAt(QDateTime()));
+	EXPECT_FALSE(tracker->setStartedAt(now.addSecs(3600)));
+	EXPECT_FALSE(tracker->setStartedAt(now.addSecs(-25 * 3600)));
+	EXPECT_FALSE(tracker->setStartedAt(started.addSecs(60))); // would leave negative time
+	EXPECT_EQ(tracker->startedAt(), started);
+	EXPECT_EQ(spy.count(), 0);
+	EXPECT_EQ(tracker->elapsedTime().toStdString(), "00:00:00");
+}
+
+TEST_F(TimeTrackerTest, StartIsKeptWhenTimeAwayIsLeftOut)
+{
+	const QDateTime now = QDateTime::currentDateTime();
+	ASSERT_TRUE(Database::saveTrackingState({ { "issue_id", 7 }, { "started_at", now.addSecs(-3 * 3600) },
+		{ "elapsed_seconds", 600 }, { "tracking_started_at", now.addSecs(-4 * 3600) } }));
+	QSqlQuery query;
+	query.prepare("UPDATE tracking_state SET last_seen = ?");
+	query.addBindValue(now.addSecs(-2 * 3600));
+	ASSERT_TRUE(query.exec());
+
+	TimeTracker restored;
+	EXPECT_EQ(restored.startedAt(), now.addSecs(-4 * 3600));
+	restored.resolveInterruption(false);
+	EXPECT_EQ(restored.startedAt(), now.addSecs(-4 * 3600));
+	EXPECT_EQ(restored.elapsedTime().toStdString(), "01:10:00");
+}
+
+TEST_F(TimeTrackerTest, StartCannotBeChangedWhileTheTimeAwayIsUndecided)
+{
+	const QDateTime now = QDateTime::currentDateTime();
+	ASSERT_TRUE(Database::saveTrackingState({ { "issue_id", 7 }, { "started_at", now.addSecs(-5 * 3600) },
+		{ "elapsed_seconds", 0 }, { "tracking_started_at", now.addSecs(-5 * 3600) } }));
+	QSqlQuery query;
+	query.prepare("UPDATE tracking_state SET last_seen = ?");
+	query.addBindValue(now.addSecs(-4 * 3600));
+	ASSERT_TRUE(query.exec());
+
+	TimeTracker restored;
+	ASSERT_TRUE(restored.interruptedAt().isValid());
+	EXPECT_FALSE(restored.setStartedAt(now.addSecs(-3600)));
+	EXPECT_EQ(restored.startedAt(), now.addSecs(-5 * 3600));
+
+	restored.resolveInterruption(false);
+	EXPECT_EQ(restored.elapsedTime().toStdString(), "01:00:00");
+	EXPECT_TRUE(restored.setStartedAt(now.addSecs(-6 * 3600)));
+	EXPECT_EQ(restored.elapsedTime().toStdString(), "02:00:00");
+}
+
+TEST_F(TimeTrackerTest, MigratedStartIgnoresTheTimeAway)
+{
+	const QDateTime now = QDateTime::currentDateTime();
+	ASSERT_TRUE(Database::saveTrackingState(
+		{ { "issue_id", 7 }, { "started_at", now.addSecs(-5 * 3600) }, { "elapsed_seconds", 600 } }));
+	QSqlQuery query;
+	query.prepare("UPDATE tracking_state SET last_seen = ?");
+	query.addBindValue(now.addSecs(-4 * 3600));
+	ASSERT_TRUE(query.exec());
+
+	TimeTracker restored;
+	ASSERT_TRUE(restored.interruptedAt().isValid());
+	// 600 s plus the hour up to when the app was last seen, ending there
+	EXPECT_EQ(restored.startedAt(), now.addSecs(-4 * 3600 - 4200));
+}
+
+TEST_F(TimeTrackerTest, StoppingClearsTheStart)
+{
+	tracker->startTracking(5);
+	SignalCounter spy(tracker.get(), &TimeTracker::startedAtChanged);
+	tracker->stopTracking();
+	EXPECT_EQ(spy.count(), 1);
+	EXPECT_FALSE(tracker->startedAt().isValid());
+	tracker->stopTracking();
+	EXPECT_EQ(spy.count(), 1);
+}
+
+TEST_F(TimeTrackerTest, TrackerSavedWithoutStartGetsOneFromItsTime)
+{
+	ASSERT_TRUE(
+		Database::saveTrackingState({ { "issue_id", 7 }, { "started_at", QDateTime() }, { "elapsed_seconds", 5400 } }));
+	TimeTracker restored;
+	EXPECT_NEAR(restored.startedAt().secsTo(QDateTime::currentDateTime()), 5400, 2);
+}
+
+TEST_F(TimeTrackerTest, ClearingForgetsTheTrackerButKeepsTheActivity)
+{
+	tracker->setTrackingActivityId(9);
+	tracker->setTrackingComment("Done");
+	tracker->startTracking(5);
+	ASSERT_TRUE(tracker->setStartedAt(QDateTime::currentDateTime().addSecs(-3600)));
+	SignalCounter cleared(tracker.get(), &TimeTracker::trackingCleared);
+	SignalCounter issue(tracker.get(), &TimeTracker::currentIssueChanged);
+	SignalCounter details(tracker.get(), &TimeTracker::trackingDetailsChanged);
+	SignalCounter start(tracker.get(), &TimeTracker::startedAtChanged);
+	SignalCounter tracking(tracker.get(), &TimeTracker::trackingChanged);
+
+	tracker->clearTracking();
+
+	EXPECT_EQ(cleared.count(), 1);
+	EXPECT_EQ(issue.count(), 1);
+	EXPECT_EQ(details.count(), 1);
+	EXPECT_EQ(start.count(), 1);
+	EXPECT_EQ(tracking.count(), 1);
+	EXPECT_FALSE(tracker->isTracking());
+	EXPECT_EQ(tracker->currentIssueId(), 0);
+	EXPECT_TRUE(tracker->trackingComment().isEmpty());
+	EXPECT_FALSE(tracker->startedAt().isValid());
+	EXPECT_EQ(tracker->trackingActivityId(), 9);
+	EXPECT_EQ(tracker->elapsedTime().toStdString(), "00:00:00");
+	EXPECT_DOUBLE_EQ(tracker->getElapsedHours(), 0.0);
+
+	TimeTracker restarted;
+	EXPECT_FALSE(restarted.isTracking());
+	EXPECT_EQ(restarted.currentIssueId(), 0);
+}
+
+TEST_F(TimeTrackerTest, ClearingAfterStoppingWorks)
+{
+	tracker->startTracking(5);
+	tracker->stopTracking();
+	tracker->clearTracking();
+	EXPECT_EQ(tracker->currentIssueId(), 0);
+	EXPECT_FALSE(tracker->startedAt().isValid());
 }

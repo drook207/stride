@@ -92,6 +92,13 @@ int IssueModel::projectIdOf(int issueId) const
 	return it != mIssues.cend() ? it->projectId : -1;
 }
 
+QString IssueModel::idAndSubjectOf(int issueId) const
+{
+	const auto it =
+		std::find_if(mIssues.cbegin(), mIssues.cend(), [issueId](const Issue& issue) { return issue.id == issueId; });
+	return it != mIssues.cend() ? QStringLiteral("%0: %1").arg(it->id).arg(it->subject) : QString::number(issueId);
+}
+
 QHash<int, QByteArray> IssueModel::roleNames() const
 {
 	QHash<int, QByteArray> roles;

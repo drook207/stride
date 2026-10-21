@@ -70,6 +70,12 @@ Rectangle {
 				issueField.value = docroot.timeTracker.currentIssueId
 			}
 		}
+		// Submitted: ready for the next entry; the activity stays selected.
+		function onTrackingCleared() {
+			issueField.value = -1
+			commentsField.clear()
+			specialCombo.selectValue(undefined)
+		}
 		function onTrackingDetailsChanged() {
 			if (commentsField.text !== docroot.timeTracker.trackingComment) {
 				commentsField.text = docroot.timeTracker.trackingComment
@@ -182,6 +188,17 @@ Rectangle {
 				font.pixelSize: 14
 				font.bold: true
 				horizontalAlignment: Text.AlignHCenter
+			}
+		}
+
+		//! Kept in the layout while nothing is tracked (showing no time), so the bar doesn't jump.
+		LabeledField {
+			Layout.alignment: Qt.AlignBottom
+			label: qsTr("Start")
+			StartTimeField {
+				Layout.preferredWidth: 150
+				Layout.preferredHeight: docroot.controlHeight
+				timeTracker: docroot.timeTracker
 			}
 		}
 

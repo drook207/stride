@@ -162,7 +162,8 @@ bool Database::execute(const QString& sql)
 const QList<bool (*)()>& Database::migrations()
 {
 	static const QList<bool (*)()> list { &Database::migrateToVersion1, &Database::migrateToVersion2,
-		&Database::migrateToVersion3, &Database::migrateToVersion4, &Database::migrateToVersion5 };
+		&Database::migrateToVersion3, &Database::migrateToVersion4, &Database::migrateToVersion5,
+		&Database::migrateToVersion6 };
 	return list;
 }
 
@@ -230,6 +231,8 @@ bool Database::migrateToVersion4() { return execute(SqlQueries::CREATE_FAVORITE_
 
 bool Database::migrateToVersion5() { return execute(SqlQueries::ADD_ISSUE_STATUS_ID_COLUMN); }
 
+bool Database::migrateToVersion6() { return execute(SqlQueries::ADD_TRACKING_STARTED_AT_COLUMN); }
+
 bool Database::clearIssueStatus(int id)
 {
 	QSqlQuery query;
@@ -289,6 +292,9 @@ bool Database::saveTrackingState(const QVariantMap& state)
 	query.addBindValue(state["comment"].toString());
 	query.addBindValue(state["activity_id"].toInt());
 	query.addBindValue(QDateTime::currentDateTime());
+	const QDateTime trackingStartedAt = state["tracking_started_at"].toDateTime();
+	query.addBindValue(
+		trackingStartedAt.isValid() ? QVariant(trackingStartedAt) : QVariant(QMetaType::fromType<QDateTime>()));
 	return evaluateQueryExec(query);
 }
 
@@ -302,7 +308,10 @@ QVariantMap Database::loadTrackingState()
 		{ "started_at", query.value("started_at").isNull() ? QDateTime() : query.value("started_at").toDateTime() },
 		{ "elapsed_seconds", query.value("elapsed_seconds").toLongLong() },
 		{ "comment", query.value("comment").toString() }, { "activity_id", query.value("activity_id").toInt() },
-		{ "last_seen", query.value("last_seen").toDateTime() } };
+		{ "last_seen", query.value("last_seen").toDateTime() },
+		{ "tracking_started_at",
+			query.value("tracking_started_at").isNull() ? QDateTime()
+														: query.value("tracking_started_at").toDateTime() } };
 }
 
 bool Database::clearTrackingState() { return execute(SqlQueries::CLEAR_TRACKING_STATE); }

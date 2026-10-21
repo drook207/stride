@@ -36,6 +36,9 @@ class TimeTracker : public QObject {
 	//! Whether the interruption (interruptedAt) was the computer sleeping while the app ran, rather
 	//! than the app being gone.
 	Q_PROPERTY(bool interruptedBySleep READ interruptedBySleep NOTIFY interruptedAtChanged FINAL)
+	//! When the current tracking began (see setStartedAt()); invalid until something was tracked.
+	//! Invalid again once tracking stops (stopTracking(), clearTracking()).
+	Q_PROPERTY(QDateTime startedAt READ startedAt NOTIFY startedAtChanged FINAL)
 	//! Issues pinned for quick access (Database::getFavoriteIssues()).
 	Q_PROPERTY(QVariantList favoriteIssues READ favoriteIssues NOTIFY favoriteIssuesChanged FINAL)
 public:
@@ -56,6 +59,24 @@ public:
 	void setTrackingActivityId(int activityId);
 	QDateTime interruptedAt() const;
 	bool interruptedBySleep() const;
+	QDateTime startedAt() const;
+
+	/*!
+	 * \brief setStartedAt Corrects when the tracking began: the tracked time moves by the difference,
+	 * so an earlier start adds time and a later one takes it off; pauses stay as they are.
+	 * Only while tracking (running or paused), and not while the time away (interruptedAt) is undecided.
+	 * \param startedAt The new start: not in the future, at most 24 hours ago, and not after more time
+	 * than is tracked has passed
+	 * \return Whether the start was changed; false if not tracking or the value isn't acceptable
+	 */
+	Q_INVOKABLE bool setStartedAt(const QDateTime& startedAt);
+
+	/*!
+	 * \brief clearTracking Forgets the tracker after its time was saved as an entry: stops tracking,
+	 * and resets the time, issue, comment and start (stopTracking() clears the start as well). The activity stays, as
+	 * the user's usual one. Emits trackingCleared().
+	 */
+	Q_INVOKABLE void clearTracking();
 
 	/*!
 	 * \brief resolveInterruption Decides about the time the app was gone or the computer asleep
@@ -328,6 +349,9 @@ signals:
 	void issueCacheChanged();
 	void trackingDetailsChanged();
 	void interruptedAtChanged();
+	void startedAtChanged();
+	//! The tracker was reset by clearTracking(); views of the tracked issue or details can clear theirs.
+	void trackingCleared();
 	void favoriteIssuesChanged();
 
 	/*!
@@ -364,6 +388,8 @@ private:
 	 */
 	void loadRecentEntries();
 
+	//! The tracked seconds so far: the total and the running segment up to now.
+	qint64 elapsedSeconds() const;
 	//! Saves the tracker to the database (or clears it there when not tracking).
 	void saveTrackingState();
 	//! Restores a tracker saved by a previous run.
@@ -394,6 +420,8 @@ private:
 	int mCurrentIssueId;
 	bool mIsPaused;
 	QDateTime mStartTime;
+	//! When the tracking began, see startedAt().
+	QDateTime mStartedAt;
 	qint64 mTotalElapsedTime;
 	QVariantList mRecentEntries;
 	QVariantList mEntriesFromId;
