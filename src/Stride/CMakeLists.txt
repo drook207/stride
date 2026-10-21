@@ -175,14 +175,24 @@ if(ANDROID)
 	if(QT_KNOWN_POLICY_QTP0002)
 		qt_policy(SET QTP0002 NEW)
 	endif()
+	# Android's versionCode is one growing integer: major * 10000 + minor * 100
+	# + patch (0.2.0 -> 200, the old fixed code was 20). Pre-releases of the
+	# same version (0.2.0-beta.1, -beta.2, 0.2.0) share it; versionName is the
+	# full version.
+	string(REPLACE "." ";" _stride_version_parts "${STRIDE_VERSION_NUMBER}")
+	list(GET _stride_version_parts 0 _stride_major)
+	list(GET _stride_version_parts 1 _stride_minor)
+	list(GET _stride_version_parts 2 _stride_patch)
+	math(EXPR STRIDE_ANDROID_VERSION_CODE
+		 "${_stride_major} * 10000 + ${_stride_minor} * 100 + ${_stride_patch}")
 	set_target_properties(
 		Stride
 		PROPERTIES QT_ANDROID_PACKAGE_SOURCE_DIR
 				   "${CMAKE_CURRENT_SOURCE_DIR}/android"
 				   QT_ANDROID_PACKAGE_NAME "io.github.drook207.stride"
 				   QT_ANDROID_TARGET_SDK_VERSION 35
-				   QT_ANDROID_VERSION_CODE 20
-				   QT_ANDROID_VERSION_NAME "2.0")
+				   QT_ANDROID_VERSION_CODE ${STRIDE_ANDROID_VERSION_CODE}
+				   QT_ANDROID_VERSION_NAME "${STRIDE_VERSION}")
 
 	qt_import_plugins(
 		Stride
@@ -216,7 +226,7 @@ endif()
 target_include_directories(Stride INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 # Application identity, used for QSettings and the data directory (see
 # main.cpp). The version is the full one including a pre-release suffix
-# (STRIDE_VERSION, see the root CMakeLists.txt).
+# (STRIDE_VERSION, see cmake/version.cmake).
 target_compile_definitions(
 	Stride
 	PRIVATE APP_ORGANIZATION_NAME="Stride"

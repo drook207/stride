@@ -1,6 +1,8 @@
 # git-cliff configuration: builds the changelog and the release notes from the Conventional
 # Commits messages. CHANGELOG.md:  git cliff --tag v1.2.3 -o CHANGELOG.md
 # Notes of the latest tag (CI):    git cliff --latest --strip all
+# For a final release (v1.2.3), only final tags count, so its section takes in its pre-releases:
+#   GIT_CLIFF__GIT__TAG_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+$' git cliff ...
 # See https://git-cliff.org/docs/configuration
 
 [changelog]
@@ -45,8 +47,13 @@ tag_pattern = "v[0-9]+\\.[0-9]+\\.[0-9]+(-.+)?"
 sort_commits = "oldest"
 # Only what users notice ends up in the notes; the HTML comments set the order of the groups.
 commit_parsers = [
-    { message = "^feat", group = "<!-- 0 -->Features" },
-    { message = "^fix", group = "<!-- 1 -->Bug fixes" },
-    { message = "^perf", group = "<!-- 2 -->Performance" },
+    # Breaking changes first, whatever their type: "<type>(<scope>)!: ..." or a
+    # "BREAKING CHANGE:" footer. Without this, protect_breaking_commits would keep a breaking
+    # ci/refactor/... commit under its raw type ("### Ci").
+    { message = "^[a-z]+(\\([^)]*\\))?!:", group = "<!-- 0 -->Breaking changes" },
+    { footer = "^BREAKING[ -]CHANGE", group = "<!-- 0 -->Breaking changes" },
+    { message = "^feat", group = "<!-- 1 -->Features" },
+    { message = "^fix", group = "<!-- 2 -->Bug fixes" },
+    { message = "^perf", group = "<!-- 3 -->Performance" },
     { message = ".*", skip = true },
 ]

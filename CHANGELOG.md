@@ -6,6 +6,11 @@ All notable changes to Stride. Generated from the commit messages by
 
 ## [0.2.0-beta.1](https://github.com/drook207/stride/releases/tag/v0.2.0-beta.1) - 2026-10-21
 
+### Breaking changes
+
+- Rename the application to Stride ([c7a420b](https://github.com/drook207/stride/commit/c7a420bd04285c88ddbaf119db926ad8c33df00c))
+- Move to GitHub ([a2ba25b](https://github.com/drook207/stride/commit/a2ba25b0c91ba9489f722ec548d94c66aeb1b92a))
+
 ### Features
 
 - **logging:** Log to rotating JSON Lines files, with a log view in the app ([1124270](https://github.com/drook207/stride/commit/1124270bf73bbc04314c0b733d76763e28577a11))
@@ -23,14 +28,6 @@ All notable changes to Stride. Generated from the commit messages by
 - **ui:** Show the issue in the issue field when it's set from outside ([d4e9a9e](https://github.com/drook207/stride/commit/d4e9a9e5b15962ec1b596f69592a8f6e69a73cff))
 - **client:** No error dialog at startup when the server can't be reached ([a7cd7f1](https://github.com/drook207/stride/commit/a7cd7f1e09b4b3fc638c7d5237dbb8bf4d2d5afb))
 - **migration:** Take over macOS settings, say when a database is kept ([7fb4627](https://github.com/drook207/stride/commit/7fb4627d48f31ecaba8b1fef96c7b71b75d544b3))
-
-### Ci
-
-- Move to GitHub ([a2ba25b](https://github.com/drook207/stride/commit/a2ba25b0c91ba9489f722ec548d94c66aeb1b92a))
-
-### Refactor
-
-- Rename the application to Stride ([c7a420b](https://github.com/drook207/stride/commit/c7a420bd04285c88ddbaf119db926ad8c33df00c))
 
 ## [0.1.0](https://github.com/drook207/stride/releases/tag/v0.1.0) - 2026-10-18
 

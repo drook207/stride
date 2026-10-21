@@ -4,21 +4,14 @@
 
 cmake_minimum_required(VERSION 3.16)
 
+# STRIDE_VERSION_NUMBER, STRIDE_VERSION_SUFFIX and STRIDE_VERSION (e.g.
+# 0.2.0-beta.1, the version the app shows and the release tag must match).
+include(cmake/version.cmake)
+
 project(
 	Stride
 	LANGUAGES CXX
-	VERSION 0.2.0)
-
-# Pre-release suffix of the version (SemVer, e.g. "beta.1" for 0.2.0-beta.1),
-# empty for a final release. project(VERSION) only takes numbers, so the suffix
-# lives here; STRIDE_VERSION is the full version the app shows and the release
-# tag (v<STRIDE_VERSION>) must match, see .github/workflows/release.yml.
-set(STRIDE_VERSION_SUFFIX "beta.1")
-if(STRIDE_VERSION_SUFFIX)
-	set(STRIDE_VERSION "${PROJECT_VERSION}-${STRIDE_VERSION_SUFFIX}")
-else()
-	set(STRIDE_VERSION "${PROJECT_VERSION}")
-endif()
+	VERSION ${STRIDE_VERSION_NUMBER})
 
 find_package(Qt6 REQUIRED Core)
 
