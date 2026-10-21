@@ -34,6 +34,9 @@ TextField {
 	//! explain with a tooltip why it is locked.
 	property bool pickable: true
 
+	//! Whether the small clear button offers to empty the field.
+	property bool clearable: true
+
 	//! Emitted when a time is picked (not when it's cleared).
 	signal timePicked
 
@@ -54,6 +57,11 @@ TextField {
 		hourTumbler.currentIndex = field.twelveHour ? hour12 - 1 : hour
 		minuteTumbler.currentIndex = Math.floor((start % 60) / 5)
 		amPmTumbler.currentIndex = hour >= 12 ? 1 : 0
+		// Below the field, unless it would run past the window's bottom edge (e.g. in the tracking bar
+		// at the bottom of the window): then above it.
+		const fieldBottom = field.mapToItem(null, 0, field.height).y
+		const fitsBelow = fieldBottom + 4 + popup.implicitHeight <= (field.Window.window ? field.Window.window.height : Infinity)
+		popup.y = fitsBelow ? field.height + 4 : -popup.implicitHeight - 4
 		popup.open()
 	}
 
@@ -75,7 +83,7 @@ TextField {
 	// outline (over the LabeledField's label) once the field has focus or text.
 	text: field.hasTime ? new Date(2000, 0, 1, field.hours, field.minutes).toLocaleTimeString(field.uiLocale, Locale.ShortFormat) : "--:--"
 	color: field.hasTime ? Material.foreground : Material.hintTextColor
-	rightPadding: clockIcon.width + clearButton.width + 28
+	rightPadding: clockIcon.width + (clearButton.visible ? clearButton.width + 4 : 0) + 24
 
 	// Picking is the only way to change the value, so the whole field acts as a button; see
 	// DatePickerField for why this is a MouseArea rather than a TapHandler.
@@ -98,7 +106,7 @@ TextField {
 			rightMargin: 4
 			verticalCenter: parent.verticalCenter
 		}
-		visible: field.hasTime
+		visible: field.clearable && field.hasTime
 		onClicked: field.hasTime = false
 	}
 
@@ -137,6 +145,7 @@ TextField {
 	Popup {
 		id: popup
 
+		// Set by open(): below the field, or above it near the window's bottom edge
 		y: field.height + 4
 		padding: 12
 		modal: false

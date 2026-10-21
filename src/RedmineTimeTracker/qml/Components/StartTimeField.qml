@@ -17,6 +17,9 @@ TimePickerField {
 
 	required property TimeTracker timeTracker
 
+	// A tracker always has a start; it can only be moved.
+	clearable: false
+
 	//! Whether the tracker waits for an answer about the time away (see TimeTracker::interruptedAt).
 	readonly property bool interruptionPending: {
 		const at = field.timeTracker.interruptedAt

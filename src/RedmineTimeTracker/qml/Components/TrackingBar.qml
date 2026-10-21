@@ -196,7 +196,7 @@ Rectangle {
 			Layout.alignment: Qt.AlignBottom
 			label: qsTr("Start")
 			StartTimeField {
-				Layout.preferredWidth: 140
+				Layout.preferredWidth: 150
 				Layout.preferredHeight: docroot.controlHeight
 				timeTracker: docroot.timeTracker
 			}
