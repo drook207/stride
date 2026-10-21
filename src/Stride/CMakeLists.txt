@@ -325,7 +325,7 @@ endif()
 
 set(CPACK_IFW_PACKAGE_TITLE "${CPACK_PACKAGE_NAME}")
 set(CPACK_IFW_PACKAGE_PUBLISHER "${CPACK_PACKAGE_VENDOR}")
-set(CPACK_IFW_PRODUCT_URL "https://gitlab.com/drook207/QRedmineTimeTracker")
+set(CPACK_IFW_PRODUCT_URL "https://github.com/drook207/stride")
 set(CPACK_IFW_PACKAGE_START_MENU_DIRECTORY "${CPACK_PACKAGE_NAME}")
 
 # Look & feel matching the application's Material Dark theme and accent color

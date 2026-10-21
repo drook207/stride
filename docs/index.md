@@ -1,6 +1,6 @@
 # Stride
 
-Stride (QRedmineTimeTracker) is a Qt 6 app for tracking the time you spend on
+Stride is a Qt 6 app for tracking the time you spend on
 [Redmine](https://www.redmine.org) issues. It runs on Linux and Windows, with a
 dedicated portrait UI for Android and iOS, and keeps working while Redmine is
 unreachable.

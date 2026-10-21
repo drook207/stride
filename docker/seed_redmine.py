@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Seed the local Redmine test environment (see docker-redmine.yml) with realistic data.
 
-Creates a small software agency's worth of data for end-to-end testing QRedmineTimeTracker:
+Creates a small software agency's worth of data for end-to-end testing Stride:
 
 - 7 users with different roles (developers, QA, a project manager, a support agent)
 - 7 projects, including two subprojects and a closed (read-only) project, each with members,

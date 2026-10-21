@@ -1,13 +1,13 @@
-# Documentation website, built with MkDocs + Material and published on GitLab Pages by the
-# `pages` job in .gitlab-ci.yml. Preview locally:
+# Documentation website, built with MkDocs + Material and published on GitHub Pages by the
+# `docs` and `deploy-pages` jobs in .github/workflows/ci.yml. Preview locally:
 #   pip install -r docs/requirements.txt && mkdocs serve
 
 site_name: Stride
 site_description: Track time on Redmine issues - Qt 6 desktop and mobile app with offline support.
-site_url: https://drook207.gitlab.io/QRedmineTimeTracker/
-repo_name: drook207/QRedmineTimeTracker
-repo_url: https://gitlab.com/drook207/QRedmineTimeTracker
-edit_uri: -/edit/main/docs/
+site_url: https://drook207.github.io/stride/
+repo_name: drook207/stride
+repo_url: https://github.com/drook207/stride
+edit_uri: edit/main/docs/
 copyright: Licensed under the MIT License
 
 theme:
@@ -15,7 +15,7 @@ theme:
   favicon: assets/app-icon.svg
   logo: assets/app-icon.svg
   icon:
-    repo: fontawesome/brands/gitlab
+    repo: fontawesome/brands/github
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate

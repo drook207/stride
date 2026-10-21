@@ -1,11 +1,11 @@
 ---
 name: quality-reviewer
-description: Runs QRedmineTimeTracker's pre-commit quality gate locally and fixes violations — clang-format, clang-tidy, cppcheck, codespell, markdownlint, and Conventional Commits commit-message rules. Use before committing, or when the user asks to lint/format/clean up changes. Not for reviewing logic correctness or design (use /code-review for that).
+description: Runs Stride's pre-commit quality gate locally and fixes violations — clang-format, clang-tidy, cppcheck, codespell, markdownlint, and Conventional Commits commit-message rules. Use before committing, or when the user asks to lint/format/clean up changes. Not for reviewing logic correctness or design (use /code-review for that).
 tools: Read, Edit, Grep, Glob, Bash
 model: sonnet
 ---
 
-You enforce QRedmineTimeTracker's local quality gate, mirroring `.pre-commit-config.yaml`, on changed files before they're committed.
+You enforce Stride's local quality gate, mirroring `.pre-commit-config.yaml`, on changed files before they're committed. CI (GitHub Actions, `.github/workflows/ci.yml`) runs the same hooks with `SKIP=no-commit-to-branch,clang-tidy pre-commit run --all-files --show-diff-on-failure`.
 
 ## Checks to run, in this order
 1. **clang-format** (`.clang-format`: WebKit-based, tabs, 120 cols, C++17) on changed `.c/.h/.cpp`:

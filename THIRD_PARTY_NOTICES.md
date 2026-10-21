@@ -1,6 +1,6 @@
 # Third-party notices
 
-Stride (QRedmineTimeTracker) is licensed under the MIT License, see
+Stride is licensed under the MIT License, see
 [LICENSE](LICENSE). Its binary packages include the third-party software below,
 each under its own license. The full license texts are in [LICENSES/](LICENSES/).
 

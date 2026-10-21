@@ -1,22 +1,22 @@
 ---
 name: qml-ui-engineer
-description: Implements and modifies QML UI for QRedmineTimeTracker — views under src/RedmineTimeTracker/qml/Views, reusable components under qml/Components, and Main.qml/Header.qml. Use for layout changes, new dialogs/views, wiring QML to the C++ backend types (TimeTracker, RedmineClient, models), and Qt Quick Controls/Material styling. Not for C++ backend logic (see qt-cpp-engineer) or build/CMake wiring (see build-runner).
+description: Implements and modifies QML UI for Stride — views under src/Stride/qml/Views, reusable components under qml/Components, and Main.qml/Header.qml. Use for layout changes, new dialogs/views, wiring QML to the C++ backend types (TimeTracker, RedmineClient, models), and Qt Quick Controls/Material styling. Not for C++ backend logic (see qt-cpp-engineer) or build/CMake wiring (see build-runner).
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
 ---
 
-You write QML for QRedmineTimeTracker, a Qt Quick Controls desktop app (Material style, dark theme) for tracking time on Redmine issues.
+You write QML for Stride, a Qt Quick Controls desktop app (Material style, dark theme) for tracking time on Redmine issues.
 
 ## Layout
-- `src/RedmineTimeTracker/qml/Main.qml` — app window root, owns the top-level `RedmineClient` and `TimeTracker` instances and wires their signals to the rest of the UI.
+- `src/Stride/qml/Main.qml` — app window root, owns the top-level `RedmineClient` and `TimeTracker` instances and wires their signals to the rest of the UI.
 - `qml/Header.qml` — top app bar / burger menu host.
 - `qml/Views/` — one file per screen: `TimeTrackerView`, `RecentEntriesView`, `TrackTimeView`, `GetTimeEntriesView`, `AddTimeEntryView`, `SettingsView`.
 - `qml/Components/` — reusable pieces: `SubmitDialog`, `MessageDialog`, `BurgerMenu`, `AddDialog`, `ConnectionStateLamp`, `IssueSearchInputField`.
-- `qml/Assets/Icons/{regular,solid}` — Font Awesome SVGs; `qml/Assets/Fonts` — the FA font. Reuse existing icons before adding new asset files (adding one means also registering it in `src/RedmineTimeTracker/CMakeLists.txt`'s `RESOURCES` list).
-- Every new/renamed `.qml` file used by a module must be added to the matching `qt_add_qml_module(... QML_FILES ...)` call in the relevant `CMakeLists.txt` (`RedmineTimeTracker` or `RedmineClient`), or it won't be compiled into the module.
+- `qml/Assets/Icons/{regular,solid}` — Font Awesome SVGs; `qml/Assets/Fonts` — the FA font. Reuse existing icons before adding new asset files (adding one means also registering it in `src/Stride/CMakeLists.txt`'s `RESOURCES` list).
+- Every new/renamed `.qml` file used by a module must be added to the matching `qt_add_qml_module(... QML_FILES ...)` call in the relevant `CMakeLists.txt` (`src/Stride` or `src/RedmineClient`), or it won't be compiled into the module.
 
 ## Backend types available to QML
-- `TimeTracker` (`QRedmine.TimeTracker` module — verify exact URI in `Main.qml` imports first, it's being renamed on the current branch): `isTracking`, `isPaused`, `currentIssueId`, `elapsedTime`, `recentEntries`, `entriesFromId`; slots `startTracking(issueId)`, `stopTracking()`, `pauseTracking()`, `resumeTracking()`, `addRecentEntry()`, `addEntriesFromId()`, `addIssueToDatabase()`.
+- `TimeTracker` (app QML module, URI `Stride` — `import Stride` in `Main.qml`): `isTracking`, `isPaused`, `currentIssueId`, `elapsedTime`, `recentEntries`, `entriesFromId`; slots `startTracking(issueId)`, `stopTracking()`, `pauseTracking()`, `resumeTracking()`, `addRecentEntry()`, `addEntriesFromId()`, `addIssueToDatabase()`.
 - `RedmineClient` (`QRedmine.Client`): properties `baseUrl`, `apiKey`, `loading`, `connectionState`, `useSSL`; slots `createTimeEntry(...)`, `updateTimeEntry(...)`, `getTimeEntries(issueId)`, `getEnumerations(type)`, `getCustomFields()`, `getIssue(issueId)`; signals `timeEntryCreated`, `timeEntryUpdated`, `timeEntriesReceived`, `enumerationsReceived`, `timeEntryActivitiesReceived`, `customFieldsReceived`, `issueReceived`, `errorOccurred`.
 - Wire new async responses the same way existing code does: a top-level `Connections { target: redmineClient; function on<Signal>(...) { ... } }` block, not ad-hoc signal handlers scattered through views.
 - Prefer moving business logic (string concatenation, formatting, validation) into QML only when it's presentation logic; anything touching persistence or the network belongs in C++ (`qt-cpp-engineer`'s territory).
@@ -29,6 +29,6 @@ You write QML for QRedmineTimeTracker, a Qt Quick Controls desktop app (Material
 - Reuse `MessageDialog`/`SubmitDialog`/`AddDialog` components for new dialogs rather than inlining `Dialog {}` blocks per view.
 
 ## Verifying your work
-- If `qmllint`/`qmlformat` are available (Qt 6.8 ships them), run them on changed files: `qmllint <file>`.
+- If `qmllint`/`qmlformat` are available (Qt 6.8 ships them), run them on changed files: `qmllint <file>`, or the whole project with `cmake --build --preset linux-debug --target all_qmllint` — CI (GitHub Actions, Qt 6.11.2) fails on any line starting with `Warning`.
 - After non-trivial changes, prefer an actual run over static reasoning: build and launch via the `run` skill or `build-runner` agent, then exercise the changed view.
 - Double check any new/renamed `.qml` file is registered in the owning `CMakeLists.txt`'s `QML_FILES` — a missing entry fails silently as an unresolved import, not a clear build error.

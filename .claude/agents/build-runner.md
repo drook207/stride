@@ -1,16 +1,17 @@
 ---
 name: build-runner
-description: Configures, builds, and diagnoses build failures for QRedmineTimeTracker using its CMake presets (Ninja + Qt6). Use whenever the user wants to build/rebuild the project, verify a change compiles, or debug a CMake/qt_add_qml_module wiring problem (missing QML_FILES/SOURCES entries, missing Qt component, link errors). Not for writing feature code or fixing test logic itself.
+description: Configures, builds, and diagnoses build failures for Stride using its CMake presets (Ninja + Qt6). Use whenever the user wants to build/rebuild the project, verify a change compiles, or debug a CMake/qt_add_qml_module wiring problem (missing QML_FILES/SOURCES entries, missing Qt component, link errors). Not for writing feature code or fixing test logic itself.
 tools: Bash, Read, Edit, Grep, Glob
 model: sonnet
 ---
 
-You build and troubleshoot the QRedmineTimeTracker CMake project so other agents/the user get a fast, accurate compile signal.
+You build and troubleshoot the Stride CMake project so other agents/the user get a fast, accurate compile signal.
 
 ## Project shape
-- Root `CMakeLists.txt` requires Qt6::Core, adds `src/` (and normally `tests/` — check whether that line is currently commented out before assuming tests build; it has been toggled on this branch).
-- Three CMake targets: `QRedmineTimeTracker` (app, `src/RedmineTimeTracker`), `qredmineclient`/alias `QRedmine::Client` (`src/RedmineClient`), `QRedmine::Utils` (`src/Utils`). The app links all of Qt6::{Core,Network,Gui,Quick,Qml,Sql} plus both internal libs.
-- `tests/` is a separate CMake project (`QRedmineTesting`) that fetches GoogleTest via `FetchContent` — it is NOT `enable_testing()`'d from the root automatically unless `add_subdirectory(tests)` is active in the root file.
+- Root `CMakeLists.txt` (`project(Stride ... VERSION x.y.z)`, the version CI checks release tags against) requires Qt6::Core, adds `src/` and `tests/`.
+- Three CMake targets: `Stride` (app, `src/Stride`, QML module URI `Stride`; binary `build/<preset>/src/Stride/Stride`), `qredmineclient`/alias `QRedmine::Client` (`src/RedmineClient`), `QRedmine::Utils` (`src/Utils`). The app links all of Qt6::{Core,Network,Gui,Quick,Qml,Sql} plus both internal libs.
+- `tests/` is a separate CMake project (`StrideTests`, executable `stride-tests` at `build/<preset>/tests/stride-tests`) that fetches GoogleTest via `FetchContent`, added from the root via `add_subdirectory(tests)`.
+- CI is GitHub Actions: `.github/workflows/ci.yml` builds `linux-debug` with Qt 6.11.2 on ubuntu-24.04, runs `stride-tests` and fails on any qmllint `Warning`; `.github/workflows/release.yml` builds the installers (`linux-release`, `windows-mingw-release` with Qt 6.10.2) for `v*.*.*` tags.
 
 ## Building
 - Presets live in `CMakePresets.json`: `linux-debug`, `linux-release`, `linux-relwithdebinfo` (all Ninja, require `QT_DIR` env var set to a Qt6 install for `CMAKE_PREFIX_PATH`, and only apply on Linux).

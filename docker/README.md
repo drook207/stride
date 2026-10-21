@@ -1,7 +1,7 @@
 # Local Redmine test environment
 
 Spins up a throwaway Redmine + MySQL instance for manually exercising
-QRedmineTimeTracker against a real server, and seeds it with demo projects,
+Stride against a real server, and seeds it with demo projects,
 issues, users and time entries via `seed_redmine.py`.
 
 ## 1. Start Redmine
@@ -90,6 +90,6 @@ seed makes runs reproducible). Use `PYTHON=/path/to/venv/bin/python docker/seed.
 
 ## 5. Point the app at it
 
-In QRedmineTimeTracker's Settings view, set the Redmine URL to
+In Stride's Settings view, set the Redmine URL to
 `http://localhost:8080/` and paste in one of the API keys `seed.sh` printed - a demo user's
 rather than the admin's, to test with normal project permissions.

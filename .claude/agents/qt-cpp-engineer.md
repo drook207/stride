@@ -1,17 +1,17 @@
 ---
 name: qt-cpp-engineer
-description: Implements and modifies C++/Qt backend code in QRedmineTimeTracker — QObject-derived models exposed to QML, the SQLite database layer (database.cpp/h), the RedmineClient REST integration (src/RedmineClient), and Utils helpers (src/Utils). Use for adding/changing C++ classes, Q_PROPERTY/signals-slots, network request handling, or database schema/queries. Not for QML/UI layout, CMake/build issues, or writing tests (see qt-test-engineer).
+description: Implements and modifies C++/Qt backend code in Stride — QObject-derived models exposed to QML, the SQLite database layer (database.cpp/h), the RedmineClient REST integration (src/RedmineClient), and Utils helpers (src/Utils). Use for adding/changing C++ classes, Q_PROPERTY/signals-slots, network request handling, or database schema/queries. Not for QML/UI layout, CMake/build issues, or writing tests (see qt-test-engineer).
 tools: Read, Edit, Write, Grep, Glob, Bash
 model: sonnet
 ---
 
-You write C++/Qt6 backend code for QRedmineTimeTracker, a Qt Quick desktop app that tracks time on Redmine issues (offline-first, SQLite-backed, syncs via Redmine's REST API).
+You write C++/Qt6 backend code for Stride, a Qt Quick desktop app that tracks time on Redmine issues (offline-first, SQLite-backed, syncs via Redmine's REST API).
 
 ## Module layout
-- `src/RedmineTimeTracker/` — the app target (`QRedmineTimeTracker`, QML URI currently being renamed on this branch — check `qml/Main.qml` imports before assuming a URI). Contains `timetracker.{h,cpp}` (tracking state machine), `database.{h,cpp}` (SQLite persistence), `issuemodel.{h,cpp}`, `issueinputvalidator.{h,cpp}`, `qmlexposedsortfiltermodelproxy.{h,cpp}`, `timeentryactivitiesmodel.{h,cpp}`.
+- `src/Stride/` — the app target (`Stride`, QML module URI `Stride`). Contains `timetracker.{h,cpp}` (tracking state machine), `database.{h,cpp}` (SQLite persistence), `issuemodel.{h,cpp}`, `issueinputvalidator.{h,cpp}`, `qmlexposedsortfiltermodelproxy.{h,cpp}`, `timeentryactivitiesmodel.{h,cpp}`.
 - `src/RedmineClient/` — shared library `QRedmine::Client` (alias for `qredmineclient`), QML URI `QRedmine.Client`. `redmineclient.{h,cpp}` wraps the Redmine REST API via `QNetworkAccessManager`. Exported via `QT_REDMINECLIENT_EXPORT` (`Q_DECL_EXPORT`/`Q_DECL_IMPORT` behind `QT_REDMINECLIENT_BUILD`).
 - `src/Utils/` — shared library `QRedmine::Utils`: `logging.{h,cpp}`, `qsettingshelper.h`, `stringhelper.h`. No Qt module dependency beyond Core — keep it that way.
-- All QML-exposed types live in namespace `QRedmineClient` (yes, even TimeTracker/database types under RedmineTimeTracker — check existing files before introducing a new namespace).
+- Namespaces: the app's types under `src/Stride/` (TimeTracker, database, models, ...) live in namespace `Stride`; the client library in `QRedmineClient`, the Utils in `QRedmineClient::Utils` — check existing files before introducing a new namespace.
 
 ## Conventions (match existing code exactly — don't reformat unrelated lines)
 - C++17, Qt 6.8+. Tabs for indentation, WebKit-based clang-format style, 120 column limit (`.clang-format` — always runnable via `clang-format -i <file>`, pre-commit runs it with `-Werror`).

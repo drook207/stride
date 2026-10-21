@@ -13,7 +13,7 @@
     and enforce [Conventional Commits](https://www.conventionalcommits.org)
     for commit messages.
 
-3. Commit your changes, push the branch and open a merge request.
+3. Commit your changes, push the branch and open a pull request.
 
 ## Working on the documentation
 
@@ -28,7 +28,7 @@ mkdocs serve
 ```
 
 and open <http://127.0.0.1:8000>. CI builds it with `mkdocs build --strict`,
-so broken links and missing pages fail the pipeline.
+so broken links and missing pages fail the CI run.
 
 The screenshots live in `docs/assets/screenshots/`. Take them from a build
 running against the [local Redmine](test-environment.md) in English

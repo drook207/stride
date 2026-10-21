@@ -15,8 +15,8 @@
 ## Build with the CMake presets
 
 ```bash
-git clone https://gitlab.com/drook207/QRedmineTimeTracker.git
-cd QRedmineTimeTracker
+git clone https://github.com/drook207/stride.git
+cd stride
 
 # Point at your Qt installation, e.g. .../Qt/6.8.0/gcc_64 (Linux),
 # .../Qt/6.8.0/msvc2022_64 or .../Qt/6.8.0/mingw_64 (Windows)
@@ -26,7 +26,7 @@ cmake --preset linux-debug
 cmake --build --preset linux-debug
 ```
 
-The app is then at `build/linux-debug/src/RedmineTimeTracker/QRedmineTimeTracker`.
+The app is then at `build/linux-debug/src/Stride/Stride`.
 
 `cmake --list-presets` lists the presets for the current OS:
 
@@ -41,9 +41,11 @@ after calling `vcvarsall.bat x64`, so `cl.exe` is on the `PATH`.
 
 ## Where the app keeps its data
 
-- **Settings** - QSettings, under the organization `QRedmine` and the
-    application `Stride` (e.g. `~/.config/QRedmine/Stride.conf` on Linux).
+- **Settings** - QSettings, under the organization and application `Stride`
+    (`~/.config/Stride/Stride.conf` on Linux, `HKCU\Software\Stride\Stride`
+    on Windows).
 - **Time entries** - an SQLite database with versioned schema migrations, in
     the platform's application data directory (e.g.
-    `~/.local/share/QRedmine/Stride/timeentries.db` on Linux).
+    `~/.local/share/Stride/timeentries.db` on Linux).
+- **Logs** - see [Logging](logging.md).
 - **API key** - the OS-native secure storage via QtKeychain.

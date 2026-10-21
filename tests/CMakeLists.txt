@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(QRedmineTesting)
+project(StrideTests)
 
 # Enable testing for the project
 enable_testing()
@@ -27,7 +27,7 @@ set(INSTALL_GTEST
 FetchContent_MakeAvailable(googletest)
 
 add_executable(
-	qredminetesting
+	stride-tests
 	redmineclienttest.h
 	redmineclienttest.cpp
 	redmineclientintegrationtest.h
@@ -56,7 +56,7 @@ find_package(Qt6 REQUIRED Core Network Quick Sql)
 # link).
 set(APP_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src/Stride)
 target_sources(
-	qredminetesting
+	stride-tests
 	PRIVATE ${APP_SOURCE_DIR}/database.h
 			${APP_SOURCE_DIR}/database.cpp
 			${APP_SOURCE_DIR}/timetracker.h
@@ -71,10 +71,10 @@ target_sources(
 			${APP_SOURCE_DIR}/datamigration.cpp
 			${APP_SOURCE_DIR}/logmodel.h
 			${APP_SOURCE_DIR}/logmodel.cpp)
-target_include_directories(qredminetesting PRIVATE ${APP_SOURCE_DIR})
+target_include_directories(stride-tests PRIVATE ${APP_SOURCE_DIR})
 
 target_link_libraries(
-	qredminetesting
+	stride-tests
 	PRIVATE QRedmine::Client
 			QRedmine::Utils
 			GTest::gtest_main
@@ -85,10 +85,10 @@ target_link_libraries(
 
 include(GoogleTest)
 
-# Automatically discover tests gtest_discover_tests(qredminetesting # Optional:
-# Set a discovery timeout if you have many tests DISCOVERY_TIMEOUT 60 #
-# Optional: Add test properties PROPERTIES TIMEOUT 10  # Timeout in seconds for
-# each test )
+# Automatically discover tests gtest_discover_tests(stride-tests # Optional: Set
+# a discovery timeout if you have many tests DISCOVERY_TIMEOUT 60 # Optional:
+# Add test properties PROPERTIES TIMEOUT 10  # Timeout in seconds for each test
+# )
 
 # You can also add a custom test that runs with specific options add_test(NAME
 # mylib_tests_with_filter COMMAND mylib_tests

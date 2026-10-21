@@ -9,10 +9,10 @@ in-app log view.
 
 The log files are in the app's data directory:
 
-| Platform | Directory                             |
-| -------- | ------------------------------------- |
-| Linux    | `~/.local/share/QRedmine/Stride/logs` |
-| Windows  | `%LOCALAPPDATA%\QRedmine\Stride\logs` |
+| Platform | Directory                    |
+| -------- | ---------------------------- |
+| Linux    | `~/.local/share/Stride/logs` |
+| Windows  | `%LOCALAPPDATA%\Stride\logs` |
 
 `stride.log` is the current file. At 5 MB it becomes `stride.1.log` and so
 on; the 5 newest files are kept. **Export logs…** in the settings joins them,
@@ -63,7 +63,7 @@ The `QT_LOGGING_RULES` environment variable is applied after the level, so
 it always wins - e.g. to see a single category in detail while developing:
 
 ```bash
-QT_LOGGING_RULES="qredmine.client.debug=true" ./QRedmineTimeTracker
+QT_LOGGING_RULES="qredmine.client.debug=true" ./Stride
 ```
 
 The API key and request headers are never logged, nor are request or

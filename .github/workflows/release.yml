@@ -1,0 +1,177 @@
+# A version tag (v1.2.3) builds the Windows and Linux installers and creates the GitHub release
+# with them attached and notes generated from the commit messages. Started by hand (Actions ->
+# Release -> Run workflow) on any branch, it only builds the installers, to try packaging changes;
+# they're kept as artifacts of the run for a week.
+# Qt Installer Framework installers, see src/Stride/packaging/ifw/README.md.
+
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+# Releasing is never canceled by a newer push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  installer-linux:
+    runs-on: ubuntu-24.04
+    env:
+      QT_VERSION: "6.11.2"
+      IFW_VERSION: "47"
+    steps:
+      - uses: actions/checkout@v4
+      # Where aqtinstall puts Qt below; CMakePresets.json reads QT_DIR.
+      - run: echo "QT_DIR=$GITHUB_WORKSPACE/.qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
+      - name: Install the build dependencies
+        run: |
+          sudo apt-get update -qq
+          # The Installer Framework's binarycreator links against X11/xcb even when run headless.
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+            build-essential cmake ninja-build git ca-certificates curl pkg-config python3-venv \
+            libgl1-mesa-dev libxkbcommon-dev libfontconfig1 libdbus-1-3 libsecret-1-dev libglib2.0-dev \
+            libbz2-1.0 libfreetype6 libx11-6 libx11-xcb1 libxcb1 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render0 \
+            libxcb-render-util0 libxcb-shape0 libxcb-shm0 libxcb-sync1 libxcb-util1 libxcb-xfixes0 \
+            libxcb-xkb1 libxkbcommon-x11-0
+      - name: Cache Qt
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: .qt
+          key: qt-${{ env.QT_VERSION }}-linux_gcc_64-ifw${{ env.IFW_VERSION }}
+      # CMake finds the Installer Framework next to Qt, under .qt/Tools/QtInstallerFramework.
+      - name: Install Qt and the Installer Framework
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          python3 -m venv /tmp/aqt
+          /tmp/aqt/bin/pip install --quiet aqtinstall==3.3.0
+          /tmp/aqt/bin/aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 --outputdir .qt
+          /tmp/aqt/bin/aqt install-tool linux desktop tools_ifw "qt.tools.ifw.$IFW_VERSION" --outputdir .qt
+      - run: cmake --preset linux-release
+      - run: cmake --build --preset linux-release
+      - name: Build the installer
+        run: |
+          (cd build/linux-release && cpack) || { cat build/linux-release/_CPack_Packages/Linux/IFW/IFWOutput.log; exit 1; }
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then VERSION="${GITHUB_REF_NAME#v}"; else VERSION="$(git rev-parse --short HEAD)"; fi
+          mkdir -p installers
+          mv build/linux-release/Stride-*.run "installers/Stride-$VERSION-linux-x64.run"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-linux
+          path: installers/
+          if-no-files-found: error
+          retention-days: 7
+
+  # MinGW, CMake, Ninja, Qt and the Installer Framework all from aqtinstall. aqtinstall 3.3.0
+  # can't read the per-compiler Windows repositories Qt uses from 6.11 on, so Windows stays on
+  # Qt 6.10 until it can.
+  installer-windows:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      WIN_QT_VERSION: "6.10.2"
+      IFW_VERSION: "47"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Qt and the tools
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: .qt-win
+          key: qt-win-${{ env.WIN_QT_VERSION }}-mingw1310-ifw${{ env.IFW_VERSION }}
+      # A fixed Python for aqtinstall rather than whatever the runner image ships.
+      - uses: actions/setup-python@v5
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        with:
+          python-version: "3.12"
+      - name: Install Qt and the tools
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          python -m pip install --quiet aqtinstall==3.3.0
+          python -m aqt install-qt windows desktop $env:WIN_QT_VERSION win64_mingw --outputdir .qt-win
+          python -m aqt install-tool windows desktop tools_mingw1310 qt.tools.win64_mingw1310 --outputdir .qt-win
+          python -m aqt install-tool windows desktop tools_cmake qt.tools.cmake --outputdir .qt-win
+          python -m aqt install-tool windows desktop tools_ninja qt.tools.ninja --outputdir .qt-win
+          python -m aqt install-tool windows desktop tools_ifw "qt.tools.ifw.$env:IFW_VERSION" --outputdir .qt-win
+          if (-not (Test-Path ".qt-win\$env:WIN_QT_VERSION\mingw_64")) { throw "Qt was not installed" }
+      - name: Put the tools on the PATH
+        run: |
+          $tools = "$env:GITHUB_WORKSPACE\.qt-win\Tools"
+          "$tools\mingw1310_64\bin", "$tools\CMake_64\bin", "$tools\Ninja" | Add-Content $env:GITHUB_PATH
+          # CMakePresets.json reads QT_DIR.
+          "QT_DIR=$env:GITHUB_WORKSPACE/.qt-win/$env:WIN_QT_VERSION/mingw_64" -replace '\\', '/' |
+            Add-Content $env:GITHUB_ENV
+      - run: cmake --preset windows-mingw-release
+      - run: cmake --build --preset windows-mingw-release
+      - run: cpack
+        working-directory: build/windows-mingw-release
+      - name: Name the installer
+        run: |
+          $version = if ($env:GITHUB_REF -like "refs/tags/v*") { $env:GITHUB_REF_NAME.TrimStart("v") } else { git rev-parse --short HEAD }
+          New-Item -ItemType Directory -Force installers | Out-Null
+          Move-Item build\windows-mingw-release\Stride-*.exe "installers\Stride-$version-windows-x64.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: installers/
+          if-no-files-found: error
+          retention-days: 7
+
+  # Release notes from the Conventional Commits messages since the previous tag (cliff.toml).
+  release-notes:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    steps:
+      # git-cliff needs the whole history and the earlier tags.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet git-cliff==2.14.2
+      - run: |
+          git cliff --latest --strip all --output release-notes.md
+          test -s release-notes.md || { echo "No feat or fix commits since the previous tag"; exit 1; }
+          cat release-notes.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 7
+
+  # The GitHub release for a version tag, with the notes and the installers from above.
+  release:
+    needs: [installer-linux, installer-windows, release-notes]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # The tag must match the version CMake builds into the app and the installers.
+          grep -Eq "^[[:space:]]VERSION $VERSION\)" CMakeLists.txt || { echo "CMakeLists.txt is not at version $VERSION"; exit 1; }
+          gh release create "$GITHUB_REF_NAME" --verify-tag \
+            --title "Stride $VERSION" \
+            --notes-file dist/release-notes.md \
+            "dist/Stride-$VERSION-windows-x64.exe#Windows installer (x64)" \
+            "dist/Stride-$VERSION-linux-x64.run#Linux installer (x64)"

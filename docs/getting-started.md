@@ -3,11 +3,18 @@
 ## Install
 
 Download the installer for your system from the
-[latest release](https://gitlab.com/drook207/QRedmineTimeTracker/-/releases/permalink/latest):
+[latest release](https://github.com/drook207/stride/releases/latest):
 
 - **Windows:** `Stride-<version>-windows-x64.exe` - run it and follow the steps.
 - **Linux:** `Stride-<version>-linux-x64.run` - make it executable with
     `chmod +x Stride-*-linux-x64.run`, then run it.
+
+### Upgrading from 0.1.0
+
+Version 0.1.0 was installed as "QRedmineTimeTracker". Installing a newer
+version puts Stride next to it; uninstall the old QRedmineTimeTracker
+installation once afterwards. Your settings and data are taken over
+automatically the first time Stride starts.
 
 ### Build from source
 
@@ -16,12 +23,12 @@ Stride is built with CMake and Qt 6.8 or newer - see
 commands. In short:
 
 ```bash
-git clone https://gitlab.com/drook207/QRedmineTimeTracker.git
-cd QRedmineTimeTracker
+git clone https://github.com/drook207/stride.git
+cd stride
 export QT_DIR=/path/to/Qt/6.x.y/gcc_64
 cmake --preset linux-release
 cmake --build --preset linux-release
-./build/linux-release/src/RedmineTimeTracker/QRedmineTimeTracker
+./build/linux-release/src/Stride/Stride
 ```
 
 On Windows and Linux, `cpack` can also build an installer - see

@@ -19,22 +19,23 @@ native package instead.
 
 ## Releases
 
-Pushing a version tag such as `v0.1.0` releases that version from GitLab CI:
+Pushing a version tag such as `v0.1.0` releases that version with GitHub
+Actions (`.github/workflows/release.yml`):
 
-1. `installer-linux` and `installer-windows` build the installers and upload
-    them to the project's package registry.
+1. `installer-linux` and `installer-windows` build the installers
+    (`Stride-<version>-linux-x64.run` and `Stride-<version>-windows-x64.exe`).
 2. `release-notes` writes the release notes with
     [git-cliff](https://git-cliff.org) from the commit messages since the
     previous tag: `feat` commits become *Features*, `fix` commits *Bug fixes*,
     other types are left out (see `cliff.toml`). The notes are only as good as
     the commit subjects, so write them for users.
 3. `release` checks that the tag matches the version in the root
-    `CMakeLists.txt` and creates the GitLab release with the notes and the
-    installers as downloads.
+    `CMakeLists.txt` and creates the GitHub release with the notes, with both
+    installers attached.
 
 To release a version:
 
-1. Set the version in the root `CMakeLists.txt` (`project(QRedmine VERSION …)`).
+1. Set the version in the root `CMakeLists.txt` (`project(Stride … VERSION …)`).
 
 2. Update `CHANGELOG.md` with the same notes:
 
@@ -50,8 +51,9 @@ To release a version:
     git push origin v0.1.0
     ```
 
-On merge requests, both installer jobs can be started by hand to try
-packaging changes; their installers are kept as job artifacts for a week.
+To try packaging changes, start the *Release* workflow by hand on a branch
+(*Actions* -> *Release* -> *Run workflow*): it only builds both installers,
+which are kept as artifacts of the run for a week.
 
 The installer's resources and styling are described in
-[packaging/ifw/README.md](https://gitlab.com/drook207/QRedmineTimeTracker/-/blob/main/src/RedmineTimeTracker/packaging/ifw/README.md).
+[packaging/ifw/README.md](https://github.com/drook207/stride/blob/main/src/Stride/packaging/ifw/README.md).

@@ -3,7 +3,7 @@
 `docker/` contains a throwaway Redmine + MySQL instance, and a script that
 fills it with demo projects, issues, users and time entries. The full
 instructions are in
-[docker/README.md](https://gitlab.com/drook207/QRedmineTimeTracker/-/blob/main/docker/README.md);
+[docker/README.md](https://github.com/drook207/stride/blob/main/docker/README.md);
 in short:
 
 ```bash
