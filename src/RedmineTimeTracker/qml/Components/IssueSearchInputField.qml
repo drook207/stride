@@ -39,6 +39,22 @@ Item {
     //! to offer the activities that project allows (ActivityComboBox).
     readonly property int projectId: knownIssue && issueModel.revision >= 0 ? issueModel.projectIdOf(value) : -1
 
+    // `value` set from outside (a tracker restored or started elsewhere, the fields cleared after
+    // submitting) shows in the text too; typing sets `value` from the text instead.
+    onValueChanged: {
+        const typed = /^(\d+)/.exec(issueField.text)
+        if ((typed ? parseInt(typed[1]) : -1) === searchField.value) {
+            return
+        }
+        searchField.showingValue = true
+        issueField.text = searchField.value >= 0 ? issueModel.idAndSubjectOf(searchField.value) : ""
+        // The id first, where a long subject would otherwise scroll it out of view
+        issueField.cursorPosition = 0
+        searchField.showingValue = false
+    }
+    //! Whether the text is being set from `value`, which must not open the suggestions.
+    property bool showingValue: false
+
     //! Emitted when Enter/Return is pressed in the field (mirrors TextField.accepted).
     signal accepted
 
@@ -78,7 +94,7 @@ Item {
 		//! acceptable input, otherwise resets value to -1. Called on every keystroke.
 		function getAcceptableIssueIdFromInput() {
 			filteredIssuesModel.setFilterWildcard(issueField.text)
-			searchDropDown.visible = issueField.text.length > 0
+			searchDropDown.visible = issueField.text.length > 0 && !searchField.showingValue
 
 			if (acceptableInput) {
 				const re = /^(\d+)\:?.*$/

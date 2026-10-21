@@ -44,6 +44,12 @@ public:
 	 */
 	Q_INVOKABLE int projectIdOf(int issueId) const;
 
+	/*!
+	 * \brief idAndSubjectOf A cached issue as the issue field shows it ("<id>: <subject>")
+	 * \return The text, or just the id if the issue isn't cached
+	 */
+	Q_INVOKABLE QString idAndSubjectOf(int issueId) const;
+
 	int revision() const;
 
 signals:
