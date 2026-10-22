@@ -774,6 +774,14 @@ void TimeTracker::linkExistingTimeEntries(const QJsonArray& timeEntries)
 void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)
 {
 	const QJsonObject entry = Database::getTimeEntry(localId);
+	// Redmine books no entry without time (and SQLite can't store a NaN): keep the entry as it is.
+	const double hours = changes["hours"].toDouble();
+	if (!std::isfinite(hours) || hours <= 0.0) {
+		QR_WARNING(lcTimeTracker,
+			QStringLiteral("Refused to change local time entry %1 to %2 h").arg(localId).arg(hours),
+			{ { "localId", localId }, { "hours", hours } });
+		return;
+	}
 	// Changed custom field values replace the entry's values of those fields; the others stay.
 	QVariant customFields;
 	if (changes.contains("custom_fields")) {
@@ -789,8 +797,8 @@ void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)
 	}
 
 	const QDateTime spentOn(QDate::fromString(changes["spent_on"].toString(), Qt::ISODate), QTime(0, 0));
-	const int changed = Database::updateTimeEntry(localId, changes["hours"].toDouble(), changes["comments"].toString(),
-		spentOn, changes["activity_id"].toInt(), customFields);
+	const int changed = Database::updateTimeEntry(
+		localId, hours, changes["comments"].toString(), spentOn, changes["activity_id"].toInt(), customFields);
 	if (changed < 0) {
 		qCWarning(lcTimeTracker) << "Could not update local time entry" << localId;
 		return;
@@ -813,6 +821,14 @@ void TimeTracker::updateRecentEntry(int localId, const QVariantMap& changes)
 
 int TimeTracker::stageRedmineUpdate(int redmineId, const QVariantMap& changes)
 {
+	// A confirmation that never comes (the server went away, the entry was deleted meanwhile) would be
+	// kept forever: let the oldest go, they're the ones least likely to be confirmed by now.
+	while (mPendingRedmineUpdates.size() >= MAX_PENDING_REDMINE_UPDATES) {
+		const int dropped = mPendingRedmineUpdates.firstKey();
+		QR_DEBUG(lcTimeTracker, QStringLiteral("Forgetting the confirmation of staged Redmine update %1").arg(dropped),
+			{ { "tag", dropped }, { "redmineId", mPendingRedmineUpdates.value(dropped)["redmine_id"].toInt() } });
+		mPendingRedmineUpdates.erase(mPendingRedmineUpdates.begin());
+	}
 	QVariantMap staged = changes;
 	staged["redmine_id"] = redmineId;
 	mPendingRedmineUpdates.insert(++mLastRedmineUpdateTag, staged);

@@ -93,6 +93,38 @@ TEST_F(TimeTrackerTest, RefusesANewEntryWithoutAnIssueOrWithoutTime)
 	EXPECT_EQ(tracker->recentEntries().size(), 1);
 }
 
+TEST_F(TimeTrackerTest, RefusesToChangeAnEntryToInvalidHours)
+{
+	const int local = addEntry(10, 1.5, "Mine");
+	tracker->updateRecentEntry(local, { { "hours", 0.0 }, { "comments", "changed" }, { "spent_on", day(1) } });
+	tracker->updateRecentEntry(local, { { "hours", std::nan("") }, { "comments", "changed" }, { "spent_on", day(1) } });
+
+	const QJsonObject entry = Database::getTimeEntry(local);
+	EXPECT_DOUBLE_EQ(entry["hours"].toDouble(), 1.5);
+	EXPECT_EQ(entry["comments"].toString().toStdString(), "Mine");
+}
+
+TEST_F(TimeTrackerTest, ForgetsStagedRedmineUpdatesOlderThanTheNewestHundred)
+{
+	const int local = addEntry(10, 1.0, "Mine");
+	tracker->linkCreatedTimeEntry(remote(500, 10, 1.0, "Mine"), local);
+
+	const QVariantMap oldestChanges { { "hours", 2.0 }, { "comments", "oldest" }, { "spent_on", day(1) } };
+	const int oldest = tracker->stageRedmineUpdate(500, oldestChanges);
+	const QVariantMap laterChanges { { "hours", 2.0 }, { "comments", "later" }, { "spent_on", day(1) } };
+	int newest = oldest;
+	// More than the cap (100): the oldest ones are dropped, their confirmation can't be coming anymore.
+	for (int i = 0; i < 100; ++i) {
+		newest = tracker->stageRedmineUpdate(500, laterChanges);
+	}
+
+	tracker->applyRedmineUpdate(500, oldest);
+	EXPECT_EQ(Database::getTimeEntry(local)["comments"].toString().toStdString(), "Mine");
+
+	tracker->applyRedmineUpdate(500, newest);
+	EXPECT_EQ(Database::getTimeEntry(local)["comments"].toString().toStdString(), "later");
+}
+
 TEST_F(TimeTrackerTest, LinksOnlyEntriesWithTheSameIssueDayHoursAndComment)
 {
 	const int exact = addOfflineEntry(10, 1.5, "Review");

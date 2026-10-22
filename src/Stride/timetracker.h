@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QMap>
 #include <QObject>
 #include <QSet>
 #include <QString>
@@ -141,7 +142,8 @@ public:
 
 	/*!
 	 * \brief updateRecentEntry Changes a local entry that isn't linked to a Redmine time entry. A
-	 * rejected entry is sent to Redmine again afterwards.
+	 * rejected entry is sent to Redmine again afterwards. Nothing is changed for hours that aren't a
+	 * positive number, since Redmine books no such entry.
 	 * \param localId The entry's "id" in recentEntries
 	 * \param changes "hours" (decimal hours), "comments" and "spent_on" ("yyyy-MM-dd"); optionally
 	 * "activity_id", "custom_fields" (changed ones, [{"id", "value"}]) and "submit" (send an
@@ -428,8 +430,11 @@ private:
 	QVariantList mEntriesFromId;
 	//! Changes sent to Redmine but not confirmed yet, by the tag stageRedmineUpdate() returned. Kept
 	//! per request rather than per time entry, so a confirmation applies exactly the changes it
-	//! confirms even while another update of the same entry is under way.
-	QHash<int, QVariantMap> mPendingRedmineUpdates;
+	//! confirms even while another update of the same entry is under way. Ordered by tag, so the
+	//! entries a confirmation never comes for can be dropped oldest first.
+	QMap<int, QVariantMap> mPendingRedmineUpdates;
+	//! At most this many staged changes are kept (see stageRedmineUpdate()).
+	static constexpr int MAX_PENDING_REDMINE_UPDATES = 100;
 	int mLastRedmineUpdateTag = 0;
 	//! Local ids of entries being sent to Redmine, so none is sent twice at a time.
 	QSet<int> mSubmitting;
