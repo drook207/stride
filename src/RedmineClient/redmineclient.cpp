@@ -315,7 +315,12 @@ void RedmineClient::setApiKey(const QString& key)
 {
 	if (mApiKey != key) {
 		mApiKey = key;
-		Utils::WriteSecret(keychainService(), API_KEY_KEYCHAIN_KEY, mApiKey);
+		// Clearing the key deletes it from the secure storage rather than storing an empty one
+		if (mApiKey.isEmpty()) {
+			Utils::DeleteSecret(keychainService(), API_KEY_KEYCHAIN_KEY);
+		} else {
+			Utils::WriteSecret(keychainService(), API_KEY_KEYCHAIN_KEY, mApiKey);
+		}
 		emit apiKeyChanged();
 	}
 	// A key set explicitly wins over whatever the keychain read may still deliver
