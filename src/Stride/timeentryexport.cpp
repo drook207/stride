@@ -5,6 +5,7 @@
 #include <QLocale>
 #include <QPageSize>
 #include <QPdfWriter>
+#include <QSaveFile>
 #include <QTextDocument>
 #include <algorithm>
 
@@ -106,12 +107,15 @@ bool TimeEntryExport::writeCsv(const QUrl& file, const QVariantList& rows)
 bool TimeEntryExport::writePdf(const QUrl& file, const QVariantList& rows, const QString& title)
 {
 	const QString path = file.isLocalFile() ? file.toLocalFile() : file.toString();
-	QFile probe(path);
-	if (!probe.open(QIODevice::WriteOnly)) {
-		setLastError(probe.errorString());
+	// Written to a temporary file that replaces the target only once the PDF is complete, so a failure
+	// leaves the previous file (or none) rather than an empty or half-written one.
+	QSaveFile out(path);
+	// For targets that aren't plain files (content:// on Android), which it can't replace atomically
+	out.setDirectWriteFallback(true);
+	if (!out.open(QIODevice::WriteOnly)) {
+		setLastError(out.errorString());
 		return false;
 	}
-	probe.close();
 
 	const QLocale locale;
 	double total = 0;
@@ -137,13 +141,19 @@ bool TimeEntryExport::writePdf(const QUrl& file, const QVariantList& rows, const
 	html += QStringLiteral("<tr><td colspan=\"5\"><b>%1</b></td><td align=\"right\"><b>%2</b></td></tr></table>")
 				.arg(tr("Total"), locale.toString(total, 'f', 2));
 
-	QPdfWriter writer(path);
-	writer.setPageSize(QPageSize(QPageSize::A4));
-	writer.setPageMargins(QMarginsF(15, 15, 15, 15), QPageLayout::Millimeter);
-	writer.setTitle(title);
-	QTextDocument document;
-	document.setHtml(html);
-	document.print(&writer);
+	{
+		QPdfWriter writer(&out);
+		writer.setPageSize(QPageSize(QPageSize::A4));
+		writer.setPageMargins(QMarginsF(15, 15, 15, 15), QPageLayout::Millimeter);
+		writer.setTitle(title);
+		QTextDocument document;
+		document.setHtml(html);
+		document.print(&writer);
+	} // The writer finishes the PDF when it is destroyed, before the file is committed
+	if (!out.commit()) {
+		setLastError(out.errorString());
+		return false;
+	}
 	setLastError(QString());
 	return true;
 }
