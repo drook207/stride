@@ -66,6 +66,15 @@ TEST_F(RemindersTest, NoReminderWithTimeBookedOrWhenDisabled)
 	EXPECT_FALSE(Reminders().enabled()); // stored
 }
 
+TEST_F(RemindersTest, KeepsAValidEndOfDayWhenTheStoredOneIsUnusable)
+{
+	// e.g. edited by hand: an invalid time would compare as "before now" and remind at midnight.
+	QSettings().setValue("reminders/endOfDay", "25:99");
+
+	Reminders stored;
+	EXPECT_EQ(stored.endOfDay().toStdString(), "17:00");
+}
+
 TEST_F(RemindersTest, LongRunningTimerIsRemindedOncePerStretch)
 {
 	reminders->setLongTrackingHours(1);
