@@ -45,7 +45,8 @@ IssueModel::IssueModel(QObject* parent)
 	updateIssueList();
 }
 
-int IssueModel::rowCount(const QModelIndex& parent) const { return mIssues.count(); }
+// A flat list: the rows hang off the invisible root only, never below an issue of their own.
+int IssueModel::rowCount(const QModelIndex& parent) const { return parent.isValid() ? 0 : mIssues.count(); }
 
 QVariant IssueModel::data(const QModelIndex& index, int role) const
 {

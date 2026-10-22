@@ -1,3 +1,5 @@
+#pragma once
+
 #include "stringhelper.h"
 #include <QJsonArray>
 #include <QSet>
@@ -168,7 +170,8 @@ public:
 
 	/*!
 	 * \brief initialize Opens the database and brings its schema up to date (see migrate()). Does
-	 * nothing if it's open already.
+	 * nothing if it's open already; if it can't be opened or migrated, no connection is left open
+	 * (the next call starts over).
 	 * \param path Database file, or ":memory:"; defaultPath() if empty, where a database from the
 	 * location used before is moved to first
 	 */

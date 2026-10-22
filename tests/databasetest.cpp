@@ -49,6 +49,38 @@ TEST_F(DatabaseTest, UpdatesReportHowManyEntriesChanged)
 	EXPECT_EQ(Database::getRecentEntries()[0].toObject()["comments"].toString().toStdString(), "via redmine id");
 }
 
+TEST(DatabaseInitializeTest, AFailedInitializationLeavesNoConnectionBehind)
+{
+	QTemporaryDir dir;
+	ASSERT_TRUE(dir.isValid());
+	// A directory that doesn't exist: SQLite can't create the database file in it.
+	const QString path = dir.filePath(QStringLiteral("missing/timeentries.db"));
+
+	EXPECT_FALSE(Database::initialize(path));
+	// No half-open default connection is left, so the next attempt starts clean instead of replacing
+	// (and invalidating) it.
+	EXPECT_FALSE(QSqlDatabase::contains(QSqlDatabase::defaultConnection));
+
+	ASSERT_TRUE(Database::initialize(QStringLiteral(":memory:")));
+	EXPECT_GE(Database::schemaVersion(), 1);
+	Database::close();
+}
+
+TEST(DatabaseInitializeTest, TakesOverFromAConnectionAnEarlierAttemptLeftBehind)
+{
+	// An attempt that failed halfway leaves the default connection registered: opening another one
+	// on that name must not trip over it (Qt would warn and replace it).
+	{
+		QSqlDatabase stale = QSqlDatabase::addDatabase("QSQLITE");
+		stale.setDatabaseName(QStringLiteral(":memory:"));
+	}
+	ASSERT_TRUE(QSqlDatabase::contains(QSqlDatabase::defaultConnection));
+
+	ASSERT_TRUE(Database::initialize(QStringLiteral(":memory:")));
+	EXPECT_GE(Database::schemaVersion(), 1);
+	Database::close();
+}
+
 TEST(DatabaseMigrationTest, DatabaseFromBeforeVersioningGetsProjectNameAndAVersion)
 {
 	QTemporaryDir dir;

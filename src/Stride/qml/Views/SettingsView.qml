@@ -178,7 +178,13 @@ Item {
                         Layout.preferredHeight: Metrics.controlHeight
                         text: docroot.reminders.endOfDay
                         inputMask: "99:99"
-                        onEditingFinished: docroot.reminders.endOfDay = text
+                        // Show what was stored: that normalizes the input and undoes what the reminders
+                        // don't accept (e.g. "25:99"), rather than leaving a time that isn't in effect.
+                        // The binding the edit broke is restored, so the field follows the setting again.
+                        onEditingFinished: {
+                            docroot.reminders.endOfDay = text
+                            text = Qt.binding(() => docroot.reminders.endOfDay)
+                        }
                     }
                 }
 

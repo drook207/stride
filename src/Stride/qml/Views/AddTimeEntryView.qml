@@ -27,14 +27,19 @@ Item {
         client: docroot.client
         timeTracker: docroot.timeTracker
     }
-    //! Copies the current field values into addDialog. timeSpentField is parsed by HoursFormat
-    //! (decimal comma, e.g. "1,5"); hours that don't parse are left as they were.
+    //! Hours as entered (decimal comma, e.g. "1,5"), or NaN if the field doesn't hold a positive number.
+    readonly property real hours: {
+        const value = HoursFormat.parse(timeSpentField.text)
+        return value > 0 ? value : NaN
+    }
+
+    //! Copies the current field values into addDialog. Called when "Add" is pressed, so the entry gets
+    //! what's shown; timeSpentField is parsed by HoursFormat (decimal comma, e.g. "1,5").
     function saveInput() {
         docroot.addDialog.spentOn = spentOnField.isoDate
         docroot.addDialog.issueId = issueField.value
-        const number = HoursFormat.parse(timeSpentField.text)
-        if (!isNaN(number)) {
-            docroot.addDialog.hours = number
+        if (!isNaN(docroot.hours)) {
+            docroot.addDialog.hours = docroot.hours
         }
     }
 
@@ -96,6 +101,9 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: Metrics.controlHeight
                         validator: DoubleValidator {
+                            // Same locale the value is parsed with (HoursFormat), so what the
+                            // validator accepts is what ends up in the entry.
+                            locale: HoursFormat.locale
                             bottom: 0
                             decimals: 2
                             notation: DoubleValidator.StandardNotation
@@ -178,7 +186,13 @@ Item {
                 Layout.alignment: Qt.AlignRight
                 Layout.topMargin: 4
                 text: qsTr("Add")
+                // Redmine books a time entry only with an issue and time above 0 (issue id 0 is no
+                // issue either, though the field accepts it).
+                enabled: issueField.acceptableInput && issueField.value > 0 && !isNaN(docroot.hours)
                 onClicked: {
+                    // Read the fields now, not only from the debounced timer: what the confirmation
+                    // shows (and adds) must be what was typed.
+                    docroot.saveInput()
                     docroot.addDialog.comment = commentsField.text
                     docroot.addDialog.open()
                 }

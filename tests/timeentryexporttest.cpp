@@ -87,11 +87,19 @@ TEST_F(TimeEntryExportTest, PdfIsWritten)
 
 	QFile file(path);
 	ASSERT_TRUE(file.open(QIODevice::ReadOnly));
-	EXPECT_TRUE(file.read(4) == "%PDF");
+	const QByteArray content = file.readAll();
+	EXPECT_TRUE(content.startsWith("%PDF"));
+	// Complete, with the trailer the writer adds when it is destroyed: the file is only replaced then.
+	EXPECT_TRUE(content.trimmed().endsWith("%%EOF")) << content.right(32).toStdString();
 }
 
 TEST_F(TimeEntryExportTest, UnwritableFileIsReported)
 {
 	EXPECT_FALSE(exporter.writeCsv(QUrl::fromLocalFile(dir.filePath("missing/dir/entries.csv")), {}));
 	EXPECT_FALSE(exporter.lastError().isEmpty());
+
+	EXPECT_FALSE(exporter.writePdf(QUrl::fromLocalFile(dir.filePath("missing/dir/entries.pdf")), {}, "Week 42"));
+	EXPECT_FALSE(exporter.lastError().isEmpty());
+	// Nothing was created where it can't be written to.
+	EXPECT_FALSE(QFile::exists(dir.filePath("missing/dir/entries.pdf")));
 }

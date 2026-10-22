@@ -9,8 +9,9 @@ import QRedmine.Client
  *
  * The caller sets issueId/comment/activityId before calling open(); on accept, this stops the
  * running tracker, reads the elapsed time from it directly, adds the entry to the local history,
- * and submits it to Redmine. Contrast with AddDialog, which takes hours/spentOn as plain
- * properties instead since its flow isn't tied to a running tracked session.
+ * and submits it to Redmine. Canceling leaves the tracker running, so the tracked time isn't lost.
+ * Contrast with AddDialog, which takes hours/spentOn as plain properties instead since its flow
+ * isn't tied to a running tracked session.
  */
 Dialog {
 	id: docroot
@@ -34,6 +35,11 @@ Dialog {
 	Overlay.modal: DialogScrim {}
 
 	onAccepted: {
+		// Nothing tracked yet (the timer was started a moment ago): keep it running rather than
+		// stopping it for an entry that would have no time.
+		if (!(docroot.timeTracker.getElapsedHours() > 0)) {
+			return
+		}
 		docroot.timeTracker.stopTracking()
 
 		const hours = docroot.timeTracker.getElapsedHours()
@@ -57,11 +63,6 @@ Dialog {
 	}
 
 	onAboutToShow: statusPicker.load(parseInt(docroot.issueId))
-
-	onRejected: {
-		docroot.timeTracker.stopTracking()
-		docroot.comment = ""
-	}
 
 	contentItem: ColumnLayout {
 		id: content

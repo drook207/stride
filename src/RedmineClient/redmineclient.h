@@ -143,7 +143,8 @@ public:
 	QString apiKey() const;
 
 	/*!
-	 * \brief setApiKey
+	 * \brief setApiKey Stores the key in the OS-native secure storage (see securestorage.h); an
+	 * empty key deletes it there. Emits apiKeyChanged() when it differs from the current one.
 	 * \param key
 	 */
 	void setApiKey(const QString& key);

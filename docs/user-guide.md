@@ -28,7 +28,8 @@ on:
     *Special* time entry field, a **Special** value.
 4. Press **+** to submit. The confirmation dialog shows the total time and
     lets you set a new **issue status** (e.g. *Resolved*) along with the
-    entry; *Unchanged* leaves the issue as it is.
+    entry; *Unchanged* leaves the issue as it is. Choosing **No** closes the
+    dialog and keeps the timer running, so no tracked time is lost.
 
 The running timer is saved continuously, so it survives closing the app or a
 crash. When the computer wakes up from sleep while a timer was running,

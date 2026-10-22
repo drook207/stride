@@ -35,6 +35,7 @@ add_executable(
 	projectaccesstest.cpp
 	databasetest.cpp
 	datamigrationtest.cpp
+	issuemodeltest.cpp
 	timetrackertest.cpp
 	timeoverviewtest.cpp
 	reminderstest.cpp
@@ -69,6 +70,8 @@ target_sources(
 			${APP_SOURCE_DIR}/timeentryexport.cpp
 			${APP_SOURCE_DIR}/datamigration.h
 			${APP_SOURCE_DIR}/datamigration.cpp
+			${APP_SOURCE_DIR}/issuemodel.h
+			${APP_SOURCE_DIR}/issuemodel.cpp
 			${APP_SOURCE_DIR}/logmodel.h
 			${APP_SOURCE_DIR}/logmodel.cpp)
 target_include_directories(stride-tests PRIVATE ${APP_SOURCE_DIR})

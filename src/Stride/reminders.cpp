@@ -20,11 +20,19 @@ Reminders::Reminders(QObject* parent)
 	QSettings settings;
 	mEnabled = settings.value(ENABLED_SETTING, true).toBool();
 	mEndOfDay = QTime::fromString(settings.value(END_OF_DAY_SETTING, "17:00").toString(), "HH:mm");
+	if (!mEndOfDay.isValid()) {
+		// A stored value the settings wouldn't accept (e.g. edited by hand): keep the default instead of
+		// an invalid time, which would compare as "before now" and remind at midnight.
+		mEndOfDay = QTime(17, 0);
+	}
 	mLongTrackingHours = settings.value(LONG_TRACKING_SETTING, 3).toInt();
 
 	mTimer.setInterval(60 * 1000);
 	connect(&mTimer, &QTimer::timeout, this, [this]() { check(QDateTime::currentDateTime()); });
-	mTimer.start();
+	// Not while disabled: there is nothing to check then, and the app needn't wake up for it.
+	if (mEnabled) {
+		mTimer.start();
+	}
 }
 
 TimeTracker* Reminders::timeTracker() const { return mTimeTracker; }
@@ -107,6 +115,11 @@ void Reminders::setEnabled(bool enabled)
 	}
 	mEnabled = enabled;
 	QSettings().setValue(ENABLED_SETTING, enabled);
+	if (enabled) {
+		mTimer.start();
+	} else {
+		mTimer.stop();
+	}
 	emit settingsChanged();
 }
 
