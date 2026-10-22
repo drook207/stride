@@ -102,6 +102,70 @@ TEST_F(RedmineClientIntegrationTest, GetIssuesWithFiltersSendsQueryParametersAnd
 	EXPECT_EQ(received.size(), 2);
 }
 
+TEST_F(RedmineClientIntegrationTest, GetIssueRelationsSendsCorrectRequestAndReportsThemFromTheIssuesSide)
+{
+	server->enqueueResponse(MockHttpResponse { 200, "OK",
+		R"({"relations":[
+			{"id":1,"issue_id":42,"issue_to_id":7,"relation_type":"blocks","delay":null},
+			{"id":2,"issue_id":9,"issue_to_id":42,"relation_type":"blocks","delay":null},
+			{"id":3,"issue_id":42,"issue_to_id":8,"relation_type":"relates","delay":null},
+			{"id":4,"issue_id":42,"issue_to_id":10,"relation_type":"precedes","delay":2}]})" });
+
+	int receivedIssue = 0;
+	QJsonArray received;
+	QObject::connect(
+		client.get(), &RedmineClient::issueRelationsReceived, [&](int issueId, const QJsonArray& relations) {
+			receivedIssue = issueId;
+			received = relations;
+		});
+
+	client->getIssueRelations(42);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueRelationsReceived));
+
+	ASSERT_EQ(server->requests().size(), 1);
+	const RecordedHttpRequest& request = server->requests().first();
+	EXPECT_EQ(request.method.toStdString(), "GET");
+	EXPECT_EQ(request.path.toStdString(), "/issues/42/relations.json");
+
+	EXPECT_EQ(receivedIssue, 42);
+	ASSERT_EQ(received.size(), 4);
+	// From the issue's side: what it blocks, what blocks it (Redmine stores that relation the other way
+	// round), and what it relates to.
+	EXPECT_EQ(received[0].toObject()["other_issue_id"].toInt(), 7);
+	EXPECT_EQ(received[0].toObject()["other_relation_type"].toString().toStdString(), "blocks");
+	EXPECT_EQ(received[1].toObject()["other_issue_id"].toInt(), 9);
+	EXPECT_EQ(received[1].toObject()["other_relation_type"].toString().toStdString(), "blocked");
+	EXPECT_EQ(received[2].toObject()["other_relation_type"].toString().toStdString(), "relates");
+	EXPECT_EQ(received[3].toObject()["other_relation_type"].toString().toStdString(), "precedes");
+	EXPECT_EQ(received[3].toObject()["delay"].toInt(), 2);
+	// The fields Redmine sent stay as they are.
+	EXPECT_EQ(received[1].toObject()["issue_id"].toInt(), 9);
+	EXPECT_EQ(received[1].toObject()["relation_type"].toString().toStdString(), "blocks");
+
+	EXPECT_FALSE(client->loading());
+	EXPECT_EQ(client->connectionState(), RedmineClient::ONLINE);
+}
+
+TEST_F(RedmineClientIntegrationTest, IssueWithoutRelationsReportsAnEmptyList)
+{
+	server->enqueueResponse(MockHttpResponse { 200, "OK", R"({"relations":[]})" });
+
+	int receivedIssue = 0;
+	QJsonArray received { QJsonObject { { "not", "empty" } } };
+	QObject::connect(
+		client.get(), &RedmineClient::issueRelationsReceived, [&](int issueId, const QJsonArray& relations) {
+			receivedIssue = issueId;
+			received = relations;
+		});
+
+	client->getIssueRelations(42);
+	ASSERT_TRUE(waitForSignal(client.get(), &RedmineClient::issueRelationsReceived));
+
+	// Emitted as an empty list rather than not at all, so the view can show that there are none.
+	EXPECT_EQ(receivedIssue, 42);
+	EXPECT_TRUE(received.isEmpty());
+}
+
 TEST_F(RedmineClientIntegrationTest, CreateIssueSendsPostBodyAndEmitsIssueCreated)
 {
 	server->enqueueResponse(MockHttpResponse { 201, "Created", R"({"issue":{"id":7,"subject":"New"}})" });

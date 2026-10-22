@@ -44,7 +44,7 @@ static constexpr auto CUSTOM_FIELDS_GENERATION_ATTRIBUTE =
 	static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 4);
 //! Request attribute carrying the RedmineClient::fetchKey() of a paged fetch's page
 static constexpr auto FETCH_KEY_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 6);
-//! Request attribute carrying the issue id of a getIssue() request
+//! Request attribute carrying the issue id of a getIssue() or getIssueRelations() request
 static constexpr auto ISSUE_ID_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 7);
 //! Request attribute carrying the offset a page of a paged fetch was requested with
 static constexpr auto PAGE_OFFSET_ATTRIBUTE = static_cast<QNetworkRequest::Attribute>(QNetworkRequest::User + 8);
@@ -674,6 +674,73 @@ void RedmineClient::handleIssuesBatchReply(QNetworkReply* reply)
 	sendIssueBatches();
 }
 
+//! The type of a relation as seen from the issue on the other side of it: Redmine stores a relation
+//! once, with its type seen from issue_from, so "blocks" reads "blocked" on the issue that is blocked.
+static QString relationTypeOfOtherIssue(const QString& type, bool issueIsFrom)
+{
+	if (issueIsFrom) {
+		return type;
+	}
+	static const QHash<QString, QString> inverses {
+		{ QStringLiteral("blocks"), QStringLiteral("blocked") },
+		{ QStringLiteral("blocked"), QStringLiteral("blocks") },
+		{ QStringLiteral("precedes"), QStringLiteral("follows") },
+		{ QStringLiteral("follows"), QStringLiteral("precedes") },
+		{ QStringLiteral("duplicates"), QStringLiteral("duplicated") },
+		{ QStringLiteral("duplicated"), QStringLiteral("duplicates") },
+		{ QStringLiteral("copied_to"), QStringLiteral("copied_from") },
+		{ QStringLiteral("copied_from"), QStringLiteral("copied_to") },
+	};
+	return inverses.value(type, type);
+}
+
+//! Redmine's relations of an issue, each with "other_issue_id" and "other_relation_type" added, as
+//! issueRelationsReceived() hands them on.
+static QJsonArray relationsForIssue(const QJsonArray& relations, int issueId)
+{
+	QJsonArray result;
+	for (const QJsonValue& value : relations) {
+		QJsonObject relation = value.toObject();
+		const int issueFromId = relation.value(QStringLiteral("issue_id")).toInt();
+		const bool issueIsFrom = issueFromId == issueId;
+		relation.insert(QStringLiteral("other_issue_id"),
+			issueIsFrom ? relation.value(QStringLiteral("issue_to_id")) : QJsonValue(issueFromId));
+		relation.insert(QStringLiteral("other_relation_type"),
+			relationTypeOfOtherIssue(relation.value(QStringLiteral("relation_type")).toString(), issueIsFrom));
+		result.append(relation);
+	}
+	return result;
+}
+
+void RedmineClient::getIssueRelations(int issueId)
+{
+	if (issueId <= 0) {
+		return;
+	}
+	setLoading(true);
+	QNetworkRequest request = createRequest(ApiResources::ISSUE_RELATIONS.arg(QString::number(issueId)));
+	request.setAttribute(ROUTING_ATTRIBUTE, IssueRelationsTag);
+	request.setAttribute(ISSUE_ID_ATTRIBUTE, issueId);
+	mNetworkManager->get(request);
+}
+
+void RedmineClient::handleIssueRelationsReply(QNetworkReply* reply)
+{
+	updateConnectionStateFromReply(reply);
+	const int issueId = reply->request().attribute(ISSUE_ID_ATTRIBUTE).toInt();
+	const QJsonObject response = QJsonDocument::fromJson(reply->readAll()).object();
+	if (reply->error() != QNetworkReply::NoError) {
+		qCWarning(lcRedmineClient) << "Could not fetch the relations of issue" << issueId << ":"
+								   << reply->errorString();
+		if (shouldReport(reply, reportingOf(reply))) {
+			reportError(reply, response);
+		}
+		return;
+	}
+	emit issueRelationsReceived(
+		issueId, relationsForIssue(response.value(QStringLiteral("relations")).toArray(), issueId));
+}
+
 void RedmineClient::createIssue(
 	int projectId, const QString& subject, const QString& description, int trackerId, int priorityId)
 {
@@ -1201,7 +1268,7 @@ void RedmineClient::logFinishedReply(QNetworkReply* reply)
 	static const QStringList routingNames { QStringLiteral("none"), QStringLiteral("customFields"),
 		QStringLiteral("customFieldsFallback"), QStringLiteral("allProjects"), QStringLiteral("ownTimeEntries"),
 		QStringLiteral("timeEntryReport"), QStringLiteral("permissions"), QStringLiteral("connectionCheck"),
-		QStringLiteral("issuesBatch") };
+		QStringLiteral("issuesBatch"), QStringLiteral("issueRelations") };
 	const QString routing = routingNames.value(tag);
 	const QString path = reply->url().path();
 
@@ -1334,6 +1401,10 @@ void RedmineClient::handleNetworkReply(QNetworkReply* reply)
 	}
 	if (tag == IssuesBatchTag) {
 		handleIssuesBatchReply(reply);
+		return;
+	}
+	if (tag == IssueRelationsTag) {
+		handleIssueRelationsReply(reply);
 		return;
 	}
 

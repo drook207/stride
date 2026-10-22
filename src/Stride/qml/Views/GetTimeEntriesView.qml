@@ -32,6 +32,73 @@ Item {
         return field ? (field.value || "") : undefined
     }
 
+    //! Relations of the issue whose time entries are listed, as RedmineClient::issueRelationsReceived
+    //! hands them on; empty while none are known.
+    property var relations: []
+    //! The issue the listed time entries and relations belong to, -1 until something was fetched.
+    property int shownIssueId: -1
+
+    //! Loads an issue's time entries and relations, as "Get" and a click on a related issue do.
+    function show(issueId) {
+        if (issueId <= 0) {
+            return
+        }
+        docroot.shownIssueId = issueId
+        docroot.relations = []
+        issueField.value = issueId
+        docroot.client.getTimeEntries(issueId)
+        docroot.client.getIssueRelations(issueId)
+    }
+
+    //! How a relation reads from the shown issue's side, e.g. "blocks" or "blocked by".
+    function relationLabel(type) {
+        switch (type) {
+        case "relates":
+            return qsTr("relates to")
+        case "duplicates":
+            return qsTr("duplicates")
+        case "duplicated":
+            return qsTr("duplicated by")
+        case "blocks":
+            return qsTr("blocks")
+        case "blocked":
+            return qsTr("blocked by")
+        case "precedes":
+            return qsTr("precedes")
+        case "follows":
+            return qsTr("follows")
+        case "copied_to":
+            return qsTr("copied to")
+        case "copied_from":
+            return qsTr("copied from")
+        }
+        return type
+    }
+
+    // Subjects of related issues: a relation holds only their ids; the subjects come from the issue
+    // cache, which Main.qml fills from the getIssuesById() request below.
+    IssueModel {
+        id: relatedIssues
+    }
+    Connections {
+        target: docroot.timeTracker
+        function onIssueCacheChanged() {
+            relatedIssues.updateIssueList()
+        }
+    }
+    Connections {
+        target: docroot.client
+        function onIssueRelationsReceived(issueId, relations) {
+            if (issueId !== docroot.shownIssueId) {
+                return // another issue was asked for meanwhile
+            }
+            docroot.relations = relations
+            if (relations.length > 0) {
+                docroot.client.getIssuesById(relations.map(relation => relation.other_issue_id), true)
+            }
+        }
+    }
+
     EditTimeEntryDialog {
         id: editDialog
 
@@ -66,6 +133,69 @@ Item {
             text: qsTr("Search Issue")
         }
 
+        // Relations of the shown issue (blocks, relates, ...): click one to show its time entries, or
+        // start tracking it right away.
+        Card {
+            Layout.fillWidth: true
+            visible: docroot.relations.length > 0
+            title: qsTr("Related issues")
+
+            ListView {
+                id: relationsList
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(contentHeight, 180)
+                clip: true
+                interactive: contentHeight > height
+                model: docroot.relations
+
+                ScrollBar.vertical: ScrollBar {}
+
+                delegate: ItemDelegate {
+                    id: relationRow
+                    required property var modelData
+
+                    width: ListView.view.width
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Show this issue's time entries")
+                    onClicked: docroot.show(relationRow.modelData.other_issue_id)
+
+                    contentItem: RowLayout {
+                        spacing: 12
+
+                        Label {
+                            Layout.preferredWidth: 110
+                            text: docroot.relationLabel(relationRow.modelData.other_relation_type)
+                            color: Material.accentColor
+                            font.pixelSize: 13
+                            elide: Text.ElideRight
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            // Reading revision makes the binding re-evaluate when the issue cache
+                            // changes: idAndSubjectOf() is a function QML can't see the result of.
+                            text: relatedIssues.revision >= 0 ? relatedIssues.idAndSubjectOf(relationRow.modelData.other_issue_id) : ""
+                            color: Material.foreground
+                            font.pixelSize: 14
+                            elide: Text.ElideRight
+                        }
+                        ToolButton {
+                            icon.source: "qrc:/qt/qml/Stride/qml/Assets/Icons/solid/play.svg"
+                            icon.width: 14
+                            icon.height: 14
+                            enabled: !docroot.timeTracker.isTracking
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("Start tracking this issue")
+                            onClicked: {
+                                docroot.timeTracker.continueTracking(relationRow.modelData.other_issue_id)
+                                // Quietly cached, so the tracking bar knows the issue's subject and project.
+                                docroot.client.getIssue(relationRow.modelData.other_issue_id, true)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // One card for the search row and its results, like RecentEntriesView's list card.
         Card {
             Layout.fillWidth: true
@@ -95,7 +225,7 @@ Item {
                     Layout.alignment: Qt.AlignBottom
                     text: qsTr("Get")
                     enabled: issueField.acceptableInput
-                    onClicked: docroot.client.getTimeEntries(issueField.value)
+                    onClicked: docroot.show(issueField.value)
                 }
 
                 Item {
@@ -160,7 +290,8 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: entriesList.count === 0
-                text: qsTr("Enter an issue and press Get to list its time entries.")
+                text: docroot.shownIssueId > 0 ? qsTr("No time entries for this issue yet.")
+                                               : qsTr("Enter an issue and press Get to list its time entries.")
                 color: Material.secondaryTextColor
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter

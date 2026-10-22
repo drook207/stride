@@ -39,6 +39,7 @@ namespace ApiResources {
 	static const QString ROLE = QStringLiteral("roles/%0.json"); // arg[0] == id
 	static const QString TIME_ENTRY = QStringLiteral("time_entries/%0.json"); // arg[0] == id
 	static const QString TIME_ENTRIES = QStringLiteral("time_entries.json");
+	static const QString ISSUE_RELATIONS = QStringLiteral("issues/%0/relations.json"); // arg[0] == id
 }
 
 class QT_REDMINECLIENT_EXPORT RedmineClient : public QObject {
@@ -285,6 +286,14 @@ public slots:
 	Q_INVOKABLE void getIssuesById(const QList<int>& issueIds, bool quiet = true);
 
 	/*!
+	 * \brief getIssueRelations Fetches the relations of an issue (blocks, relates, duplicates, ...)
+	 * and emits issueRelationsReceived(). The related issues themselves are only ids: getIssuesById()
+	 * fetches their subjects.
+	 * \param issueId The issue to ask for; does nothing when <= 0
+	 */
+	void getIssueRelations(int issueId);
+
+	/*!
 	 * \brief createIssue
 	 * \param projectId
 	 * \param subject
@@ -507,6 +516,16 @@ signals:
 	void issuesReceived(const QJsonArray& issues);
 
 	/*!
+	 * \brief issueRelationsReceived Result of getIssueRelations()
+	 * \param issueId The issue the relations were asked for
+	 * \param relations Each relation as Redmine sends it ("id", "issue_id", "issue_to_id",
+	 * "relation_type", "delay"), plus "other_issue_id" (the issue on the other side) and
+	 * "other_relation_type" (the relation as seen from \a issueId: Redmine stores it once, so a
+	 * relation that blocks the other issue there reads "blocked" here, "blocks" the other way round)
+	 */
+	void issueRelationsReceived(int issueId, const QJsonArray& relations);
+
+	/*!
 	 * \brief issueCreated
 	 * \param issue
 	 */
@@ -641,7 +660,8 @@ private:
 		TimeEntryReportTag,
 		PermissionsTag,
 		ConnectionCheckTag,
-		IssuesBatchTag
+		IssuesBatchTag,
+		IssueRelationsTag
 	};
 
 	//! How the failure of a request is reported via errorOccurred(), see shouldReport()
@@ -696,6 +716,7 @@ private:
 	//! Sends queued chunks as long as fewer than two are running.
 	void sendIssueBatches();
 	void handleIssuesBatchReply(QNetworkReply* reply);
+	void handleIssueRelationsReply(QNetworkReply* reply);
 
 	//! Counts getCurrentUser() calls, so replies for a superseded permission lookup are ignored.
 	int mPermissionsGeneration = 0;

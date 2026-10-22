@@ -294,22 +294,87 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>GetTimeEntriesView</name>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="66"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="57"/>
+        <source>relates to</source>
+        <translation>bezieht sich auf</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="59"/>
+        <source>duplicates</source>
+        <translation>dupliziert</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="61"/>
+        <source>duplicated by</source>
+        <translation>dupliziert von</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="63"/>
+        <source>blocks</source>
+        <translation>blockiert</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="65"/>
+        <source>blocked by</source>
+        <translation>blockiert von</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="67"/>
+        <source>precedes</source>
+        <translation>geht voraus</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="69"/>
+        <source>follows</source>
+        <translation>folgt</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="71"/>
+        <source>copied to</source>
+        <translation>kopiert nach</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="73"/>
+        <source>copied from</source>
+        <translation>kopiert von</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="133"/>
         <source>Search Issue</source>
         <translation>Ticket suchen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="83"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="141"/>
+        <source>Related issues</source>
+        <translation>Verknüpfte Tickets</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="159"/>
+        <source>Show this issue&apos;s time entries</source>
+        <translation>Zeiteinträge dieses Tickets anzeigen</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="185"/>
+        <source>Start tracking this issue</source>
+        <translation>Zeiterfassung für dieses Ticket starten</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="211"/>
         <source>Issue</source>
         <translation>Ticket</translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="96"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="224"/>
         <source>Get</source>
         <translation>Abrufen</translation>
     </message>
     <message>
-        <location filename="../qml/Views/GetTimeEntriesView.qml" line="163"/>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="291"/>
+        <source>No time entries for this issue yet.</source>
+        <translation>Für dieses Ticket gibt es noch keine Zeiteinträge.</translation>
+    </message>
+    <message>
+        <location filename="../qml/Views/GetTimeEntriesView.qml" line="292"/>
         <source>Enter an issue and press Get to list its time entries.</source>
         <translation>Geben Sie ein Ticket ein und klicken Sie auf „Abrufen“, um seine Zeiteinträge anzuzeigen.</translation>
     </message>
@@ -335,7 +400,7 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>IssueSearchInputField</name>
     <message>
-        <location filename="../qml/Components/IssueSearchInputField.qml" line="154"/>
+        <location filename="../qml/Components/IssueSearchInputField.qml" line="170"/>
         <source>No project</source>
         <translation>Kein Projekt</translation>
     </message>
@@ -417,42 +482,42 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>Main</name>
     <message>
-        <location filename="../qml/Main.qml" line="96"/>
+        <location filename="../qml/Main.qml" line="98"/>
         <source>Error: %1</source>
         <translation>Fehler: %1</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="104"/>
+        <location filename="../qml/Main.qml" line="106"/>
         <source>Time entry created successfully</source>
         <translation>Zeiteintrag erfolgreich erstellt</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="443"/>
+        <location filename="../qml/Main.qml" line="452"/>
         <source>Timer still running</source>
         <translation>Timer läuft noch</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="450"/>
+        <location filename="../qml/Main.qml" line="459"/>
         <source>The computer was asleep since %2 while the timer for #%1 was running. Should that time count?</source>
         <translation>Der Computer war seit %2 im Ruhezustand, während der Timer für #%1 lief. Soll diese Zeit zählen?</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="451"/>
+        <location filename="../qml/Main.qml" line="460"/>
         <source>The timer for #%1 was running when the app was last used, on %2. Should the time since then count?</source>
         <translation>Der Timer für #%1 lief, als die App zuletzt verwendet wurde (%2). Soll die Zeit seitdem zählen?</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="458"/>
+        <location filename="../qml/Main.qml" line="467"/>
         <source>Count it</source>
         <translation>Mitzählen</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="459"/>
+        <location filename="../qml/Main.qml" line="468"/>
         <source>Leave it out</source>
         <translation>Weglassen</translation>
     </message>
     <message>
-        <location filename="../qml/Main.qml" line="459"/>
+        <location filename="../qml/Main.qml" line="468"/>
         <source>Stop it then</source>
         <translation>Dort anhalten</translation>
     </message>
@@ -587,73 +652,6 @@ Beim Speichern wird er erneut gesendet.</translation>
         <location filename="../qml/Views/OverviewView.qml" line="264"/>
         <source>No project</source>
         <translation>Kein Projekt</translation>
-    </message>
-</context>
-<context>
-    <name>Stride::Reminders</name>
-    <message>
-        <location filename="../reminders.cpp" line="151"/>
-        <source>Timer still running</source>
-        <translation>Timer läuft noch</translation>
-    </message>
-    <message>
-        <location filename="../reminders.cpp" line="152"/>
-        <source>The timer for #%1 has been running for %2 hours. Still working on it?</source>
-        <translation>Der Timer für #%1 läuft seit %2 Stunden. Arbeiten Sie noch daran?</translation>
-    </message>
-    <message>
-        <location filename="../reminders.cpp" line="96"/>
-        <source>Nothing booked today</source>
-        <translation>Heute noch nichts gebucht</translation>
-    </message>
-    <message>
-        <location filename="../reminders.cpp" line="96"/>
-        <source>No time has been booked for today yet.</source>
-        <translation>Für heute wurde noch keine Zeit gebucht.</translation>
-    </message>
-</context>
-<context>
-    <name>Stride::TimeEntryExport</name>
-    <message>
-        <location filename="../timeentryexport.cpp" line="89"/>
-        <location filename="../timeentryexport.cpp" line="122"/>
-        <source>Date</source>
-        <translation>Datum</translation>
-    </message>
-    <message>
-        <location filename="../timeentryexport.cpp" line="89"/>
-        <location filename="../timeentryexport.cpp" line="122"/>
-        <source>Issue</source>
-        <translation>Ticket</translation>
-    </message>
-    <message>
-        <location filename="../timeentryexport.cpp" line="89"/>
-        <location filename="../timeentryexport.cpp" line="122"/>
-        <source>Project</source>
-        <translation>Projekt</translation>
-    </message>
-    <message>
-        <location filename="../timeentryexport.cpp" line="89"/>
-        <location filename="../timeentryexport.cpp" line="122"/>
-        <source>Activity</source>
-        <translation>Aktivität</translation>
-    </message>
-    <message>
-        <location filename="../timeentryexport.cpp" line="89"/>
-        <location filename="../timeentryexport.cpp" line="122"/>
-        <source>Hours</source>
-        <translation>Stunden</translation>
-    </message>
-    <message>
-        <location filename="../timeentryexport.cpp" line="89"/>
-        <location filename="../timeentryexport.cpp" line="122"/>
-        <source>Comment</source>
-        <translation>Kommentar</translation>
-    </message>
-    <message>
-        <location filename="../timeentryexport.cpp" line="138"/>
-        <source>Total</source>
-        <translation>Summe</translation>
     </message>
 </context>
 <context>
@@ -871,14 +869,81 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>StartTimeField</name>
     <message>
-        <location filename="../qml/Components/StartTimeField.qml" line="88"/>
+        <location filename="../qml/Components/StartTimeField.qml" line="91"/>
         <source>The start can&apos;t be in the future, more than 24 hours ago, or after the paused time.</source>
         <translation>Der Start darf nicht in der Zukunft, mehr als 24 Stunden zurück oder nach der pausierten Zeit liegen.</translation>
     </message>
     <message>
-        <location filename="../qml/Components/StartTimeField.qml" line="94"/>
+        <location filename="../qml/Components/StartTimeField.qml" line="97"/>
         <source>Answer the question about the time away first.</source>
         <translation>Beantworten Sie zuerst die Frage zur Abwesenheitszeit.</translation>
+    </message>
+</context>
+<context>
+    <name>Stride::Reminders</name>
+    <message>
+        <location filename="../reminders.cpp" line="153"/>
+        <source>Timer still running</source>
+        <translation>Timer läuft noch</translation>
+    </message>
+    <message>
+        <location filename="../reminders.cpp" line="154"/>
+        <source>The timer for #%1 has been running for %2 hours. Still working on it?</source>
+        <translation>Der Timer für #%1 läuft seit %2 Stunden. Arbeiten Sie noch daran?</translation>
+    </message>
+    <message>
+        <location filename="../reminders.cpp" line="98"/>
+        <source>Nothing booked today</source>
+        <translation>Heute noch nichts gebucht</translation>
+    </message>
+    <message>
+        <location filename="../reminders.cpp" line="98"/>
+        <source>No time has been booked for today yet.</source>
+        <translation>Für heute wurde noch keine Zeit gebucht.</translation>
+    </message>
+</context>
+<context>
+    <name>Stride::TimeEntryExport</name>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Date</source>
+        <translation>Datum</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Issue</source>
+        <translation>Ticket</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Project</source>
+        <translation>Projekt</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Activity</source>
+        <translation>Aktivität</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Hours</source>
+        <translation>Stunden</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="89"/>
+        <location filename="../timeentryexport.cpp" line="122"/>
+        <source>Comment</source>
+        <translation>Kommentar</translation>
+    </message>
+    <message>
+        <location filename="../timeentryexport.cpp" line="138"/>
+        <source>Total</source>
+        <translation>Summe</translation>
     </message>
 </context>
 <context>
@@ -940,12 +1005,12 @@ Beim Speichern wird er erneut gesendet.</translation>
 <context>
     <name>TimePickerField</name>
     <message>
-        <location filename="../qml/Components/TimePickerField.qml" line="222"/>
+        <location filename="../qml/Components/TimePickerField.qml" line="231"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../qml/Components/TimePickerField.qml" line="228"/>
+        <location filename="../qml/Components/TimePickerField.qml" line="237"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>

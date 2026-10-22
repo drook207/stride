@@ -4,57 +4,57 @@
 <context>
     <name>QRedmineClient::RedmineClient</name>
     <message>
-        <location filename="../redmineclient.cpp" line="408"/>
+        <location filename="../redmineclient.cpp" line="433"/>
         <source>The Redmine server could not be found. Please check the server URL in the settings.</source>
         <translation>Der Redmine-Server wurde nicht gefunden. Bitte prüfen Sie die Server-URL in den Einstellungen.</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="410"/>
+        <location filename="../redmineclient.cpp" line="435"/>
         <source>The Redmine server refused the connection.</source>
         <translation>Der Redmine-Server hat die Verbindung abgelehnt.</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="412"/>
+        <location filename="../redmineclient.cpp" line="437"/>
         <source>The Redmine server closed the connection unexpectedly.</source>
         <translation>Der Redmine-Server hat die Verbindung unerwartet geschlossen.</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="417"/>
+        <location filename="../redmineclient.cpp" line="442"/>
         <source>The Redmine server didn&apos;t answer in time.</source>
         <translation>Der Redmine-Server hat nicht rechtzeitig geantwortet.</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="419"/>
+        <location filename="../redmineclient.cpp" line="444"/>
         <source>A secure connection to the Redmine server could not be established.</source>
         <translation>Es konnte keine sichere Verbindung zum Redmine-Server hergestellt werden.</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="422"/>
+        <location filename="../redmineclient.cpp" line="447"/>
         <source>No network connection is available.</source>
         <translation>Es ist keine Netzwerkverbindung verfügbar.</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="424"/>
+        <location filename="../redmineclient.cpp" line="449"/>
         <source>Authentication failed. Please check your API key in the settings.</source>
         <translation>Anmeldung fehlgeschlagen. Bitte prüfen Sie Ihren API-Schlüssel in den Einstellungen.</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="426"/>
+        <location filename="../redmineclient.cpp" line="451"/>
         <source>Access denied. You are not allowed to perform this action.</source>
         <translation>Zugriff verweigert. Sie sind für diese Aktion nicht berechtigt.</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="440"/>
+        <location filename="../redmineclient.cpp" line="465"/>
         <source>The Redmine server rejected the request: %1</source>
         <translation>Der Redmine-Server hat die Anfrage abgelehnt: %1</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="445"/>
+        <location filename="../redmineclient.cpp" line="470"/>
         <source>The Redmine server reported an internal error (HTTP %1).</source>
         <translation>Der Redmine-Server hat einen internen Fehler gemeldet (HTTP %1).</translation>
     </message>
     <message>
-        <location filename="../redmineclient.cpp" line="450"/>
+        <location filename="../redmineclient.cpp" line="475"/>
         <source>Network error: %1</source>
         <translation>Netzwerkfehler: %1</translation>
     </message>

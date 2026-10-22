@@ -87,6 +87,10 @@ pick the date, activity and comment.
 from Redmine - handy to check what's already been booked. You can continue,
 pin, edit and delete these entries just like recent ones.
 
+The issue's **related issues** (blocks, blocked by, relates to, ...) are listed
+above the entries. Clicking one shows its time entries too; the play button
+next to it starts tracking on that issue right away.
+
 ![Search issue view](assets/screenshots/desktop-search-issue.png)
 
 ## Creating an issue
