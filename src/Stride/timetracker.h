@@ -210,7 +210,8 @@ public slots:
 	 * \param entry "issueId", "hours", "comments", "date" ("yyyy-MM-dd" or a Date) and optionally
 	 * "activityId", "customFields" ([{"id", "value"}]) and "issueStatusId" (to set the issue to
 	 * once the entry is on Redmine, see setIssueStatus())
-	 * \return The new entry's local id; -1 if it couldn't be saved
+	 * \return The new entry's local id; -1 if it couldn't be saved, or if issueId isn't positive or
+	 * hours isn't above 0 (Redmine books neither)
 	 */
 	int addRecentEntry(const QVariantMap& entry);
 

@@ -2,6 +2,7 @@
 #include "database.h"
 #include <QJsonDocument>
 #include <QSqlQuery>
+#include <cmath>
 #include <gtest/gtest.h>
 
 using Stride::Database;
@@ -74,6 +75,23 @@ protected:
 
 	std::unique_ptr<TimeTracker> tracker;
 };
+
+TEST_F(TimeTrackerTest, RefusesANewEntryWithoutAnIssueOrWithoutTime)
+{
+	// Redmine books neither, and a NaN can't be stored in the hours column.
+	EXPECT_EQ(addEntry(0, 1.0, "no issue"), -1);
+	EXPECT_EQ(addEntry(-3, 1.0, "negative issue"), -1);
+	EXPECT_EQ(addEntry(10, 0.0, "no time"), -1);
+	EXPECT_EQ(addEntry(10, -0.5, "negative time"), -1);
+	EXPECT_EQ(addEntry(10, std::nan(""), "not a number"), -1);
+
+	EXPECT_TRUE(tracker->recentEntries().isEmpty());
+	EXPECT_FALSE(tracker->hasPendingEntries());
+
+	// A valid one still goes through.
+	EXPECT_GE(addEntry(10, 0.5, "fine"), 0);
+	EXPECT_EQ(tracker->recentEntries().size(), 1);
+}
 
 TEST_F(TimeTrackerTest, LinksOnlyEntriesWithTheSameIssueDayHoursAndComment)
 {

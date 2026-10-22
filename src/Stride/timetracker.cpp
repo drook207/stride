@@ -396,6 +396,15 @@ int TimeTracker::addRecentEntry(const QVariantMap& entry)
 	const QDate day = dateOf(entry["date"]);
 	const QDateTime spentOn(day.isValid() ? day : QDate::currentDate(), QTime(0, 0));
 
+	// Redmine books no entry without an issue or without time, and a NaN or an infinity would trip
+	// SQLite's NOT NULL on hours: refuse it here rather than saving what can only be rejected.
+	if (issueId <= 0 || !std::isfinite(hours) || hours <= 0.0) {
+		QR_WARNING(lcTimeTracker,
+			QStringLiteral("Refused a new local time entry (issue %1, %2 h)").arg(issueId).arg(hours),
+			{ { "issueId", issueId }, { "hours", hours } });
+		return -1;
+	}
+
 	const int localId = Database::addTimeEntry(issueId, hours, comment, spentOn, entry["activityId"].toInt(),
 		entry["customFields"].toList(), entry["issueStatusId"].toInt());
 	if (localId < 0) {
