@@ -1,3 +1,5 @@
+#pragma once
+
 #include "stringhelper.h"
 #include <QJsonArray>
 #include <QSet>
