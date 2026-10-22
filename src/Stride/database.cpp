@@ -117,14 +117,26 @@ bool Database::initialize(const QString& path)
 		moveLegacyDatabase(databaseName);
 	}
 
-	QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-	db.setDatabaseName(databaseName);
-	if (!db.open()) {
-		qWarning(lcDataBase) << QStringLiteral("Failed to open database: <%0>").arg(db.lastError().text());
-		return false;
+	// A connection an earlier, failed attempt left behind: opening another one on the default name
+	// would make Qt warn and replace it, invalidating queries still using it.
+	if (QSqlDatabase::contains(QSqlDatabase::defaultConnection)) {
+		close();
 	}
 
-	if (!execute(SqlQueries::ENABLE_WAL_MODE) || !migrate()) {
+	bool opened = false;
+	{
+		QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+		db.setDatabaseName(databaseName);
+		opened = db.open();
+		if (!opened) {
+			qWarning(lcDataBase) << QStringLiteral("Failed to open database: <%0>").arg(db.lastError().text());
+		}
+	}
+
+	// A half-open connection is of no use to anyone: close it, so the next attempt starts clean and
+	// the callers' queries fail visibly instead of running against a database that can't be used.
+	if (!opened || !execute(SqlQueries::ENABLE_WAL_MODE) || !migrate()) {
+		close();
 		return false;
 	}
 
