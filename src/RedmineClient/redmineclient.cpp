@@ -976,13 +976,13 @@ void RedmineClient::getEnumerations(EnumerationTypes enumerationType)
 	QString endpoint;
 	switch (enumerationType) {
 		case TIME_ENTRY_ACTIVITIES:
-			endpoint = QString("enumerations/time_entry_activities.json");
+			endpoint = QStringLiteral("enumerations/time_entry_activities.json");
 			break;
 		case ISSUE_PRIORITIES:
-			endpoint = QString("enumerations/issue_priorities.json");
+			endpoint = QStringLiteral("enumerations/issue_priorities.json");
 			break;
 		case DOCUMENT_CATEGORIES:
-			endpoint = QString("enumerations/document_categories.json");
+			endpoint = QStringLiteral("enumerations/document_categories.json");
 			break;
 		default:
 			qWarning(lcRedmineClient())
